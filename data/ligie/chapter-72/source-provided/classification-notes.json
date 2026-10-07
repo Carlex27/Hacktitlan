@@ -1,0 +1,275 @@
+{
+  "source": {
+    "document": "LIGIE-UNIFICADA-ACERO.pdf",
+    "legal_status": "unverified_and_marked_sin_vigencia",
+    "pdf_pages": [5, 6, 7, 8, 9, 10, 11]
+  },
+  "chapter": "72",
+  "definitions": [
+    {
+      "id": "chapter72.pig_iron",
+      "name": "Fundición en bruto",
+      "page": 5,
+      "logic": "Aleación hierro-carbono prácticamente no deformable plásticamente; carbono > 2%, con los límites adicionales de la página 6.",
+      "conditions": {
+        "plastic_deformation": false,
+        "carbon_pct": {"gt": 2},
+        "chromium_pct": {"lte": 10},
+        "manganese_pct": {"lte": 6},
+        "phosphorus_pct": {"lte": 3},
+        "silicon_pct": {"lte": 8},
+        "other_elements_total_pct": {"lte": 10}
+      }
+    },
+    {
+      "id": "chapter72.spiegeleisen",
+      "name": "Fundición especular",
+      "page": 6,
+      "logic": "Aleación hierro-carbono que cumple la definición de fundición en bruto y contiene manganeso > 6% y <= 30%.",
+      "conditions": {"manganese_pct": {"gt": 6, "lte": 30}}
+    },
+    {
+      "id": "chapter72.ferroalloy",
+      "name": "Ferroaleación",
+      "page": 6,
+      "logic": "Forma primaria o polvo/granalla, usada como aporte siderúrgico o tratamiento, generalmente no deformable, hierro >= 4% y al menos uno de los umbrales indicados.",
+      "conditions": {
+        "iron_pct": {"gte": 4},
+        "any_of": [
+          {"chromium_pct": {"gt": 10}},
+          {"manganese_pct": {"gt": 30}},
+          {"phosphorus_pct": {"gt": 3}},
+          {"silicon_pct": {"gt": 8}},
+          {"other_elements_total_excluding_carbon_pct": {"gt": 10}, "copper_pct": {"lte": 10}}
+        ]
+      }
+    },
+    {
+      "id": "chapter72.steel",
+      "name": "Acero",
+      "page": 6,
+      "logic": "Materia férrea, salvo la partida 72.03, deformable plásticamente y con carbono <= 2%; ciertos aceros al cromo pueden superar ese carbono.",
+      "conditions": {"plastic_deformation": true, "carbon_pct": {"lte": 2}}
+    },
+    {
+      "id": "chapter72.stainless_steel",
+      "name": "Acero inoxidable",
+      "page": 6,
+      "priority": 1,
+      "conditions": {"carbon_pct": {"lte": 1.2}, "chromium_pct": {"gte": 10.5}}
+    },
+    {
+      "id": "chapter72.other_alloy_steel",
+      "name": "Los demás aceros aleados",
+      "page": 7,
+      "priority": 2,
+      "precondition": "No cumple la definición de acero inoxidable.",
+      "any_of": [
+        {"element": "aluminum", "gte_pct": 0.3},
+        {"element": "boron", "gte_pct": 0.0008},
+        {"element": "chromium", "gte_pct": 0.3},
+        {"element": "cobalt", "gte_pct": 0.3},
+        {"element": "copper", "gte_pct": 0.4},
+        {"element": "lead", "gte_pct": 0.4},
+        {"element": "manganese", "gte_pct": 1.65},
+        {"element": "molybdenum", "gte_pct": 0.08},
+        {"element": "nickel", "gte_pct": 0.3},
+        {"element": "niobium", "gte_pct": 0.06},
+        {"element": "silicon", "gte_pct": 0.6},
+        {"element": "titanium", "gte_pct": 0.05},
+        {"element": "tungsten", "gte_pct": 0.3},
+        {"element": "vanadium", "gte_pct": 0.1},
+        {"element": "zirconium", "gte_pct": 0.05},
+        {"element": "other_individual_except_s_p_c_n", "gte_pct": 0.1}
+      ]
+    },
+    {
+      "id": "chapter72.ingots_from_scrap",
+      "name": "Lingotes de chatarra de hierro o acero",
+      "page": 7,
+      "logic": "Productos colados groseramente, con defectos superficiales profundos, que no cumplen por composición las definiciones de fundición en bruto, fundición especular o ferroaleación."
+    },
+    {
+      "id": "chapter72.granules",
+      "name": "Granallas",
+      "page": 7,
+      "conditions": {
+        "passes_1mm_sieve_weight_pct": {"lt": 90},
+        "passes_5mm_sieve_weight_pct": {"gte": 90}
+      }
+    },
+    {
+      "id": "chapter72.semi_finished",
+      "name": "Productos intermedios",
+      "pages": [7, 8],
+      "logic": "Productos macizos de colada continua, incluso con laminado grosero en caliente, o macizos simplemente laminados groseramente en caliente o desbastados por forjado; no enrollados."
+    },
+    {
+      "id": "chapter72.flat_rolled",
+      "name": "Productos laminados planos",
+      "page": 8,
+      "conditions": {
+        "solid_rectangular_section": true,
+        "not_semi_finished": true,
+        "any_of": [
+          {"coiled_in_superimposed_coils": true},
+          {"coiled": false, "thickness_mm": {"lt": 4.75}, "width_to_thickness_ratio": {"gte": 10}},
+          {"coiled": false, "thickness_mm": {"gte": 4.75}, "width_mm": {"gt": 150}, "thickness_to_width_ratio": {"lte": 0.5}}
+        ]
+      },
+      "notes": [
+        "Relieves directos del laminado, perforado, ondulado o pulido no cambian la categoría si no confieren carácter de otro artículo.",
+        "Formas no cuadradas o rectangulares se tratan como anchura >= 600 mm si no son otro artículo."
+      ]
+    },
+    {
+      "id": "chapter72.wire_rod",
+      "name": "Alambrón",
+      "page": 8,
+      "logic": "Producto laminado en caliente, enrollado en espiras irregulares, con sección maciza circular u otra forma convexa permitida."
+    },
+    {
+      "id": "chapter72.bars",
+      "name": "Barras",
+      "pages": [8, 9],
+      "logic": "Sección maciza constante de las formas permitidas; no es producto intermedio, plano, alambrón ni alambre; puede tener relieves de laminado o torsión posterior."
+    },
+    {
+      "id": "chapter72.profiles",
+      "name": "Perfiles",
+      "page": 9,
+      "logic": "Sección transversal maciza y constante que no cumple las definiciones de producto intermedio, plano, alambrón, barra o alambre."
+    },
+    {
+      "id": "chapter72.wire",
+      "name": "Alambre",
+      "page": 9,
+      "logic": "Sección maciza y constante, obtenido en frío y enrollado, que no es producto laminado plano."
+    },
+    {
+      "id": "chapter72.hollow_drill_bars",
+      "name": "Barras huecas para perforación",
+      "page": 9,
+      "conditions": {
+        "max_outer_dimension_mm": {"gt": 15, "lte": 52},
+        "outer_to_inner_max_dimension_ratio": {"gte": 2}
+      },
+      "fallback": "Las barras huecas que no cumplan se clasifican en 73.04."
+    }
+  ],
+  "chapter_rules": [
+    {
+      "id": "chapter72.clad_ferrous_metal",
+      "page": 9,
+      "rule": "Los metales férreos chapados con metal férreo de calidad diferente siguen el régimen del metal férreo que predomine en peso."
+    },
+    {
+      "id": "chapter72.electrolysis_pressure_cast_sintered",
+      "page": 9,
+      "rule": "Los productos obtenidos por electrólisis, colada a presión o sinterizado se clasifican por forma, composición y aspecto con los productos análogos laminados en caliente."
+    }
+  ],
+  "subheading_definitions": [
+    {
+      "id": "chapter72.alloy_pig_iron",
+      "name": "Fundición en bruto aleada",
+      "page": 9,
+      "any_of": [
+        {"element": "chromium", "gt_pct": 0.2},
+        {"element": "copper", "gt_pct": 0.3},
+        {"element": "nickel", "gt_pct": 0.3},
+        {"element": "aluminum", "gt_pct": 0.1},
+        {"element": "molybdenum", "gt_pct": 0.1},
+        {"element": "titanium", "gt_pct": 0.1},
+        {"element": "tungsten", "gt_pct": 0.1},
+        {"element": "vanadium", "gt_pct": 0.1}
+      ]
+    },
+    {
+      "id": "chapter72.free_cutting_non_alloy",
+      "name": "Acero sin alear de fácil mecanización",
+      "page": 10,
+      "any_of": [
+        {"element": "sulfur", "gte_pct": 0.08},
+        {"element": "lead", "gte_pct": 0.1},
+        {"element": "selenium", "gt_pct": 0.05},
+        {"element": "tellurium", "gt_pct": 0.01},
+        {"element": "bismuth", "gt_pct": 0.05}
+      ]
+    },
+    {
+      "id": "chapter72.magnetic_silicon_steel",
+      "name": "Acero magnético al silicio",
+      "page": 10,
+      "conditions": {
+        "silicon_pct": {"gte": 0.6, "lte": 6},
+        "carbon_pct": {"lte": 0.08},
+        "aluminum_pct": {"lte": 1},
+        "other_element_confers_other_alloy_character": false
+      }
+    },
+    {
+      "id": "chapter72.high_speed_steel",
+      "name": "Acero rápido",
+      "page": 10,
+      "conditions": {
+        "at_least_two_present": ["molybdenum", "tungsten", "vanadium"],
+        "mo_w_v_total_pct": {"gte": 7},
+        "carbon_pct": {"gte": 0.6},
+        "chromium_pct": {"gte": 3, "lte": 6}
+      }
+    },
+    {
+      "id": "chapter72.silicomanganese_steel",
+      "name": "Acero silicomanganeso",
+      "page": 10,
+      "conditions": {
+        "carbon_pct": {"lte": 0.7},
+        "manganese_pct": {"gte": 0.5, "lte": 1.9},
+        "silicon_pct": {"gte": 0.6, "lte": 2.3},
+        "other_element_confers_other_alloy_character": false
+      }
+    }
+  ],
+  "national_definitions": [
+    {
+      "id": "chapter72.tool_steel",
+      "name": "Acero grado herramienta",
+      "page": 11,
+      "any_of": [
+        {"carbon_pct": {"gt": 1.2}, "chromium_pct": {"gt": 10.5}},
+        {"carbon_pct": {"gte": 0.3}, "chromium_pct": {"gte": 10.5}},
+        {"carbon_pct": {"gte": 0.85}, "manganese_pct": {"gte": 1, "lte": 1.8}},
+        {"chromium_pct": {"gte": 0.9, "lte": 1.2}, "molybdenum_pct": {"gte": 0.9, "lte": 1.4}},
+        {"carbon_pct": {"gte": 0.5}, "molybdenum_pct": {"gte": 3.5}},
+        {"carbon_pct": {"gte": 0.5}, "tungsten_pct": {"gte": 5.5}}
+      ]
+    }
+  ],
+  "nico_annotations": [
+    {
+      "id": "chapter72.high_strength_steel",
+      "name": "Acero de alta resistencia",
+      "page": 11,
+      "conditions": {"yield_strength_mpa": {"gte": 355}}
+    },
+    {
+      "id": "chapter72.aisi_200",
+      "name": "Serie AISI 200",
+      "page": 11,
+      "logic": "Inoxidable austenítico con cromo, manganeso, nitrógeno y bajo níquel."
+    },
+    {
+      "id": "chapter72.aisi_300",
+      "name": "Serie AISI 300",
+      "page": 11,
+      "logic": "Inoxidable austenítico con alto cromo y níquel."
+    },
+    {
+      "id": "chapter72.aisi_400",
+      "name": "Serie AISI 400",
+      "page": 11,
+      "logic": "Inoxidable ferrítico o martensítico con alto cromo, carbono, manganeso y níquel bajo o nulo."
+    }
+  ]
+}
