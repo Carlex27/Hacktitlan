@@ -1,0 +1,40 @@
+{
+  "document": {
+    "source_name": "MOLINO 2.pdf",
+    "supplier": "Bengang Steel Plates Cold Rolled Sheet Co., Ltd.",
+    "certificate_no": "E02604270139",
+    "product_name": "Cold-rolled steel strip",
+    "delivery_date_raw": "20260427",
+    "source_orientation_degrees": 90
+  },
+  "standard": "BTA BLZ043-23-SAE1010MOD-m-FB-PT.T-PW.T",
+  "rolling": "cold",
+  "condition": ["annealed", "skin_passed"],
+  "chemistry_scales": {
+    "C": "10^-2",
+    "Mn": "10^-2",
+    "P": "10^-3",
+    "S": "10^-3",
+    "Alt": "10^-3"
+  },
+  "total_pieces": 1,
+  "total_net_weight_kg": 8995,
+  "total_gross_weight_kg": 9075,
+  "rows": [
+    {
+      "product_id": "263W220590210",
+      "heat_no": "2641568",
+      "thickness_mm": 1.71,
+      "width_mm": 1220,
+      "length_raw": "C",
+      "net_weight_kg": 8995,
+      "gross_weight_kg": 9075,
+      "chemistry": {"C": 8, "Mn": 34, "P": 15, "S": 8, "Alt": 29},
+      "yield_strength_mpa": 230,
+      "tensile_strength_mpa": 363,
+      "elongation_pct": 46.5,
+      "hardness_hrb": 51.3,
+      "evidence": [{"page": 1, "region": "product_table_row_1"}]
+    }
+  ]
+}

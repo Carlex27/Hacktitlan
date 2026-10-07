@@ -53,6 +53,27 @@ documentos incompletos, ilegibles, contradictorios o fuera del capítulo 72.
 - Referencia a página y región del certificado de cada valor.
 - Exportación a XLSX, CSV y PDF.
 - Historial de ejecuciones y correcciones.
+- Documento de clasificación por acta, agrupado por colada, con su información
+  técnica, rollos, tipo de producto, fracción y NICO.
+- Acceso al PDF original y a la evidencia utilizada desde cada registro.
+
+### Historial y consulta
+
+- Consulta por día o rango de fechas, diferenciando fecha del acta y fecha de
+  carga al sistema.
+- Listado de actas con búsqueda por número, fabricante y estado.
+- Vista de detalle del acta con todas sus coladas y rollos.
+- Búsqueda de coladas por número, acta, fabricante, producto, fracción o NICO.
+- Vista de detalle de la colada con composición, propiedades, productos
+  asociados, clasificaciones y evidencia.
+- Historial inmutable de reclasificaciones y correcciones, indicando usuario,
+  fecha, motivo y versión de reglas.
+- Acceso a los reportes previamente generados y posibilidad de regenerarlos
+  usando una ejecución histórica concreta.
+- Acción **Exportar a Excel** desde un acta, una colada, una selección o una
+  consulta filtrada, con confirmación del alcance antes de generar el archivo.
+- Libro XLSX profesional y autocontenido con hojas relacionadas, navegación
+  interna, tablas filtrables, unidades, evidencia y auditoría.
 
 ## 4. Lo que un certificado químico no garantiza
 
@@ -112,7 +133,12 @@ elementos químicos presentes” es necesario, pero no suficiente.
 
 - Interfaz para importar archivos y revisar lotes.
 - API local y cola de trabajos.
-- Persistencia SQLite, auditoría y gestión de reglas.
+- Persistencia PostgreSQL centralizada, auditoría y gestión de reglas.
+- API backend central en el equipo principal y conexión del segundo equipo por
+  medio de la red privada de Tailscale; el frontend no accede directamente a
+  PostgreSQL.
+- Historial navegable por fecha, acta, colada y producto con filtros, paginación
+  y vistas de detalle.
 - Reportes XLSX/CSV/PDF.
 - Empaquetado e instalador de Windows.
 
@@ -137,6 +163,12 @@ elementos químicos presentes” es necesario, pero no suficiente.
 - 100% de valores extraídos con página y coordenadas de evidencia.
 - Cero clasificación silenciosa cuando falta un campo obligatorio.
 - 100% de umbrales jurídicos cubiertos por pruebas de frontera.
+- 100% de actas, coladas y productos persistidos localizables mediante su
+  relación histórica y sin sobrescribir ejecuciones anteriores.
+- Todo reporte generado identifica el acta, la ejecución de clasificación, la
+  versión de reglas y la fecha de generación.
+- Todo XLSX exportado abre sin errores, conserva relaciones por identificador,
+  coincide con los conteos de la consulta y no depende de conexiones externas.
 - Exactitud de fracción y NICO medida por separado sobre un conjunto dorado.
 - Tiempo objetivo inicial: menos de 30 segundos por PDF digital típico y menos
   de 90 segundos por PDF escaneado multipágina, sujeto al hardware y al tamaño.
@@ -161,6 +193,7 @@ reales y etiquetas confiables. Una meta sin conjunto de prueba sería engañosa.
 1. Quién será responsable de validar y publicar una nueva versión de reglas.
 2. Fuentes oficiales exactas que se usarán como autoridad.
 3. Formato de reporte prioritario: XLSX, PDF o ambos.
-4. Si la aplicación será de una sola computadora o compartida en red local.
+4. Política de operación cuando el equipo principal o la red Tailscale no estén
+   disponibles: bloquear, permitir trabajo temporal o sólo consulta.
 5. Política ante evidencia insuficiente: bloquear, pedir captura o devolver
    alternativas ordenadas.

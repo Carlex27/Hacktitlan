@@ -1,0 +1,1 @@
+"""Golden-document regression tests."""

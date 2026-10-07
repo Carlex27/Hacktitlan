@@ -1,0 +1,38 @@
+{
+  "document": {
+    "source_name": "MOLINO 4.pdf",
+    "supplier": "POSCO",
+    "certificate_no": "240816-FZ01PS-0009A1-0001",
+    "customer": "H&K International Limited",
+    "order_no": "01S6825889",
+    "po_no": "01S6825889",
+    "issue_date_raw": "Aug. 21, 2024",
+    "source_orientation_degrees": 90
+  },
+  "standard": "SECC",
+  "product_name": "EG COIL (ZN)",
+  "form": "flat_rolled",
+  "rolling": "cold",
+  "condition": ["coiled", "electro_galvanized"],
+  "coating": {
+    "metal": "Zn",
+    "process": "electrolytic",
+    "post_treatment": "PL (Cr-Free Phosphate)"
+  },
+  "chemistry_analysis_type": "ladle",
+  "chemistry_scales": {"C": 0, "Si": 0, "Mn": 0, "P": 0, "S": 0},
+  "total_pieces": 6,
+  "total_weight_kg": 34050,
+  "subtotals": [
+    {"match_field": "heat_no", "match_value": "SB06562", "total_pieces": 3, "total_weight_kg": 15810},
+    {"match_field": "heat_no", "match_value": "SB05270", "total_pieces": 3, "total_weight_kg": 18240}
+  ],
+  "rows": [
+    {"size_raw":"1.21x914xC","product_id":"CBG2629A","heat_no":"SB06562","thickness_mm":1.21,"width_mm":914,"length_raw":"C","quantity":1,"weight_kg":5360,"weight_kind":"mass","sample_position":"bottom","yield_strength_mpa":192,"tensile_strength_mpa":304,"elongation_pct":44,"bend_test":"good","coating_metal":"Zn","coating_superior_g_m2":19.1,"coating_inferior_g_m2":19.1,"chemistry":{"C":0.0136,"Si":0.020,"Mn":0.116,"P":0.0090,"S":0.0061},"evidence":[{"page":1,"region":"product_table_row_1"}]},
+    {"size_raw":"1.21x914xC","product_id":"CBG2629B","heat_no":"SB06562","thickness_mm":1.21,"width_mm":914,"length_raw":"C","quantity":1,"weight_kg":5350,"weight_kind":"mass","sample_position":"bottom","yield_strength_mpa":192,"tensile_strength_mpa":304,"elongation_pct":44,"bend_test":"good","coating_metal":"Zn","coating_superior_g_m2":19.1,"coating_inferior_g_m2":19.1,"chemistry":{"C":0.0136,"Si":0.020,"Mn":0.116,"P":0.0090,"S":0.0061},"evidence":[{"page":1,"region":"product_table_row_2"}]},
+    {"size_raw":"1.21x914xC","product_id":"CBG2629C","heat_no":"SB06562","thickness_mm":1.21,"width_mm":914,"length_raw":"C","quantity":1,"weight_kg":5100,"weight_kind":"mass","sample_position":"bottom","yield_strength_mpa":192,"tensile_strength_mpa":304,"elongation_pct":44,"bend_test":"good","coating_metal":"Zn","coating_superior_g_m2":19.1,"coating_inferior_g_m2":19.1,"chemistry":{"C":0.0136,"Si":0.020,"Mn":0.116,"P":0.0090,"S":0.0061},"evidence":[{"page":1,"region":"product_table_row_3"}]},
+    {"size_raw":"1.52x914xC","product_id":"CBG4348A","heat_no":"SB05270","thickness_mm":1.52,"width_mm":914,"length_raw":"C","quantity":1,"weight_kg":6170,"weight_kind":"mass","sample_position":"bottom","yield_strength_mpa":205,"tensile_strength_mpa":316,"elongation_pct":42,"bend_test":"good","coating_metal":"Zn","coating_superior_g_m2":19.5,"coating_inferior_g_m2":19.5,"chemistry":{"C":0.0142,"Si":0.022,"Mn":0.127,"P":0.0102,"S":0.0054},"evidence":[{"page":1,"region":"product_table_row_4"}]},
+    {"size_raw":"1.52x914xC","product_id":"CBG4348B","heat_no":"SB05270","thickness_mm":1.52,"width_mm":914,"length_raw":"C","quantity":1,"weight_kg":6170,"weight_kind":"mass","sample_position":"bottom","yield_strength_mpa":205,"tensile_strength_mpa":316,"elongation_pct":42,"bend_test":"good","coating_metal":"Zn","coating_superior_g_m2":19.5,"coating_inferior_g_m2":19.5,"chemistry":{"C":0.0142,"Si":0.022,"Mn":0.127,"P":0.0102,"S":0.0054},"evidence":[{"page":1,"region":"product_table_row_5"}]},
+    {"size_raw":"1.52x914xC","product_id":"CBG4348C","heat_no":"SB05270","thickness_mm":1.52,"width_mm":914,"length_raw":"C","quantity":1,"weight_kg":5900,"weight_kind":"mass","sample_position":"bottom","yield_strength_mpa":205,"tensile_strength_mpa":316,"elongation_pct":42,"bend_test":"good","coating_metal":"Zn","coating_superior_g_m2":19.5,"coating_inferior_g_m2":19.5,"chemistry":{"C":0.0142,"Si":0.022,"Mn":0.127,"P":0.0102,"S":0.0054},"evidence":[{"page":1,"region":"product_table_row_6"}]}
+  ]
+}

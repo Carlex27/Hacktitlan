@@ -1,0 +1,44 @@
+{
+  "document": {
+    "source_name": "MOLINO 3.pdf",
+    "supplier": "China Steel Corporation",
+    "certificate_no": "150612H0039",
+    "customer": "Hanwa Co., Ltd.",
+    "issue_date_raw": "JUN. 12, 2026",
+    "shipping_date_raw": "ON/ABOUT JUN. 28, 2026"
+  },
+  "standard": "SAE 1035",
+  "form": "flat_rolled",
+  "rolling": "hot",
+  "condition": ["sheet_coil"],
+  "edge_condition": "mill_edge",
+  "chemistry_scales": {
+    "C": "10^-2",
+    "Mn": "10^-2",
+    "P": "10^-3",
+    "S": "10^-3",
+    "Si": "10^-2",
+    "Cu": "10^-2",
+    "Ni": "10^-2",
+    "Cr": "10^-2",
+    "Al": "10^-3",
+    "B": "10^-4",
+    "Mo": "10^-2",
+    "N": "10^-3"
+  },
+  "total_pieces": 11,
+  "total_weight_kg": 80320,
+  "rows": [
+    {"label_no":"T137278","product_id":"14159481","heat_no":"3VL99","thickness_mm":1.800,"width_mm":895,"length_raw":"COIL","quantity":1,"weight_kg":7280,"weight_kind":"mass","sample_id":"1415948","yield_strength_mpa":358,"tensile_strength_mpa":546,"elongation_pct":28.7,"hardness_hrb":82,"chemistry":{"C":35,"Mn":63,"P":17,"S":1,"Si":20,"Cu":1,"Ni":1,"Cr":1,"Al":19,"B":3,"Mo":0,"N":4},"evidence":[{"page":1,"region":"product_table_row_1"}]},
+    {"label_no":"T137279","product_id":"14159482","heat_no":"3VL99","thickness_mm":"\"","width_mm":"\"","length_raw":"\"","quantity":1,"weight_kg":7400,"weight_kind":"mass","sample_id":"1415948","yield_strength_mpa":388,"tensile_strength_mpa":546,"elongation_pct":28.7,"hardness_hrb":82,"chemistry":{"C":"\"","Mn":"\"","P":"\"","S":"\"","Si":"\"","Cu":"\"","Ni":"\"","Cr":"\"","Al":"\"","B":"\"","Mo":"\"","N":"\""},"evidence":[{"page":1,"region":"product_table_row_2"}]},
+    {"label_no":"T137280","product_id":"14159491","heat_no":"1FN43","thickness_mm":"\"","width_mm":"\"","length_raw":"\"","quantity":1,"weight_kg":7225,"weight_kind":"mass","sample_id":"1415949","yield_strength_mpa":366,"tensile_strength_mpa":548,"elongation_pct":28.8,"hardness_hrb":82,"chemistry":{"C":33,"Mn":64,"P":16,"S":2,"Si":18,"Cu":1,"Ni":1,"Cr":1,"Al":25,"B":2,"Mo":0,"N":4},"evidence":[{"page":1,"region":"product_table_row_3"}]},
+    {"label_no":"T137281","product_id":"14159492","heat_no":"1FN43","thickness_mm":"\"","width_mm":"\"","length_raw":"\"","quantity":1,"weight_kg":7370,"weight_kind":"mass","sample_id":"1415949","yield_strength_mpa":390,"tensile_strength_mpa":548,"elongation_pct":28.8,"hardness_hrb":82,"chemistry":{"C":"\"","Mn":"\"","P":"\"","S":"\"","Si":"\"","Cu":"\"","Ni":"\"","Cr":"\"","Al":"\"","B":"\"","Mo":"\"","N":"\""},"evidence":[{"page":1,"region":"product_table_row_4"}]},
+    {"label_no":"T137282","product_id":"14171421","heat_no":"1FN43","thickness_mm":"\"","width_mm":"\"","length_raw":"\"","quantity":1,"weight_kg":7210,"weight_kind":"mass","sample_id":"1417142","yield_strength_mpa":397,"tensile_strength_mpa":583,"elongation_pct":28.2,"hardness_hrb":82,"chemistry":{"C":"\"","Mn":"\"","P":"\"","S":"\"","Si":"\"","Cu":"\"","Ni":"\"","Cr":"\"","Al":"\"","B":"\"","Mo":"\"","N":"\""},"evidence":[{"page":1,"region":"product_table_row_5"}]},
+    {"label_no":"T137283","product_id":"14171422","heat_no":"1FN43","thickness_mm":"\"","width_mm":"\"","length_raw":"\"","quantity":1,"weight_kg":7350,"weight_kind":"mass","sample_id":"1417142","yield_strength_mpa":362,"tensile_strength_mpa":583,"elongation_pct":28.2,"hardness_hrb":82,"chemistry":{"C":"\"","Mn":"\"","P":"\"","S":"\"","Si":"\"","Cu":"\"","Ni":"\"","Cr":"\"","Al":"\"","B":"\"","Mo":"\"","N":"\""},"evidence":[{"page":1,"region":"product_table_row_6"}]},
+    {"label_no":"T137285","product_id":"14171432","heat_no":"1FN43","thickness_mm":"\"","width_mm":"\"","length_raw":"\"","quantity":1,"weight_kg":7305,"weight_kind":"mass","sample_id":"1417143","yield_strength_mpa":380,"tensile_strength_mpa":535,"elongation_pct":30.5,"hardness_hrb":82,"chemistry":{"C":"\"","Mn":"\"","P":"\"","S":"\"","Si":"\"","Cu":"\"","Ni":"\"","Cr":"\"","Al":"\"","B":"\"","Mo":"\"","N":"\""},"evidence":[{"page":1,"region":"product_table_row_7"}]},
+    {"label_no":"T137286","product_id":"14159501","heat_no":"1FN43","thickness_mm":"\"","width_mm":"\"","length_raw":"\"","quantity":1,"weight_kg":7240,"weight_kind":"mass","sample_id":"1415950","yield_strength_mpa":374,"tensile_strength_mpa":551,"elongation_pct":27.7,"hardness_hrb":80,"chemistry":{"C":"\"","Mn":"\"","P":"\"","S":"\"","Si":"\"","Cu":"\"","Ni":"\"","Cr":"\"","Al":"\"","B":"\"","Mo":"\"","N":"\""},"evidence":[{"page":1,"region":"product_table_row_8"}]},
+    {"label_no":"T137287","product_id":"14159502","heat_no":"1FN43","thickness_mm":"\"","width_mm":"\"","length_raw":"\"","quantity":1,"weight_kg":7325,"weight_kind":"mass","sample_id":"1415950","yield_strength_mpa":366,"tensile_strength_mpa":551,"elongation_pct":27.7,"hardness_hrb":80,"chemistry":{"C":"\"","Mn":"\"","P":"\"","S":"\"","Si":"\"","Cu":"\"","Ni":"\"","Cr":"\"","Al":"\"","B":"\"","Mo":"\"","N":"\""},"evidence":[{"page":1,"region":"product_table_row_9"}]},
+    {"label_no":"T137288","product_id":"14159511","heat_no":"1FN43","thickness_mm":"\"","width_mm":"\"","length_raw":"\"","quantity":1,"weight_kg":7270,"weight_kind":"mass","sample_id":"1415951","yield_strength_mpa":381,"tensile_strength_mpa":548,"elongation_pct":29.1,"hardness_hrb":81,"chemistry":{"C":"\"","Mn":"\"","P":"\"","S":"\"","Si":"\"","Cu":"\"","Ni":"\"","Cr":"\"","Al":"\"","B":"\"","Mo":"\"","N":"\""},"evidence":[{"page":1,"region":"product_table_row_10"}]},
+    {"label_no":"T137289","product_id":"14159512","heat_no":"1FN43","thickness_mm":"\"","width_mm":"\"","length_raw":"\"","quantity":1,"weight_kg":7345,"weight_kind":"mass","sample_id":"1415951","yield_strength_mpa":359,"tensile_strength_mpa":548,"elongation_pct":29.1,"hardness_hrb":81,"chemistry":{"C":"\"","Mn":"\"","P":"\"","S":"\"","Si":"\"","Cu":"\"","Ni":"\"","Cr":"\"","Al":"\"","B":"\"","Mo":"\"","N":"\""},"evidence":[{"page":1,"region":"product_table_row_11"}]}
+  ]
+}

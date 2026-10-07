@@ -1,0 +1,32 @@
+{
+  "document": {
+    "source_name": "MOLINO 1.pdf",
+    "supplier": "BX Steel Posco Cold Rolled Sheet Co., Ltd.",
+    "certificate_no": "E02511200001",
+    "product_name": "Cold-rolled steel strip",
+    "delivery_date_raw": "20251120"
+  },
+  "standard": "BTA BLZ112-24-ASTM A1008 DDS-m-FB-PT.T-PW.T",
+  "rolling": "cold",
+  "condition": ["annealed", "skin_passed"],
+  "chemistry_scales": {
+    "C": "10^-4",
+    "Si": "10^-2",
+    "Mn": "10^-2",
+    "P": "10^-3",
+    "S": "10^-3",
+    "Als": "10^-3",
+    "Ti": "10^-3"
+  },
+  "total_pieces": 6,
+  "total_net_weight_kg": 47615,
+  "total_gross_weight_kg": 47975,
+  "rows": [
+    {"product_id":"25BH2B7550200","heat_no":"2518114","thickness_mm":0.9,"width_mm":991,"length_raw":"C","net_weight_kg":7910,"gross_weight_kg":7970,"chemistry":{"C":13,"Si":0,"Mn":12,"P":11,"S":8,"Als":31,"Ti":68},"evidence":[{"page":1,"region":"product_table_row_1"}]},
+    {"product_id":"25BH2B7560200","heat_no":"2518114","thickness_mm":0.9,"width_mm":991,"length_raw":"C","net_weight_kg":7950,"gross_weight_kg":8010,"chemistry":{"C":13,"Si":0,"Mn":12,"P":11,"S":8,"Als":31,"Ti":68},"evidence":[{"page":1,"region":"product_table_row_2"}]},
+    {"product_id":"25BH2B7570200","heat_no":"2518114","thickness_mm":0.9,"width_mm":991,"length_raw":"C","net_weight_kg":7910,"gross_weight_kg":7970,"chemistry":{"C":13,"Si":0,"Mn":12,"P":11,"S":8,"Als":31,"Ti":68},"evidence":[{"page":1,"region":"product_table_row_3"}]},
+    {"product_id":"25BH2B7580200","heat_no":"2518114","thickness_mm":0.9,"width_mm":991,"length_raw":"C","net_weight_kg":7955,"gross_weight_kg":8015,"chemistry":{"C":13,"Si":0,"Mn":12,"P":11,"S":8,"Als":31,"Ti":68},"evidence":[{"page":1,"region":"product_table_row_4"}]},
+    {"product_id":"25BH2B7590200","heat_no":"2518114","thickness_mm":0.9,"width_mm":991,"length_raw":"C","net_weight_kg":7940,"gross_weight_kg":8000,"chemistry":{"C":13,"Si":0,"Mn":12,"P":11,"S":8,"Als":31,"Ti":68},"evidence":[{"page":1,"region":"product_table_row_5"}]},
+    {"product_id":"25BH2B7600200","heat_no":"2518114","thickness_mm":0.9,"width_mm":991,"length_raw":"C","net_weight_kg":7950,"gross_weight_kg":8010,"chemistry":{"C":13,"Si":0,"Mn":12,"P":11,"S":8,"Als":31,"Ti":68},"evidence":[{"page":1,"region":"product_table_row_6"}]}
+  ]
+}

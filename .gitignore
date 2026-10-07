@@ -7,6 +7,9 @@ __pycache__/
 node_modules/
 dist/
 build/
+.vite/
+coverage/
+target/
 *.db
 *.sqlite
 *.sqlite3
