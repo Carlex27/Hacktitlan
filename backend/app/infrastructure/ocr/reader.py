@@ -19,10 +19,18 @@ from backend.app.domain.document import (
     TableRegion,
     TextBlock,
 )
+from backend.app.infrastructure.ocr.geometry import (
+    clamp_bbox,
+    fallback_full_page_bbox,
+    normalize_points_to_bbox,
+)
 from backend.app.infrastructure.ocr.runtime import OcrRuntimeStatus, probe_ocr_runtime
 
-
 logger = logging.getLogger(__name__)
+
+
+class OcrCancellationRequested(Exception):
+    """Raised when an ongoing OCR job is cancelled by the user between pages."""
 
 
 class _TableParser(HTMLParser):
@@ -52,16 +60,6 @@ class _TableParser(HTMLParser):
             self._row = None
 
 
-def _bbox(points: Any) -> BoundingBox:
-    coordinates = [(float(point[0]), float(point[1])) for point in points]
-    return BoundingBox(
-        min(point[0] for point in coordinates),
-        min(point[1] for point in coordinates),
-        max(point[0] for point in coordinates),
-        max(point[1] for point in coordinates),
-    )
-
-
 class PaddleStructureReader:
     def __init__(
         self,
@@ -78,7 +76,13 @@ class PaddleStructureReader:
         self._pipeline: Any | None = None
         self._pipeline_device: str | None = None
 
-    def read(self, path: str | Path) -> DocumentLayout:
+    def read(
+        self,
+        path: str | Path,
+        *,
+        page_callback: Callable[[int, int], None] | None = None,
+        cancel_check: Callable[[], bool] | None = None,
+    ) -> DocumentLayout:
         original = self.digital_reader.read(path)
         if not original.requires_ocr or not self.settings.ocr_enabled:
             return original
@@ -91,9 +95,14 @@ class PaddleStructureReader:
                 {**original.metadata, "ocr": runtime.as_dict()},
             )
 
+        if cancel_check and cancel_check():
+            raise OcrCancellationRequested("Procesamiento OCR cancelado antes de iniciar inferencia")
+
         try:
-            results = self._predict(path, runtime.selected_device)
+            results = self._predict(path, runtime.selected_device, cancel_check=cancel_check)
         except Exception as exc:
+            if isinstance(exc, OcrCancellationRequested):
+                raise
             if runtime.selected_device == "cpu":
                 raise
             logger.warning("ocr_gpu_fallback", extra={"error_type": type(exc).__name__})
@@ -103,8 +112,14 @@ class PaddleStructureReader:
                 selected_device="cpu",
                 message=f"GPU falló ({type(exc).__name__}); se utilizó CPU",
             )
-            results = self._predict(path, "cpu")
-        ocr_pages = self._convert_results(results, original.pages)
+            results = self._predict(path, "cpu", cancel_check=cancel_check)
+
+        ocr_pages = self._convert_results(
+            results,
+            original.pages,
+            page_callback=page_callback,
+            cancel_check=cancel_check,
+        )
         pages = tuple(
             ocr_pages.get(page.page_number, page)
             if page.source is PageSource.UNREADABLE
@@ -138,7 +153,14 @@ class PaddleStructureReader:
             self._pipeline_device = device
         return self._pipeline
 
-    def _predict(self, path: str | Path, device: str) -> list[Any]:
+    def _predict(
+        self,
+        path: str | Path,
+        device: str,
+        cancel_check: Callable[[], bool] | None = None,
+    ) -> list[Any]:
+        if cancel_check and cancel_check():
+            raise OcrCancellationRequested("Procesamiento OCR cancelado por solicitud del usuario")
         pipeline = self._get_pipeline(device)
         return list(
             pipeline.predict(
@@ -155,32 +177,64 @@ class PaddleStructureReader:
         gc.collect()
 
     def _convert_results(
-        self, results: list[Any], original_pages: tuple[PageLayout, ...]
+        self,
+        results: list[Any],
+        original_pages: tuple[PageLayout, ...],
+        page_callback: Callable[[int, int], None] | None = None,
+        cancel_check: Callable[[], bool] | None = None,
     ) -> dict[int, PageLayout]:
         converted: dict[int, PageLayout] = {}
+        total_pages = len(original_pages)
+
         for fallback_index, result in enumerate(results):
+            if cancel_check and cancel_check():
+                raise OcrCancellationRequested("Procesamiento OCR cancelado durante la conversión de páginas")
+
             payload = result.json if hasattr(result, "json") else result
             core = payload.get("res", payload)
             raw_page_index = core.get("page_index")
             page_index = fallback_index if raw_page_index is None else int(raw_page_index)
             page_number = page_index + 1
-            if page_number > len(original_pages):
+            if page_number > total_pages:
                 continue
+
+            original = original_pages[page_number - 1]
+            page_w = original.width
+            page_h = original.height
+            page_rot = original.rotation
+
+            img_w = core.get("img_w") or core.get("width")
+            img_h = core.get("img_h") or core.get("height")
+            if img_w is not None:
+                img_w = float(img_w)
+            if img_h is not None:
+                img_h = float(img_h)
+
             ocr = core.get("overall_ocr_res") or core
             texts = list(ocr.get("rec_texts") or [])
             scores = list(ocr.get("rec_scores") or [])
             polygons = list(ocr.get("rec_polys") or ocr.get("rec_boxes") or [])
             blocks: list[TextBlock] = []
+
             for index, text in enumerate(texts):
                 confidence = float(scores[index]) if index < len(scores) else 0.0
                 if not str(text).strip() or confidence < self.settings.ocr_min_confidence:
                     continue
-                points = polygons[index] if index < len(polygons) else [[0, index], [1, index + 1]]
-                if len(points) == 4 and not isinstance(points[0], (list, tuple)):
-                    x0, top, x1, bottom = map(float, points)
-                    points = [[x0, top], [x1, bottom]]
+                points = polygons[index] if index < len(polygons) else None
+                if points:
+                    box = normalize_points_to_bbox(
+                        points,
+                        page_width=page_w,
+                        page_height=page_h,
+                        image_width=img_w,
+                        image_height=img_h,
+                        rotation=page_rot,
+                    )
+                else:
+                    box = fallback_full_page_bbox(page_w, page_h)
+
                 blocks.append(
-                    TextBlock(page_number, str(text), _bbox(points), confidence, PageSource.OCR)
+                    TextBlock(page_number, str(text), box, confidence, PageSource.OCR)
                 )
 
             tables: list[TableRegion] = []
@@ -188,25 +242,47 @@ class PaddleStructureReader:
                 parser = _TableParser()
                 parser.feed(str(table.get("pred_html") or ""))
                 cell_boxes = table.get("cell_box_list") or []
-                if not parser.rows or not cell_boxes:
+                if not parser.rows:
                     continue
-                boxes = [_bbox(box) for box in cell_boxes]
-                table_box = BoundingBox(
-                    min(box.x0 for box in boxes),
-                    min(box.top for box in boxes),
-                    max(box.x1 for box in boxes),
-                    max(box.bottom for box in boxes),
-                )
+
+                if cell_boxes:
+                    boxes = [
+                        normalize_points_to_bbox(
+                            cb,
+                            page_width=page_w,
+                            page_height=page_h,
+                            image_width=img_w,
+                            image_height=img_h,
+                            rotation=page_rot,
+                        )
+                        for cb in cell_boxes
+                    ]
+                    table_box = clamp_bbox(
+                        BoundingBox(
+                            min(b.x0 for b in boxes),
+                            min(b.top for b in boxes),
+                            max(b.x1 for b in boxes),
+                            max(b.bottom for b in boxes),
+                        ),
+                        page_w,
+                        page_h,
+                    )
+                else:
+                    table_box = fallback_full_page_bbox(page_w, page_h)
+
                 tables.append(TableRegion(page_number, table_box, tuple(parser.rows)))
 
-            original = original_pages[page_number - 1]
             converted[page_number] = PageLayout(
                 page_number=page_number,
-                width=original.width,
-                height=original.height,
-                rotation=original.rotation,
+                width=page_w,
+                height=page_h,
+                rotation=page_rot,
                 source=PageSource.OCR if blocks else PageSource.UNREADABLE,
                 blocks=tuple(blocks),
                 tables=tuple(tables),
             )
+
+            if page_callback:
+                page_callback(page_number, total_pages)
+
         return converted

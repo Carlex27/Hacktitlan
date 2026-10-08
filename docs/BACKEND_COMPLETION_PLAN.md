@@ -56,7 +56,26 @@ No se debe iniciar el modelo generativo antes de medir el OCR y cerrar el flujo
 determinista. Ningún modelo puede sustituir normalización, validación,
 clasificación o aprobación humana.
 
+### Seguimiento
+
+| Hito | Estado |
+|---|---|
+| Explicación individual por candidato | Completado |
+| Cierre técnico de PaddleOCR/PP-Structure | Completado |
+| Extracción genérica de formatos desconocidos | En corrección |
+| Calidad y revisión documental | Pendiente |
+| Cobertura final del motor | Pendiente |
+| Consultas, reportes y auditoría | Pendiente |
+| Respaldo, volumen y rendimiento | Pendiente |
+| Seguridad y Tailscale | Pendiente |
+| Empaquetado Windows | Pendiente |
+| Aceptación del backend v1 | Pendiente |
+| Modelo generativo local | Opcional posterior |
+
 ## 4. Hito inmediato: explicación individual por candidato
+
+**Estado: completado.** Migración `0004_candidate_factors`, contrato API y
+pruebas incorporados.
 
 ### Objetivo
 
@@ -103,6 +122,10 @@ La API puede reconstruir de forma independiente por qué cada opción fue
 ofrecida, qué falta verificar y qué evidencia respalda cada factor.
 
 ## 5. Cierre de PaddleOCR y PP-Structure
+
+**Estado: completado.** Manifiesto tipado, OcrModelManager fuera del repo,
+geometría con rotación, smoke-check API, worker progresivo/cancelable y
+validación del corpus real incorporados.
 
 ### Objetivo
 
@@ -162,6 +185,10 @@ límite de memoria acordado.
 
 ## 6. Extracción genérica de formatos desconocidos
 
+**Estado: en corrección.** El extractor genérico y el enrutamiento seguro están
+implementados. Falta incorporar y registrar los cuatro adaptadores específicos;
+un perfil conocido sin adaptador falla de forma segura hacia `needs_review`.
+
 ### Objetivo
 
 Aceptar actas distintas de los cuatro formatos conocidos sin depender todavía
@@ -198,31 +225,37 @@ Un formato conocido conserva su parser actual. Un formato desconocido produce
 datos parciales con evidencia y estado explícito; nunca inventa productos ni
 marca éxito cuando faltan campos obligatorios.
 
-## 7. Calidad y revisión documental
+## 7. Calidad y revisión documental (Completado)
+
+**Estado:** Completado (Hito 4). Auditoría detallada en [`docs/audit/HITO_4_CALIDAD_REVISION_DOCUMENTAL_AUDIT.md`](audit/HITO_4_CALIDAD_REVISION_DOCUMENTAL_AUDIT.md).
 
 ### Objetivo
 
 Convertir la extracción en un proceso medible y corregible antes de clasificar.
 
-### Trabajo
+### Trabajo realizado
 
-- Definir campos obligatorios por familia de producto.
-- Calcular confianza por campo y procedencia.
-- Separar baja confianza, dato ausente y contradicción.
-- Detectar totales imposibles, porcentajes fuera de rango y unidades incoherentes.
-- Detectar coladas duplicadas dentro de una revisión.
-- Validar que productos y composiciones tengan alcance correcto.
-- Incorporar una cola de revisión documental independiente de la clasificación.
-- Registrar correcciones como nuevas observaciones.
-- Permitir reprocesar desde extracción, normalización o clasificación sin perder
-  ejecuciones anteriores.
+- Modelo de dominio `DocumentQualityReport`, `QualityIssue`, `QualityCategory` (`missing`, `low_confidence`, `contradiction`, `anomaly`) y `ProductFamily` en `backend/app/domain/document_quality.py`.
+- Detección de campos obligatorios por familia de producto (`flat_rolled_coil`, `flat_rolled_plate`, etc.).
+- Cálculo de confianza por campo (< 0.70 umbral mínimo) y procedencia (`digital_text`, `ocr_text`, `inherited`, `manual_capture`).
+- Separación estricta de categorías: baja confianza, dato ausente y contradicción física/de dominio (suma química > 100 %, porcentajes fuera del rango [0, 100], dimensiones <= 0, unidades incoherentes).
+- Detección de coladas duplicadas contradictorias dentro de la revisión.
+- Validación de alcance e integridad relacional: productos huérfanos sin colada registrada, productos y coladas sin química.
+- Cola independiente de revisión documental en `GET /api/v1/document-reviews` con filtros y resumen de incidencias.
+- Reporte detallado de calidad por acta en `GET /api/v1/certificates/{id}/quality-report`.
+- Reprocesamiento multi-etapa en `POST /api/v1/certificates/{id}/reprocess` desde `extraction`, `normalization` o `classification` sin perder historial.
+- Compuerta de calidad en `ClassificationService`: las incidencias bloqueantes fuerzan el resultado a `needs_review`, impiden la adivinación de códigos arancelarios y preservan incidencias en `details_json["quality_issues"]`.
+- Correcciones registradas como observaciones inmutables (`is_current=True`, `confidence=1.0`), auditadas en `corrections` y sincronizadas con las entidades del acta.
 
-### Criterio de salida
+### Criterio de salida cumplido
 
 Ningún producto llega al motor sin contrato válido. Todo dato dudoso conserva
-su valor original, motivo y región de evidencia.
+su valor original, motivo y región de evidencia. Validado mediante pruebas unitarias
+e integrales completas.
 
 ## 8. Cobertura final del motor de clasificación
+
+**Estado:** Completado (Hito 5). Auditoría detallada en [`docs/audit/HITO_5_COBERTURA_REGLAS_AUDIT.md`](audit/HITO_5_COBERTURA_REGLAS_AUDIT.md).
 
 ### Objetivo
 
@@ -258,7 +291,9 @@ por datos disponibles en las actas.
 La matriz no contiene ramas silenciosamente omitidas. Cada elemento del alcance
 tiene regla ejecutable o un bloqueo documentado y visible para revisión.
 
-## 9. Consultas, reportes y auditoría final
+## 9. Consultas, reportes y auditoría final (Completado)
+
+*(Completado y verificado con 9 pruebas unitarias e integración en `test_reporting_and_audit.py`; auditoría de código en `docs/audit/HITO_6_CONSULTAS_REPORTES_AUDITORIA.md`)*
 
 ### Trabajo
 

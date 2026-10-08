@@ -42,3 +42,13 @@ class AdapterRegistry:
             return None
         return ranked[0][1]
 
+    def match_profile(
+        self,
+        profile_name: str,
+        document: DocumentLayout,
+        minimum_confidence: float = 0.85,
+    ) -> CertificateAdapter | None:
+        adapter = next((item for item in self._adapters if item.name == profile_name), None)
+        if adapter is None or adapter.match(document).confidence < minimum_confidence:
+            return None
+        return adapter

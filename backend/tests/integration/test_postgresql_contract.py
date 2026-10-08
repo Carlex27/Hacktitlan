@@ -47,13 +47,14 @@ def test_migrated_postgresql_contract(test_database_url: str):
     finally:
         engine.dispose()
 
-    assert migration == "0003_evidence_links"
+    assert migration == "0004_candidate_factors"
     assert {
         "manufacturers", "stored_files", "documents", "mill_certificates",
         "heats", "products", "observations", "chemical_compositions", "jobs",
         "extraction_runs", "rule_sets", "classification_runs",
         "classification_results", "decision_steps", "corrections",
-        "classification_candidates", "classification_selections", "evidence_links",
+        "classification_candidates", "classification_selections", "candidate_factors",
+        "evidence_links",
         "approval_events", "exports", "backup_runs",
     } <= tables
 

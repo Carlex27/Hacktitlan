@@ -135,9 +135,33 @@ class Worker:
             path = self.storage.resolve(stored_file.relative_path)
             document_id = document.id
 
+        def page_progress(current_page: int, total_pages: int) -> None:
+            if total_pages <= 0:
+                return
+            progress_pct = min(95, max(5, int((current_page / total_pages) * 80) + 10))
+            with self.sessions.begin() as s:
+                j = s.get(Job, job_id)
+                if j and j.status == "running":
+                    j.progress = progress_pct
+
+        def is_cancelled() -> bool:
+            with self.sessions() as s:
+                j = s.get(Job, job_id)
+                return bool(j and j.status == "cancelled")
+
         with self._heartbeat(job_id):
             try:
-                result = self.extractor.analyze_pdf(path)
+                try:
+                    result = self.extractor.analyze_pdf(
+                        path, page_callback=page_progress, cancel_check=is_cancelled
+                    )
+                except TypeError:
+                    result = self.extractor.analyze_pdf(path)
+            except Exception as exc:
+                if exc.__class__.__name__ == "OcrCancellationRequested":
+                    logger.info("job_cancelled_during_ocr", extra={"job_id": job_id})
+                    return
+                raise
             finally:
                 release = getattr(self.extractor, "release", None)
                 if callable(release):

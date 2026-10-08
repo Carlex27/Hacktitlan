@@ -6,12 +6,14 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from backend.app.application.document_quality_service import DocumentQualityService
 from backend.app.classification_engine import Chapter72ClassificationEngine, ProductFacts
 from backend.app.config import Settings
 from backend.app.domain.enums import ApprovalStatus, RuleSetStatus
 from backend.app.domain.errors import ApplicationError, NotFoundError
 from backend.app.infrastructure.database.models import (
     ChemicalComposition,
+    CandidateFactor,
     ClassificationCandidate,
     ClassificationResult,
     ClassificationRun,
@@ -105,29 +107,58 @@ class ClassificationService:
         certificate.approval_status = ApprovalStatus.NEEDS_REVIEW.value
         session.add(run)
         session.flush()
+        quality_service = DocumentQualityService(self.settings)
+        quality_report = quality_service.evaluate_certificate(session, certificate_id)
+        if quality_report.blocking_count > 0:
+            certificate.approval_status = ApprovalStatus.NEEDS_REVIEW.value
+
         for product, facts in zip(products, product_facts, strict=True):
             decision = self.engine.classify(facts)
             evidence = product_evidence[product.id]
+            prod_issues = [
+                issue.as_dict()
+                for issue in quality_report.issues
+                if (
+                    issue.entity_identifier in (str(product.id), product.product_identifier)
+                    or (issue.scope == "heat" and str(product.heat_id) == str(issue.entity_identifier))
+                    or issue.scope == "certificate"
+                )
+            ]
+            has_blocking = any(i["severity"] == "blocking" for i in prod_issues)
+            outcome = "needs_review" if has_blocking else decision.outcome.value
+
             result = ClassificationResult(
                 classification_run_id=run.id,
                 product_id=product.id,
                 product_type=decision.product_type,
-                fraction=decision.fraction,
-                nico=decision.nico,
-                description=decision.description,
-                outcome=decision.outcome.value,
+                fraction=decision.fraction if not has_blocking else None,
+                nico=decision.nico if not has_blocking else None,
+                description=decision.description if not has_blocking else None,
+                outcome=outcome,
                 details_json={
                     "missing_fields": list(decision.missing_fields),
-                    "candidates": list(decision.candidates),
-                    "valid_candidate_count": len(decision.ranked_candidates),
-                    "selection_required": len(decision.ranked_candidates) == 3,
+                    "candidates": list(decision.candidates) if not has_blocking else [],
+                    "valid_candidate_count": len(decision.ranked_candidates) if not has_blocking else 0,
+                    "selection_required": len(decision.ranked_candidates) == 3 and not has_blocking,
+                    "quality_issues": prod_issues,
+                    "quality_score": quality_report.quality_score,
+                    "document_quality_status": quality_report.status,
+                    "discarded_candidates": [
+                        {
+                            "fraction": candidate.fraction,
+                            "nico": candidate.nico,
+                            "reason_code": candidate.reason_code,
+                            "explanation": candidate.explanation,
+                        }
+                        for candidate in decision.discarded_candidates
+                    ] if not has_blocking else [],
                 },
             )
             session.add(result)
             session.flush()
-            for candidate in decision.ranked_candidates:
-                session.add(
-                    ClassificationCandidate(
+            if not has_blocking:
+                for candidate in decision.ranked_candidates:
+                    candidate_row = ClassificationCandidate(
                         classification_result_id=result.id,
                         rank=candidate.rank,
                         fraction=candidate.fraction,
@@ -139,7 +170,43 @@ class ClassificationService:
                             "conflicts": list(candidate.conflicts),
                         },
                     )
-                )
+                    session.add(candidate_row)
+                    session.flush()
+                    for factor in candidate.factors:
+                        factor_row = CandidateFactor(
+                            candidate_id=candidate_row.id,
+                            sequence=factor.sequence,
+                            rule_code=factor.rule_code,
+                            outcome=factor.outcome.value,
+                            operator=factor.operator,
+                            expected_json=factor.expected,
+                            observed_json=factor.observed,
+                            unit=factor.unit,
+                            explanation=factor.explanation,
+                            required_for_selection=factor.required_for_selection,
+                        )
+                        session.add(factor_row)
+                        session.flush()
+                        exact_evidence = self._step_evidence(evidence, factor.evidence_fields)
+                        for item in exact_evidence:
+                            session.add(EvidenceLink(
+                                decision_step_id=None,
+                                candidate_factor_id=factor_row.id,
+                                observation_id=item["observation_id"],
+                                source_type="observation",
+                                field_path=item["field_path"],
+                                source_reference_json={},
+                            ))
+                        session.add(EvidenceLink(
+                            decision_step_id=None,
+                            candidate_factor_id=factor_row.id,
+                            observation_id=None,
+                            source_type="rule_source",
+                            field_path=None,
+                            source_reference_json=self._candidate_rule_reference(
+                                rule_set, factor, candidate
+                            ),
+                        ))
             for sequence, step in enumerate(decision.steps, start=1):
                 exact_evidence = self._step_evidence(evidence, step.evidence_fields)
                 decision_step = DecisionStep(
@@ -190,6 +257,26 @@ class ClassificationService:
             if entry is not None:
                 reference["catalog_page"] = entry.page
                 reference["catalog_code"] = entry.code
+        return reference
+
+    def _candidate_rule_reference(
+        self,
+        rule_set: RuleSet,
+        factor,
+        candidate,
+    ) -> dict[str, Any]:
+        reference: dict[str, Any] = {
+            "rule_set_id": rule_set.id,
+            "rule_set_name": rule_set.name,
+            "rule_set_version": rule_set.version,
+            "source_hash": rule_set.source_hash,
+            "rule_code": factor.rule_code,
+            "source": rule_set.manifest_json.get("source"),
+        }
+        entry = self.engine.catalog.get(f"{candidate.fraction}{candidate.nico}")
+        if entry is not None:
+            reference["catalog_page"] = entry.page
+            reference["catalog_code"] = entry.code
         return reference
 
     @staticmethod
@@ -327,6 +414,30 @@ class ClassificationService:
             pipeline_steel=current_values.get(
                 "pipeline_steel", properties.get("pipeline_steel")
             ),
+            high_speed_steel=current_values.get(
+                "high_speed_steel", properties.get("high_speed_steel")
+            ),
+            tool_steel=current_values.get(
+                "tool_steel", properties.get("tool_steel")
+            ),
+            grain_oriented=current_values.get(
+                "grain_oriented", properties.get("grain_oriented")
+            ),
+            magnetic_silicon=current_values.get(
+                "magnetic_silicon", properties.get("magnetic_silicon")
+            ),
+            stainless_series=current_values.get(
+                "stainless_series", properties.get("stainless_series")
+            ),
+            rolled_four_faces=current_values.get(
+                "rolled_four_faces", properties.get("rolled_four_faces")
+            ),
+            clad=current_values.get(
+                "clad", properties.get("clad")
+            ),
+            temper=current_values.get(
+                "temper", properties.get("temper")
+            ),
         )
 
     @staticmethod
@@ -358,6 +469,14 @@ class ClassificationService:
             "pattern_in_relief": facts.pattern_in_relief,
             "porcelain_exposed_parts": facts.porcelain_exposed_parts,
             "pipeline_steel": facts.pipeline_steel,
+            "high_speed_steel": facts.high_speed_steel,
+            "tool_steel": facts.tool_steel,
+            "grain_oriented": facts.grain_oriented,
+            "magnetic_silicon": facts.magnetic_silicon,
+            "stainless_series": facts.stainless_series,
+            "rolled_four_faces": facts.rolled_four_faces,
+            "clad": facts.clad,
+            "temper": facts.temper,
         }
 
     @staticmethod

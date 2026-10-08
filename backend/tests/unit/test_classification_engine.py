@@ -9,6 +9,7 @@ from backend.app.classification_engine import (
     Chapter72ClassificationEngine,
     ClassificationOutcome,
     ProductFacts,
+    StepOutcome,
 )
 from backend.app.classification_engine.catalog import DEFAULT_CATALOG_PATH, SourceProvidedCatalog
 
@@ -90,18 +91,23 @@ def test_electrolytic_zinc_both_sides():
     assert result.nico == "01"
 
 
-def test_three_valid_candidates_are_ranked_and_capped_deterministically():
+def test_contradictory_nicos_are_removed_instead_of_padding_to_three():
     result = Chapter72ClassificationEngine().classify(
         facts(thickness_mm=Decimal("3"), porcelain_exposed_parts=None)
     )
 
     assert result.outcome is ClassificationOutcome.NEEDS_REVIEW
     assert [(candidate.rank, candidate.fraction, candidate.nico) for candidate in result.ranked_candidates] == [
-        (1, "72091504", "01"),
-        (2, "72091504", "02"),
-        (3, "72091504", "03"),
+        (1, "72091504", "99"),
+        (2, "72091504", "03"),
     ]
     assert all(candidate.support_level == "conditional" for candidate in result.ranked_candidates)
+    discarded = {
+        (candidate.fraction, candidate.nico): candidate.reason_code
+        for candidate in result.discarded_candidates
+    }
+    assert discarded[("72091504", "01")] == "known_facts_conflict"
+    assert discarded[("72091504", "02")] == "known_facts_conflict"
 
 
 def test_candidate_list_never_pads_to_three():
@@ -130,6 +136,49 @@ def test_other_alloy_fraction_can_be_known_while_nico_needs_review():
         ("72255091", "08"),
         ("72255091", "09"),
     ]
+    first = result.ranked_candidates[0]
+    alloy_factor = next(
+        factor for factor in first.factors
+        if factor.rule_code == "chapter72.definition.other_alloy"
+    )
+    assert alloy_factor.observed == {"Ti": "0.05"}
+    assert alloy_factor.expected == {"Ti": "0.05"}
+    assert alloy_factor.evidence_fields == ("composition_pct.Ti",)
+    assert first.factors[-1].rule_code == "chapter72.nico.72255091.99"
+
+
+@pytest.mark.parametrize(
+    ("titanium", "expected_product_type"),
+    [
+        ("0.049999", "flat_rolled_non_alloy"),
+        ("0.05", "flat_rolled_other_alloy"),
+        ("0.050001", "flat_rolled_other_alloy"),
+    ],
+)
+def test_titanium_alloy_boundary_is_inclusive(titanium, expected_product_type):
+    result = Chapter72ClassificationEngine().classify(
+        facts(composition_pct=complete_non_alloy_chemistry(Ti=titanium))
+    )
+
+    assert result.product_type == expected_product_type
+    if expected_product_type == "flat_rolled_other_alloy":
+        assert any(
+            factor.rule_code == "chapter72.definition.other_alloy"
+            and factor.expected == {"Ti": "0.05"}
+            and factor.observed == {"Ti": titanium}
+            and factor.operator == ">="
+            and factor.unit == "%"
+            and factor.outcome == StepOutcome.MATCHED
+            and factor.evidence_fields == ("composition_pct.Ti",)
+            for candidate in result.ranked_candidates
+            for factor in candidate.factors
+        )
+    else:
+        assert not any(
+            factor.rule_code == "chapter72.definition.other_alloy"
+            for candidate in result.ranked_candidates
+            for factor in candidate.factors
+        )
 
 
 def test_boron_alloy_candidate_respects_thickness_and_coiling():
@@ -175,8 +224,20 @@ def test_non_flat_product_is_explicitly_out_of_scope():
 
 def test_same_snapshot_reproduces_exact_decision():
     engine = Chapter72ClassificationEngine()
-    product = facts()
-    assert engine.classify(product) == engine.classify(product)
+    chemistry = complete_non_alloy_chemistry(B="0.0008")
+    product = facts(composition_pct=chemistry)
+    first = engine.classify(product)
+    second = engine.classify(product)
+
+    assert first == second
+    assert len(first.ranked_candidates) == 3
+    assert [c.rank for c in first.ranked_candidates] == [1, 2, 3]
+    for c1, c2 in zip(first.ranked_candidates, second.ranked_candidates):
+        assert c1.fraction == c2.fraction
+        assert c1.nico == c2.nico
+        assert [f.sequence for f in c1.factors] == [f.sequence for f in c2.factors]
+        assert [f.rule_code for f in c1.factors] == [f.rule_code for f in c2.factors]
+        assert [f.outcome for f in c1.factors] == [f.outcome for f in c2.factors]
 
 
 def test_catalog_change_requires_new_rule_version(tmp_path):

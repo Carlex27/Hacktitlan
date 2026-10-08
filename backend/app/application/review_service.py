@@ -12,6 +12,8 @@ from backend.app.domain.enums import ApprovalStatus
 from backend.app.domain.errors import ApplicationError, ConflictError, NotFoundError
 from backend.app.infrastructure.database.models import (
     ApprovalEvent,
+    CandidateFactor,
+    ChemicalComposition,
     ClassificationCandidate,
     ClassificationResult,
     ClassificationRun,
@@ -31,6 +33,7 @@ class ReviewService:
         "coating.metal", "coating.process", "coating.superior_g_m2",
         "coating.inferior_g_m2", "pickled", "pattern_in_relief",
         "porcelain_exposed_parts", "pipeline_steel",
+        "high_speed_steel", "tool_steel",
     }
 
     def __init__(self, settings: Settings) -> None:
@@ -82,6 +85,14 @@ class ReviewService:
                 reason=reason,
                 workstation_name=self.settings.workstation_name,
             )
+        )
+        self._sync_entity_field(
+            session,
+            product_id=previous.product_id,
+            heat_id=previous.heat_id,
+            field_path=previous.field_path,
+            normalized_value=normalized_value,
+            raw_value=raw_value,
         )
         return replacement
 
@@ -167,6 +178,14 @@ class ReviewService:
                 workstation_name=self.settings.workstation_name,
             )
         )
+        self._sync_entity_field(
+            session,
+            product_id=product_id,
+            heat_id=heat_id,
+            field_path=field_path,
+            normalized_value=normalized_value,
+            raw_value=raw_value,
+        )
         return observation
 
     def transition_classification(
@@ -207,6 +226,18 @@ class ReviewService:
                     "classification_incomplete",
                     "No se puede aprobar una ejecución sin una selección autorizada para cada producto",
                 )
+            for result in results:
+                selected_candidate_id = (result.details_json or {}).get("selected_candidate_id")
+                if selected_candidate_id is not None:
+                    candidate = session.get(ClassificationCandidate, selected_candidate_id)
+                    if candidate is not None:
+                        missing = list((candidate.details_json or {}).get("missing_fields") or [])
+                        conflicts = list((candidate.details_json or {}).get("conflicts") or [])
+                        if missing or conflicts:
+                            raise ConflictError(
+                                "classification_incomplete",
+                                "No se puede aprobar una opción con datos obligatorios faltantes o contradicciones",
+                            )
         allowed = {
             ApprovalStatus.DRAFT: {ApprovalStatus.NEEDS_REVIEW, ApprovalStatus.APPROVED, ApprovalStatus.REJECTED},
             ApprovalStatus.NEEDS_REVIEW: {ApprovalStatus.APPROVED, ApprovalStatus.REJECTED},
@@ -262,6 +293,21 @@ class ReviewService:
             raise ConflictError(
                 "candidate_result_mismatch",
                 "La opción no pertenece al resultado indicado",
+            )
+        conflicts = list((candidate.details_json or {}).get("conflicts") or [])
+        blocking_factor = session.scalar(
+            select(CandidateFactor.id)
+            .where(
+                CandidateFactor.candidate_id == candidate.id,
+                CandidateFactor.required_for_selection.is_(True),
+                CandidateFactor.outcome.in_(["not_matched", "conflict"]),
+            )
+            .limit(1)
+        )
+        if conflicts or blocking_factor is not None:
+            raise ConflictError(
+                "candidate_has_conflicts",
+                "La opción contiene contradicciones y no puede seleccionarse",
             )
         candidates = session.scalars(
             select(ClassificationCandidate)
@@ -320,6 +366,7 @@ class ReviewService:
         boolean_fields = {
             "coiled", "coated", "pickled", "pattern_in_relief",
             "porcelain_exposed_parts", "pipeline_steel",
+            "high_speed_steel", "tool_steel",
         }
         if field_path in boolean_fields:
             if not isinstance(value, bool):
@@ -361,4 +408,70 @@ class ReviewService:
             raise ApplicationError(
                 "invalid_observation_value", "El porcentaje no puede exceder 100"
             )
+
+    def _sync_entity_field(
+        self,
+        session: Session,
+        *,
+        product_id: int | None,
+        heat_id: int | None,
+        field_path: str,
+        normalized_value: Any,
+        raw_value: Any,
+    ) -> None:
+        if product_id is not None:
+            product = session.get(Product, product_id)
+            if product is not None:
+                if field_path == "thickness_mm":
+                    product.thickness_mm = (
+                        Decimal(str(normalized_value)) if normalized_value is not None else None
+                    )
+                elif field_path == "width_mm":
+                    product.width_mm = (
+                        Decimal(str(normalized_value)) if normalized_value is not None else None
+                    )
+                elif field_path == "length_m":
+                    product.length_m = (
+                        Decimal(str(normalized_value)) if normalized_value is not None else None
+                    )
+                elif field_path == "weight_kg":
+                    product.weight_kg = (
+                        Decimal(str(normalized_value)) if normalized_value is not None else None
+                    )
+                elif field_path == "form":
+                    product.form = str(normalized_value) if normalized_value is not None else None
+                elif field_path == "coiled":
+                    product.coiled = bool(normalized_value) if normalized_value is not None else None
+                elif field_path == "rolling":
+                    product.rolling = str(normalized_value) if normalized_value is not None else None
+
+        if field_path.startswith("composition_pct."):
+            elem = field_path.split(".", 1)[1]
+            comp = session.scalar(
+                select(ChemicalComposition).where(
+                    ChemicalComposition.product_id == product_id,
+                    ChemicalComposition.heat_id == heat_id,
+                    ChemicalComposition.element == elem,
+                )
+            )
+            val = (
+                Decimal(str(normalized_value))
+                if normalized_value is not None
+                else None
+            )
+            if comp is not None:
+                comp.percentage = val
+                comp.raw_value_json = raw_value
+            else:
+                session.add(
+                    ChemicalComposition(
+                        product_id=product_id,
+                        heat_id=heat_id,
+                        element=elem,
+                        percentage=val,
+                        raw_value_json=raw_value,
+                        inherited=False,
+                    )
+                )
+
 
