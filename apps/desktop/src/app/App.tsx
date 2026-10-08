@@ -1,10 +1,22 @@
-import { AppShell } from "../components/layout/AppShell";
-import { ImportCertificatePage } from "../pages/ImportCertificatePage";
+import { AppShell } from "@/components/layout";
+import { ConnectionGate } from "@/features/connection-status";
+import type { ApiClient } from "@/lib/api";
+import { ImportCertificatePage } from "@/pages";
 
-export function App() {
+import { AppProviders } from "./providers/AppProviders";
+
+export interface AppProps {
+  apiClient?: ApiClient;
+}
+
+export function App({ apiClient }: AppProps) {
   return (
-    <AppShell>
-      <ImportCertificatePage />
-    </AppShell>
+    <AppProviders {...(apiClient ? { apiClient } : {})}>
+      <AppShell>
+        <ConnectionGate>
+          <ImportCertificatePage />
+        </ConnectionGate>
+      </AppShell>
+    </AppProviders>
   );
 }

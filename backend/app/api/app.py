@@ -10,6 +10,7 @@ from typing import Any, Annotated, Literal
 from uuid import uuid4
 
 from fastapi import Depends, FastAPI, File, Query, Request, UploadFile, status
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.exceptions import RequestValidationError
 from fastapi.encoders import jsonable_encoder
@@ -127,6 +128,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             },
         )
         return response
+
+    # Registrado después del middleware de correlación para que sea el más externo
+    # y también agregue encabezados CORS a respuestas de error.
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_origins,
+        allow_methods=["GET", "POST"],
+        allow_headers=["Content-Type", "X-Request-ID"],
+        expose_headers=["X-Request-ID", "Content-Disposition"],
+    )
 
     @app.exception_handler(ApplicationError)
     async def application_error(_request: Request, exc: ApplicationError):

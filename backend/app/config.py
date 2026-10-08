@@ -25,6 +25,14 @@ class Settings(BaseSettings):
     secondary_backup_root: Path | None = None
     api_host: str = "127.0.0.1"
     api_port: int = Field(default=8765, ge=1, le=65535)
+    # Orígenes del webview de Tauri (Windows y macOS/Linux) y del servidor de desarrollo Vite.
+    cors_origins: list[str] = Field(
+        default_factory=lambda: [
+            "http://tauri.localhost",
+            "tauri://localhost",
+            "http://localhost:1420",
+        ]
+    )
     max_pdf_bytes: int = Field(default=100 * 1024 * 1024, ge=1024)
     workstation_name: str = Field(default_factory=socket.gethostname)
     database_pool_size: int = Field(default=5, ge=1, le=20)
