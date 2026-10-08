@@ -17,9 +17,10 @@ import { ImportQueueItem } from "./ImportQueueItem";
 export interface ImportQueueProps {
   items: readonly ImportItem[];
   onClearFinished(): void;
+  onReview?: ((certificateId: number, documentId?: number | null) => void) | undefined;
 }
 
-export function ImportQueue({ items, onClearFinished }: ImportQueueProps) {
+export function ImportQueue({ items, onClearFinished, onReview }: ImportQueueProps) {
   const hasFinished = items.some((item) => isTerminalPhase(item.phase));
 
   return (
@@ -50,7 +51,7 @@ export function ImportQueue({ items, onClearFinished }: ImportQueueProps) {
         ) : (
           <ul aria-live="polite" className="flex flex-col divide-y">
             {items.map((item) => (
-              <ImportQueueItem key={item.id} item={item} />
+              <ImportQueueItem key={item.id} item={item} onReview={onReview} />
             ))}
           </ul>
         )}

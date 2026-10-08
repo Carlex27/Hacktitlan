@@ -21,7 +21,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost http://127.0.0.1:8765 http://localhost:8765 http://*.ts.net:8765",
+      "csp": "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost http://127.0.0.1:8765 http://localhost:8765 http://*.ts.net:8765; frame-src 'self' http://127.0.0.1:8765 http://localhost:8765 http://*.ts.net:8765; object-src 'self' http://127.0.0.1:8765 http://localhost:8765 http://*.ts.net:8765",
       "capabilities": ["default"]
     }
   },

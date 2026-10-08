@@ -16,6 +16,13 @@
     --color-sidebar-primary: var(--sidebar-primary);
     --color-sidebar-foreground: var(--sidebar-foreground);
     --color-sidebar: var(--sidebar);
+    --color-sidebar-bg: var(--sidebar-bg);
+    --color-sidebar-hover: var(--sidebar-hover);
+    --color-viewer-bg: var(--viewer-bg);
+    --color-viewer-header: var(--viewer-header);
+    --color-viewer-toolbar: var(--viewer-toolbar);
+    --color-viewer-canvas: var(--viewer-canvas);
+    --color-app-canvas: var(--app-canvas);
     --color-chart-5: var(--chart-5);
     --color-chart-4: var(--chart-4);
     --color-chart-3: var(--chart-3);
@@ -81,6 +88,13 @@
     --sidebar-accent-foreground: oklch(0.205 0 0);
     --sidebar-border: oklch(0.922 0 0);
     --sidebar-ring: oklch(0.708 0 0);
+    --sidebar-bg: #121824;
+    --sidebar-hover: #1e2638;
+    --viewer-bg: #2b3341;
+    --viewer-header: #1f2633;
+    --viewer-toolbar: #262e3d;
+    --viewer-canvas: #434b57;
+    --app-canvas: #eef2f6;
 }
 
 .dark {

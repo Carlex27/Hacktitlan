@@ -1,9 +1,11 @@
 import type { ApiClient, RequestOptions } from "../client";
 import type {
+  ActorReasonDto,
   CandidateSelectionDto,
   CandidateSelectionRequestDto,
   ClassificationRunDto,
   ClassificationRunSummaryDto,
+  RunApprovalResultDto,
 } from "../dto";
 
 export async function listClassificationRuns(
@@ -33,6 +35,38 @@ export async function selectClassificationCandidate(
   return (
     await api.post<CandidateSelectionDto>(
       `/api/v1/classification-results/${resultId}/select`,
+      request,
+      options,
+    )
+  ).data;
+}
+
+/** Aprueba formalmente una ejecución de clasificación con persona y motivo. */
+export async function approveClassificationRun(
+  api: ApiClient,
+  runId: number,
+  request: ActorReasonDto,
+  options?: RequestOptions,
+) {
+  return (
+    await api.post<RunApprovalResultDto>(
+      `/api/v1/classification-runs/${runId}/approve`,
+      request,
+      options,
+    )
+  ).data;
+}
+
+/** Rechaza formalmente una ejecución de clasificación con persona y motivo. */
+export async function rejectClassificationRun(
+  api: ApiClient,
+  runId: number,
+  request: ActorReasonDto,
+  options?: RequestOptions,
+) {
+  return (
+    await api.post<RunApprovalResultDto>(
+      `/api/v1/classification-runs/${runId}/reject`,
       request,
       options,
     )

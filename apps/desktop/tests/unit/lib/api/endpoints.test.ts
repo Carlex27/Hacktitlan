@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  approveClassificationRun,
+  getCertificate,
   getClassificationRun,
   getEvidence,
   getOcrStatus,
   listClassificationRuns,
+  rejectClassificationRun,
   selectClassificationCandidate,
+  type CertificateDetailDto,
   type ClassificationRunDto,
   type EvidenceDetailDto,
   type OcrStatusDto,
@@ -190,5 +194,116 @@ describe("endpoints del commit Backend", () => {
     if (detail.source_type !== "observation") throw new Error("Se esperaba evidencia de observación");
     expect(detail.focus.fallback).toBe("full_page");
     expect(client.url(detail.document.file_url)).toBe(`${TEST_BASE_URL}/api/v1/documents/5/file`);
+  });
+
+  it("obtiene el detalle del acta con composición y productos", async () => {
+    const certificateData: CertificateDetailDto = {
+      id: 21,
+      document_id: 5,
+      manufacturer: "MOLINO DE PRUEBA",
+      certificate_no: "CERT-999",
+      certificate_date: "2026-10-08",
+      uploaded_at: "2026-10-08T00:00:00Z",
+      revision_number: 1,
+      previous_revision_id: null,
+      approval_status: "needs_review",
+      standard: "ASTM A36",
+      product_name: "Rollo de acero",
+      demo_notice: "DEMO",
+      heats: [{ id: 1, heat_no: "H-100", standard: "ASTM A36", grade: "A36" }],
+      products: [
+        {
+          id: 30,
+          heat_id: 1,
+          product_identifier: "COIL-01",
+          label_no: "L1",
+          product_type: "laminado",
+          form: "flat",
+          coiled: true,
+          rolling: "hot",
+          width_mm: "1500.00",
+          thickness_mm: "4.75",
+          weight_kg: "24500.00",
+        },
+      ],
+      observations: [
+        {
+          id: 12,
+          heat_id: 1,
+          product_id: 30,
+          field_path: "products[0].thickness_mm",
+          raw_value: "4.75",
+          normalized_value: 4.75,
+          unit: "mm",
+          confidence: null,
+          page_number: 1,
+          bbox: null,
+          source_text: "4.75 mm",
+          inherited: false,
+          supersedes_id: null,
+          is_current: true,
+        },
+      ],
+      chemical_compositions: [
+        {
+          id: 1,
+          heat_id: 1,
+          product_id: null,
+          element: "C",
+          raw_value: "0.15",
+          percentage: "0.1500",
+          inherited: false,
+          source_label: "Carbon",
+        },
+      ],
+    };
+
+    const { client, calls } = createFakeBackend({
+      "GET /api/v1/certificates/21": () => envelope(certificateData),
+    });
+
+    const cert = await getCertificate(client, 21);
+    expect(calls).toEqual(["GET /api/v1/certificates/21"]);
+    expect(cert.certificate_no).toBe("CERT-999");
+    expect(cert.products[0]?.thickness_mm).toBe("4.75");
+    expect(cert.chemical_compositions[0]?.percentage).toBe("0.1500");
+  });
+
+  it("aprueba una ejecución de clasificación con persona y motivo", async () => {
+    let body: unknown;
+    const { client, calls } = createFakeBackend({
+      "POST /api/v1/classification-runs/4/approve": (init) => {
+        body = JSON.parse(String(init?.body));
+        return envelope({ classification_run_id: 4, approval_status: "approved" });
+      },
+    });
+
+    const result = await approveClassificationRun(client, 4, {
+      person_name: "Carlos Ruiz",
+      reason: "Fracción arancelaria validada",
+    });
+
+    expect(calls).toEqual(["POST /api/v1/classification-runs/4/approve"]);
+    expect(body).toEqual({ person_name: "Carlos Ruiz", reason: "Fracción arancelaria validada" });
+    expect(result).toEqual({ classification_run_id: 4, approval_status: "approved" });
+  });
+
+  it("rechaza una ejecución de clasificación con persona y motivo", async () => {
+    let body: unknown;
+    const { client, calls } = createFakeBackend({
+      "POST /api/v1/classification-runs/4/reject": (init) => {
+        body = JSON.parse(String(init?.body));
+        return envelope({ classification_run_id: 4, approval_status: "rejected" });
+      },
+    });
+
+    const result = await rejectClassificationRun(client, 4, {
+      person_name: "Carlos Ruiz",
+      reason: "Falta información química",
+    });
+
+    expect(calls).toEqual(["POST /api/v1/classification-runs/4/reject"]);
+    expect(body).toEqual({ person_name: "Carlos Ruiz", reason: "Falta información química" });
+    expect(result).toEqual({ classification_run_id: 4, approval_status: "rejected" });
   });
 });

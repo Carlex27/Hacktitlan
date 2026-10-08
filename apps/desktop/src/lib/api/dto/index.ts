@@ -18,7 +18,15 @@ export type {
   DecisionStepOutcomeDto,
   EvidenceLinkDto,
   EvidenceSourceTypeDto,
+  RunApprovalResultDto,
 } from "./classification";
+export type {
+  CertificateChemicalCompositionDto,
+  CertificateDetailDto,
+  CertificateHeatDto,
+  CertificateObservationDto,
+  CertificateProductDto,
+} from "./certificates";
 export type { JobDto, JobStatusDto, UploadDocumentDto } from "./documents";
 export type {
   EvidenceDetailDto,

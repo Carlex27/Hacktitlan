@@ -1,6 +1,9 @@
+export { getCertificate } from "./certificates";
 export {
+  approveClassificationRun,
   getClassificationRun,
   listClassificationRuns,
+  rejectClassificationRun,
   selectClassificationCandidate,
 } from "./classification";
 export { getJob, uploadDocument } from "./documents";

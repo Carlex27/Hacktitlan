@@ -2,6 +2,7 @@ import { FileTextIcon } from "lucide-react";
 
 import { ProcessingStatusBadge } from "@/components/feedback";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { es } from "@/lib/i18n";
 
@@ -10,9 +11,10 @@ import { phaseToStatus, type ImportItem } from "../model/importItem";
 
 export interface ImportQueueItemProps {
   item: ImportItem;
+  onReview?: ((certificateId: number, documentId?: number | null) => void) | undefined;
 }
 
-export function ImportQueueItem({ item }: ImportQueueItemProps) {
+export function ImportQueueItem({ item, onReview }: ImportQueueItemProps) {
   const status = phaseToStatus(item.phase);
   const showProgress = status === "loading" && item.progress !== null;
 
@@ -46,7 +48,26 @@ export function ImportQueueItem({ item }: ImportQueueItemProps) {
           />
         )}
       </div>
-      <ProcessingStatusBadge status={status} />
+
+      <div className="flex items-center gap-2 shrink-0">
+        {item.certificateId !== null && onReview && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              const certId = item.certificateId;
+              if (certId !== null) {
+                onReview(certId, item.documentId);
+              }
+            }}
+            className="h-7 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 font-medium"
+          >
+            {es.certificateImport.item.reviewAction}
+          </Button>
+        )}
+        <ProcessingStatusBadge status={status} />
+      </div>
     </li>
   );
 }

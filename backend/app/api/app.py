@@ -420,7 +420,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if stored is None:
             raise NotFoundError("Archivo", document.stored_file_id)
         path = request.app.state.storage.resolve(stored.relative_path)
-        return FileResponse(path, media_type=stored.media_type, filename=stored.original_name)
+        # `inline` permite mostrar el PDF en el visor de la app; el nombre se conserva
+        # para "Guardar como".
+        return FileResponse(
+            path,
+            media_type=stored.media_type,
+            filename=stored.original_name,
+            content_disposition_type="inline",
+        )
 
     @app.get("/api/v1/evidence/{evidence_link_id}")
     def evidence_detail(evidence_link_id: int, session: DbSession):

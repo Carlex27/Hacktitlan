@@ -17,6 +17,7 @@ export interface ImportItem {
   /** Progreso informado por el servidor; `null` si no se conoce. */
   progress: number | null;
   certificateId: number | null;
+  documentId: number | null;
   jobId: number | null;
   duplicate: boolean;
   /** Mensaje del servidor o del cliente cuando el flujo falla. */
@@ -63,6 +64,7 @@ export function createImportItem(id: string, fileName: string): ImportItem {
     phase: "uploading",
     progress: null,
     certificateId: null,
+    documentId: null,
     jobId: null,
     duplicate: false,
     errorMessage: null,
@@ -74,6 +76,7 @@ export function applyUpload(item: ImportItem, upload: UploadDocumentDto): Import
     ...item,
     phase: upload.job_id === null ? "no_job" : "queued",
     certificateId: upload.certificate_id,
+    documentId: upload.document_id,
     jobId: upload.job_id,
     duplicate: upload.duplicate,
   };

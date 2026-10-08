@@ -106,3 +106,10 @@ export interface CandidateSelectionDto {
   workstation_name: string;
   created_at: string;
 }
+
+/** Respuesta de `POST /api/v1/classification-runs/{id}/approve` y `reject` */
+export interface RunApprovalResultDto {
+  classification_run_id: number;
+  approval_status: ApprovalStatusDto;
+}
+
