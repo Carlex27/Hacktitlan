@@ -50,6 +50,7 @@ class CertificateExtractionService:
                 "file_name": document.file_name,
                 "sha256": document.sha256,
                 "page_count": len(document.pages),
+                "ingestion": document.metadata,
             },
             "detection": {
                 "kind": detection.kind.value,
@@ -78,6 +79,11 @@ class CertificateExtractionService:
             else ExtractionStatus.UNSUPPORTED
         )
         return {**base, "status": status.value}
+
+    def release(self) -> None:
+        release = getattr(self.reader, "release", None)
+        if callable(release):
+            release()
 
     @staticmethod
     def normalize_known_payload(raw_payload: dict[str, Any]) -> dict[str, Any]:

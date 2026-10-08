@@ -20,6 +20,7 @@ class Settings(BaseSettings):
 
     environment: str = "development"
     database_url: str = "postgresql+psycopg://hacktitlan_app:change-me@127.0.0.1:5432/hacktitlan"
+    test_database_url: str | None = None
     storage_root: Path = Path(r"C:\ProgramData\Hacktitlan\storage")
     backup_root: Path = Path(r"C:\ProgramData\Hacktitlan\backups")
     secondary_backup_root: Path | None = None
@@ -32,7 +33,20 @@ class Settings(BaseSettings):
     database_statement_timeout_ms: int = Field(default=30_000, ge=1_000)
     worker_poll_seconds: float = Field(default=2.0, ge=0.1)
     worker_stale_after_seconds: int = Field(default=300, ge=30)
+    ocr_enabled: bool = False
+    ocr_device: str = "auto"
+    ocr_language: str = "en"
+    ocr_min_confidence: float = Field(default=0.50, ge=0, le=1)
+    ocr_cpu_threads: int = Field(default=4, ge=1, le=16)
     demo_notice: str = "DEMOSTRACIÓN — SIN VALIDEZ ADUANERA"
+
+    @field_validator("ocr_device")
+    @classmethod
+    def valid_ocr_device(cls, value: str) -> str:
+        normalized = value.strip().lower()
+        if normalized not in {"auto", "cpu", "gpu:0"}:
+            raise ValueError("ocr_device debe ser auto, cpu o gpu:0")
+        return normalized
 
     @field_validator("secondary_backup_root", mode="before")
     @classmethod

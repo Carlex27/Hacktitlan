@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from backend.app.api.schemas import (
     ActorReason,
     ArchiveRequest,
+    CandidateSelectionRequest,
     CorrectionRequest,
     ExportRequest,
     ManualObservationRequest,
@@ -33,10 +34,13 @@ from backend.app.domain.enums import ApprovalStatus
 from backend.app.domain.errors import ApplicationError, NotFoundError
 from backend.app.infrastructure.database.models import (
     ChemicalComposition,
+    ClassificationCandidate,
     ClassificationResult,
     ClassificationRun,
+    ClassificationSelection,
     DecisionStep,
     Document,
+    EvidenceLink,
     Export,
     Heat,
     Job,
@@ -49,6 +53,7 @@ from backend.app.infrastructure.database.models import (
 from backend.app.infrastructure.database.session import create_session_factory
 from backend.app.infrastructure.files import FileStorage
 from backend.app.infrastructure.logging import configure_logging
+from backend.app.infrastructure.ocr import probe_ocr_runtime
 
 logger = logging.getLogger(__name__)
 
@@ -190,6 +195,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         session.execute(text("SELECT 1"))
         settings.storage_root.mkdir(parents=True, exist_ok=True)
         return ok({"status": "ready", "database": "available", "storage": "available"})
+
+    @app.get("/api/v1/ocr/status")
+    def ocr_status():
+        return ok(probe_ocr_runtime(settings).as_dict())
 
     @app.post("/api/v1/documents", status_code=status.HTTP_202_ACCEPTED)
     def upload_document(request: Request, session: DbSession, file: UploadFile = File(...)):
@@ -402,6 +411,51 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         path = request.app.state.storage.resolve(stored.relative_path)
         return FileResponse(path, media_type=stored.media_type, filename=stored.original_name)
 
+    @app.get("/api/v1/evidence/{evidence_link_id}")
+    def evidence_detail(evidence_link_id: int, session: DbSession):
+        link = session.get(EvidenceLink, evidence_link_id)
+        if link is None:
+            raise NotFoundError("Enlace de evidencia", evidence_link_id)
+        if link.source_type == "rule_source":
+            return ok({
+                "id": link.id,
+                "decision_step_id": link.decision_step_id,
+                "source_type": link.source_type,
+                "reference": link.source_reference_json,
+            })
+
+        observation = session.get(Observation, link.observation_id)
+        if observation is None:
+            raise NotFoundError("Observación de evidencia", link.observation_id)
+        certificate = session.get(MillCertificate, observation.certificate_id)
+        if certificate is None:
+            raise NotFoundError("Acta de evidencia", observation.certificate_id)
+        can_focus_region = observation.page_number is not None and observation.bbox_json is not None
+        return ok({
+            "id": link.id,
+            "decision_step_id": link.decision_step_id,
+            "source_type": link.source_type,
+            "field_path": link.field_path,
+            "observation": {
+                "id": observation.id,
+                "raw_value": observation.raw_value_json,
+                "normalized_value": observation.normalized_value_json,
+                "unit": observation.unit,
+                "confidence": observation.confidence,
+                "source_text": observation.source_text,
+            },
+            "document": {
+                "id": certificate.document_id,
+                "file_url": f"/api/v1/documents/{certificate.document_id}/file",
+            },
+            "focus": {
+                "page_number": observation.page_number,
+                "bbox": observation.bbox_json,
+                "can_focus_region": can_focus_region,
+                "fallback": None if can_focus_region else "full_page",
+            },
+        })
+
     @app.post("/api/v1/documents/{document_id}/archive")
     def archive_document(document_id: int, payload: ArchiveRequest, session: DbSession):
         document = session.get(Document, document_id)
@@ -568,6 +622,33 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def reject(run_id: int, payload: ActorReason, session: DbSession):
         return transition(run_id, ApprovalStatus.REJECTED, payload, session)
 
+    @app.post("/api/v1/classification-results/{result_id}/select")
+    def select_classification_candidate(
+        result_id: int,
+        payload: CandidateSelectionRequest,
+        session: DbSession,
+    ):
+        selection = ReviewService(settings).select_classification_candidate(
+            session,
+            result_id=result_id,
+            candidate_id=payload.candidate_id,
+            person_name=payload.person_name,
+            reason=payload.reason,
+        )
+        candidate = session.get(ClassificationCandidate, selection.candidate_id)
+        assert candidate is not None
+        return ok({
+            "selection_id": selection.id,
+            "classification_result_id": selection.classification_result_id,
+            "candidate_id": selection.candidate_id,
+            "fraction": candidate.fraction,
+            "nico": candidate.nico,
+            "person_name": selection.person_name,
+            "reason": selection.reason,
+            "workstation_name": selection.workstation_name,
+            "created_at": selection.created_at.isoformat(),
+        })
+
     @app.post("/api/v1/certificates/{certificate_id}/reclassify", status_code=status.HTTP_202_ACCEPTED)
     def reclassify_certificate(
         certificate_id: int,
@@ -621,19 +702,69 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             .order_by(ClassificationResult.id)
         ).all()
         result_ids = [result.id for result in results]
+        candidates = session.scalars(
+            select(ClassificationCandidate)
+            .where(ClassificationCandidate.classification_result_id.in_(result_ids))
+            .order_by(ClassificationCandidate.classification_result_id, ClassificationCandidate.rank)
+        ).all() if result_ids else []
+        candidates_by_result: dict[int, list[dict[str, Any]]] = {}
+        for candidate in candidates:
+            candidates_by_result.setdefault(candidate.classification_result_id, []).append({
+                "id": candidate.id,
+                "rank": candidate.rank,
+                "fraction": candidate.fraction,
+                "nico": candidate.nico,
+                "description": candidate.description,
+                "support_level": candidate.support_level,
+                "details": candidate.details_json,
+            })
+        selections = session.scalars(
+            select(ClassificationSelection)
+            .where(ClassificationSelection.classification_result_id.in_(result_ids))
+            .order_by(ClassificationSelection.classification_result_id, ClassificationSelection.id)
+        ).all() if result_ids else []
+        selections_by_result: dict[int, list[dict[str, Any]]] = {}
+        for selection in selections:
+            selections_by_result.setdefault(selection.classification_result_id, []).append({
+                "id": selection.id,
+                "candidate_id": selection.candidate_id,
+                "supersedes_selection_id": selection.supersedes_selection_id,
+                "person_name": selection.person_name,
+                "reason": selection.reason,
+                "workstation_name": selection.workstation_name,
+                "created_at": selection.created_at.isoformat(),
+            })
         steps = session.scalars(
             select(DecisionStep)
             .where(DecisionStep.classification_result_id.in_(result_ids))
             .order_by(DecisionStep.classification_result_id, DecisionStep.sequence)
         ).all() if result_ids else []
+        step_ids = [step.id for step in steps]
+        evidence_links = session.scalars(
+            select(EvidenceLink)
+            .where(EvidenceLink.decision_step_id.in_(step_ids))
+            .order_by(EvidenceLink.decision_step_id, EvidenceLink.id)
+        ).all() if step_ids else []
+        links_by_step: dict[int, list[dict[str, Any]]] = {}
+        for link in evidence_links:
+            links_by_step.setdefault(link.decision_step_id, []).append({
+                "id": link.id,
+                "source_type": link.source_type,
+                "field_path": link.field_path,
+                "observation_id": link.observation_id,
+                "reference": link.source_reference_json,
+                "detail_url": f"/api/v1/evidence/{link.id}",
+            })
         steps_by_result: dict[int, list[dict[str, Any]]] = {}
         for step in steps:
             steps_by_result.setdefault(step.classification_result_id, []).append({
+                "id": step.id,
                 "sequence": step.sequence,
                 "rule_code": step.rule_code,
                 "outcome": step.outcome,
                 "inputs": step.input_json,
                 "evidence": step.evidence_json,
+                "evidence_links": links_by_step.get(step.id, []),
                 "explanation": step.explanation,
             })
         return ok({
@@ -653,6 +784,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "description": result.description,
                 "outcome": result.outcome,
                 "details": result.details_json,
+                "candidates": candidates_by_result.get(result.id, []),
+                "selections": selections_by_result.get(result.id, []),
                 "steps": steps_by_result.get(result.id, []),
             } for result in results],
         })

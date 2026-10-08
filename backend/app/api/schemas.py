@@ -54,6 +54,10 @@ class ReclassificationRequest(ActorReason):
     rule_set_id: int | None = Field(default=None, ge=1)
 
 
+class CandidateSelectionRequest(ActorReason):
+    candidate_id: int = Field(ge=1)
+
+
 class ManualObservationRequest(ActorReason):
     product_id: int | None = Field(default=None, ge=1)
     heat_id: int | None = Field(default=None, ge=1)

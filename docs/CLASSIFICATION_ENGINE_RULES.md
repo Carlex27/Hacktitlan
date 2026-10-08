@@ -33,6 +33,17 @@ estado sin revestir debe constar expresamente o capturarse durante la revisión.
 - Fracción y NICO se validan contra el catálogo antes de persistirse.
 - Un código duplicado o ambiguo en la fuente queda en revisión; nunca se elige
   una de sus descripciones por orden de aparición.
+- Una fracción candidata de ocho dígitos se expande únicamente con sus NICO
+  existentes en el catálogo versionado. Partidas y subpartidas incompletas no
+  se presentan como opciones seleccionables.
+- Los candidatos de 7225.50.91 filtran contradicciones conocidas de boro,
+  espesor, enrollado, porcelanizado y límite elástico.
+- Las alternativas de laminados en caliente se reducen según espesor,
+  enrollado, relieve y decapado. No se ofrecen fracciones con intervalos de
+  espesor incompatibles.
+- El orden es estable: resultado demostrado, condición específica coincidente,
+  categoría general y especialidades todavía posibles. Se conservan como
+  máximo tres opciones.
 
 ## Datos faltantes y correcciones
 
@@ -55,6 +66,20 @@ su instantánea exacta.
 - `GET /api/v1/classification-runs/{id}` devuelve la reproducción completa.
 - Una ejecución incompleta no puede aprobarse.
 - Los reportes oficiales continúan incluyendo únicamente ejecuciones aprobadas.
+
+## Revisión de candidatos
+
+Antes de la aprobación, cada producto debe presentar exactamente tres opciones
+válidas de fracción y NICO. El personal autorizado selecciona una con nombre y
+motivo obligatorios. La selección no equivale a aprobación.
+
+Cada factor de la opción seleccionada debe explicar la regla, el umbral y el
+valor observado. También debe enlazar la página y región exactas del PDF para
+mostrarlas en un visor lateral. Si no existen tres opciones válidas, la
+ejecución queda en `needs_review`; el motor nunca inventa candidatos.
+
+El contrato completo está en
+[`CLASSIFICATION_CANDIDATE_REVIEW_REQUIREMENTS.md`](CLASSIFICATION_CANDIDATE_REVIEW_REQUIREMENTS.md).
 
 ## Expansión posterior
 

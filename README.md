@@ -24,8 +24,10 @@ subtotales, piezas y pesos totales.
 También existe una primera canalización determinista para formatos nuevos:
 extrae texto digital, coordenadas y tablas, detecta semánticamente posibles
 actas de molino, descubre encabezados mediante sinónimos y devuelve estados
-explícitos de revisión u OCR. Todavía no incorpora IA ni OCR local y no sustituye
-los normalizadores de los cuatro ejemplos conocidos.
+explícitos de revisión u OCR. Existe un adaptador opcional para
+PaddleOCR/PP-Structure, pero su descarga de modelos, calibración geométrica y
+validación con el corpus real todavía están pendientes. No incorpora IA
+generativa ni sustituye los normalizadores de los cuatro ejemplos conocidos.
 
 ```powershell
 python -m unittest discover -s backend/tests -v
@@ -67,6 +69,8 @@ reportes genéricos, fuente de reglas y Windows 11 x64— están consolidadas en
 
 El plan ejecutable del backend y PostgreSQL está en
 [`docs/BACKEND_DEVELOPMENT_PLAN.md`](docs/BACKEND_DEVELOPMENT_PLAN.md).
+La secuencia detallada desde el estado actual hasta finalizar el backend está en
+[`docs/BACKEND_COMPLETION_PLAN.md`](docs/BACKEND_COMPLETION_PLAN.md).
 La instalación del servidor, migraciones, ejecución y respaldo se describen en
 [`docs/BACKEND_RUNBOOK.md`](docs/BACKEND_RUNBOOK.md).
 El avance verificable y lo pendiente por diseño están en

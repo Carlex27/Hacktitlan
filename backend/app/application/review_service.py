@@ -12,8 +12,10 @@ from backend.app.domain.enums import ApprovalStatus
 from backend.app.domain.errors import ApplicationError, ConflictError, NotFoundError
 from backend.app.infrastructure.database.models import (
     ApprovalEvent,
+    ClassificationCandidate,
     ClassificationResult,
     ClassificationRun,
+    ClassificationSelection,
     Correction,
     MillCertificate,
     Observation,
@@ -187,15 +189,23 @@ class ReviewService:
                     ClassificationResult.classification_run_id == run.id
                 )
             ).all()
+            selected_result_ids = set(session.scalars(
+                select(ClassificationSelection.classification_result_id)
+                .where(ClassificationSelection.classification_result_id.in_(
+                    [result.id for result in results]
+                ))
+                .distinct()
+            ).all())
             if not results or any(
-                result.outcome != "classified"
+                result.id not in selected_result_ids
+                or result.outcome != "classified"
                 or result.fraction is None
                 or result.nico is None
                 for result in results
             ):
                 raise ConflictError(
                     "classification_incomplete",
-                    "No se puede aprobar una ejecución con productos sin fracción o NICO determinados",
+                    "No se puede aprobar una ejecución sin una selección autorizada para cada producto",
                 )
         allowed = {
             ApprovalStatus.DRAFT: {ApprovalStatus.NEEDS_REVIEW, ApprovalStatus.APPROVED, ApprovalStatus.REJECTED},
@@ -229,6 +239,67 @@ class ReviewService:
             )
         )
         return run
+
+    def select_classification_candidate(
+        self,
+        session: Session,
+        *,
+        result_id: int,
+        candidate_id: int,
+        person_name: str,
+        reason: str,
+    ) -> ClassificationSelection:
+        person_name, reason = self._require_actor_reason(person_name, reason)
+        result = session.scalar(
+            select(ClassificationResult)
+            .where(ClassificationResult.id == result_id)
+            .with_for_update()
+        )
+        if result is None:
+            raise NotFoundError("Resultado de clasificación", result_id)
+        candidate = session.get(ClassificationCandidate, candidate_id)
+        if candidate is None or candidate.classification_result_id != result.id:
+            raise ConflictError(
+                "candidate_result_mismatch",
+                "La opción no pertenece al resultado indicado",
+            )
+        candidates = session.scalars(
+            select(ClassificationCandidate)
+            .where(ClassificationCandidate.classification_result_id == result.id)
+            .order_by(ClassificationCandidate.rank)
+        ).all()
+        if len(candidates) != 3 or [item.rank for item in candidates] != [1, 2, 3]:
+            raise ConflictError(
+                "three_valid_candidates_required",
+                "La selección requiere exactamente tres opciones válidas",
+            )
+        previous = session.scalar(
+            select(ClassificationSelection)
+            .where(ClassificationSelection.classification_result_id == result.id)
+            .order_by(ClassificationSelection.id.desc())
+            .limit(1)
+        )
+        selection = ClassificationSelection(
+            classification_result_id=result.id,
+            candidate_id=candidate.id,
+            supersedes_selection_id=previous.id if previous else None,
+            person_name=person_name,
+            reason=reason,
+            workstation_name=self.settings.workstation_name,
+        )
+        session.add(selection)
+        result.fraction = candidate.fraction
+        result.nico = candidate.nico
+        result.description = candidate.description
+        result.outcome = "classified"
+        details = dict(result.details_json or {})
+        details.update({
+            "selected_candidate_id": candidate.id,
+            "selection_required": False,
+        })
+        result.details_json = details
+        session.flush()
+        return selection
 
     @staticmethod
     def _require_actor_reason(person_name: str, reason: str) -> tuple[str, str]:

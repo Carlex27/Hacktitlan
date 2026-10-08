@@ -1,9 +1,12 @@
 from backend.app.infrastructure.database.models.classification import (
     ApprovalEvent,
+    ClassificationCandidate,
     ClassificationResult,
     ClassificationRun,
+    ClassificationSelection,
     Correction,
     DecisionStep,
+    EvidenceLink,
     RuleSet,
 )
 from backend.app.infrastructure.database.models.core import (
@@ -23,12 +26,15 @@ __all__ = [
     "ApprovalEvent",
     "BackupRun",
     "ChemicalComposition",
+    "ClassificationCandidate",
     "ClassificationResult",
     "ClassificationRun",
+    "ClassificationSelection",
     "Correction",
     "DecisionStep",
     "Document",
     "Export",
+    "EvidenceLink",
     "ExtractionRun",
     "Heat",
     "Job",

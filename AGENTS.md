@@ -41,6 +41,24 @@ Estas reglas aplican a todo el proyecto.
 - Los archivos no deben crecer sin límite: dividirlos cuando mezclen más de una
   responsabilidad o sea difícil probarlos aisladamente.
 
+## Documentación de la API
+
+- La fuente de verdad de los endpoints es el esquema OpenAPI generado por
+  FastAPI en `/openapi.json`.
+- Para consulta interactiva usar `/docs` (Swagger UI) o `/redoc` con el backend
+  en ejecución.
+- Antes de crear, modificar o consumir un endpoint, revisar
+  `backend/app/api/app.py`, `backend/app/api/schemas.py` y el OpenAPI generado.
+- Las instrucciones de ejecución y operación viven en
+  `docs/BACKEND_RUNBOOK.md`. Las decisiones y el avance del backend viven en
+  `docs/BACKEND_DEVELOPMENT_PLAN.md` y
+  `docs/BACKEND_IMPLEMENTATION_STATUS.md`.
+- No documentar manualmente contratos que contradigan OpenAPI. Cuando cambie un
+  endpoint, actualizar sus esquemas, pruebas y cualquier guía Markdown afectada
+  dentro del mismo cambio.
+- El frontend sólo puede consumir rutas documentadas bajo `/api/v1`; no debe
+  inferir campos, estados ni códigos de error no declarados por el backend.
+
 ## Calidad y cambios
 
 - Preservar evidencia, valores originales y valores normalizados.

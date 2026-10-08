@@ -7,8 +7,9 @@ import pytest
 from fastapi.testclient import TestClient
 
 from backend.app.api.app import create_app
-from backend.app.api.schemas import ActorReason, ExportRequest
+from backend.app.api.schemas import ActorReason, CandidateSelectionRequest, ExportRequest
 from backend.app.application.document_service import decode_cursor, encode_cursor
+from backend.app.application.classification_service import ClassificationService
 from backend.app.config import Settings
 from backend.app.domain.errors import ApplicationError
 from backend.app.infrastructure.files import FileStorage
@@ -65,12 +66,35 @@ def test_actor_and_reason_must_not_be_blank():
         ActorReason(person_name="Ana", reason="  ")
 
 
+def test_candidate_selection_contract_requires_candidate_actor_and_reason():
+    request = CandidateSelectionRequest(
+        candidate_id=3,
+        person_name="Ana",
+        reason="Evidencia técnica revisada",
+    )
+    assert request.candidate_id == 3
+    with pytest.raises(ValueError):
+        CandidateSelectionRequest(candidate_id=0, person_name="Ana", reason="Revisión")
+
+
 def test_live_health_uses_uniform_envelope(tmp_path):
     settings = Settings(storage_root=tmp_path, database_url="postgresql+psycopg://user:pass@localhost/test")
     with TestClient(create_app(settings)) as client:
         response = client.get("/api/v1/health/live")
     assert response.status_code == 200
     assert response.json() == {"data": {"status": "ok"}, "meta": {}, "error": None}
+
+
+def test_openapi_documents_evidence_navigation_endpoint(tmp_path):
+    settings = Settings(
+        storage_root=tmp_path,
+        database_url="postgresql+psycopg://user:pass@localhost/test",
+    )
+    with TestClient(create_app(settings)) as client:
+        schema = client.get("/openapi.json").json()
+
+    assert "/api/v1/evidence/{evidence_link_id}" in schema["paths"]
+    assert "/api/v1/documents/{document_id}/file" in schema["paths"]
 
 
 def test_empty_secondary_backup_path_is_disabled(monkeypatch):
@@ -144,11 +168,32 @@ def test_export_can_target_a_historical_classification_run():
 
 
 def test_all_primary_keys_use_bigint_identity():
-    assert len(Base.metadata.tables) == 18
+    assert len(Base.metadata.tables) == 21
     for table in Base.metadata.tables.values():
         primary_key = list(table.primary_key.columns)
         assert len(primary_key) == 1
         assert primary_key[0].identity is not None
+
+
+def test_step_evidence_selects_exact_field_and_prefers_coordinates():
+    evidence = [
+        {
+            "observation_id": 1, "field_path": "composition_pct.Ti",
+            "page_number": None, "bbox": None, "product_id": 4,
+        },
+        {
+            "observation_id": 2, "field_path": "composition_pct.Ti",
+            "page_number": 2, "bbox": {"x0": 10}, "product_id": 4,
+        },
+        {
+            "observation_id": 3, "field_path": "width_mm",
+            "page_number": 1, "bbox": {"x0": 20}, "product_id": 4,
+        },
+    ]
+
+    selected = ClassificationService._step_evidence(evidence, ("composition_pct.Ti",))
+
+    assert [item["observation_id"] for item in selected] == [2]
 
 
 def test_backup_retention_keeps_seven_daily_files(tmp_path):
