@@ -1,17 +1,4 @@
-/**
- * Tipos de transporte del API v1. Reflejan exactamente las respuestas del
- * backend (snake_case); los modelos de vista viven en cada feature.
- */
-
-export interface HealthLiveDto {
-  status: "ok";
-}
-
-export interface HealthReadyDto {
-  status: "ready";
-  database: string;
-  storage: string;
-}
+import type { JsonObject } from "./common";
 
 export interface UploadDocumentDto {
   document_id: number;
@@ -40,5 +27,5 @@ export interface JobDto {
   max_attempts: number;
   error_code: string | null;
   error_message: string | null;
-  result: Readonly<Record<string, unknown>> | null;
+  result: JsonObject | null;
 }

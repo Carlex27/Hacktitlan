@@ -15,7 +15,10 @@ export interface RequestOptions {
 
 export interface ApiClient {
   readonly baseUrl: string;
+  /** URL absoluta para rutas relativas del API (p. ej. `file_url`, `detail_url`). */
+  url(path: string): string;
   get<T>(path: string, options?: RequestOptions): Promise<ApiEnvelope<T>>;
+  post<T>(path: string, body: unknown, options?: RequestOptions): Promise<ApiEnvelope<T>>;
   postForm<T>(path: string, form: FormData, options?: RequestOptions): Promise<ApiEnvelope<T>>;
 }
 
@@ -65,7 +68,15 @@ export function createApiClient({
 
   return {
     baseUrl,
+    url: (path) => `${baseUrl}${path}`,
     get: (path, options) => request(path, { method: "GET", signal: options?.signal ?? null }),
+    post: (path, body, options) =>
+      request(path, {
+        method: "POST",
+        body: JSON.stringify(body),
+        headers: { "Content-Type": "application/json" },
+        signal: options?.signal ?? null,
+      }),
     postForm: (path, form, options) =>
       request(path, { method: "POST", body: form, signal: options?.signal ?? null }),
   };
