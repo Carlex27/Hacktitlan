@@ -10,6 +10,7 @@ import socket
 import tempfile
 from threading import Event, Thread
 import time
+from typing import Any, Protocol
 from uuid import uuid4
 
 from sqlalchemy import select, update
@@ -19,7 +20,7 @@ from backend.app.application.certificate_extraction import CertificateExtraction
 from backend.app.application.persistence import CertificatePersistenceService
 from backend.app.application.classification_service import ClassificationService
 from backend.app.config import Settings, get_settings
-from backend.app.document_ingestion.pdf_reader import PdfPlumberReader
+from backend.app.document_ingestion.factory import build_document_reader
 from backend.app.domain.enums import JobKind, ProcessingStatus
 from backend.app.infrastructure.database.job_repository import JobRepository
 from backend.app.infrastructure.database.models import (
@@ -28,6 +29,7 @@ from backend.app.infrastructure.database.models import (
     Export,
     ExtractionRun,
     Job,
+    MillCertificate,
     StoredFile,
 )
 from backend.app.infrastructure.database.session import create_session_factory
@@ -38,25 +40,38 @@ from backend.app.reporting.excel_export import ExcelExportService
 logger = logging.getLogger(__name__)
 
 
+class DocumentExtractor(Protocol):
+    def analyze_pdf(self, path: str | Path) -> dict[str, Any]: ...
+
+
 class Worker:
     def __init__(
         self,
         settings: Settings,
         sessions: sessionmaker[Session],
         storage: FileStorage,
+        extractor: DocumentExtractor | None = None,
     ) -> None:
         self.settings = settings
         self.sessions = sessions
         self.storage = storage
         self.repository = JobRepository()
         self.worker_id = f"{socket.gethostname()}-{uuid4().hex[:8]}"
-        self.extractor = CertificateExtractionService(PdfPlumberReader())
+        self.extractor = extractor or CertificateExtractionService(build_document_reader(settings))
         self.persistence = CertificatePersistenceService(settings)
 
     def run_once(self) -> bool:
         with self.sessions.begin() as session:
             self.repository.recover_stale(session, self.settings.worker_stale_after_seconds)
             job = self.repository.claim_next(session, self.worker_id)
+            if (
+                job is not None
+                and job.kind == JobKind.EXTRACT_DOCUMENT.value
+                and job.document_id is not None
+            ):
+                document = session.get(Document, job.document_id)
+                if document is not None:
+                    document.processing_status = ProcessingStatus.RUNNING.value
             job_id = job.id if job else None
         if job_id is None:
             return False
@@ -82,6 +97,10 @@ class Worker:
                     if job.status == ProcessingStatus.QUEUED.value:
                         job.worker_id = None
                         job.heartbeat_at = None
+                    if job.kind == JobKind.EXTRACT_DOCUMENT.value and job.document_id is not None:
+                        document = session.get(Document, job.document_id)
+                        if document is not None:
+                            document.processing_status = job.status
                     export_id = job.payload_json.get("export_id")
                     export = session.get(Export, export_id) if export_id else None
                     if export is not None:
@@ -117,7 +136,12 @@ class Worker:
             document_id = document.id
 
         with self._heartbeat(job_id):
-            result = self.extractor.analyze_pdf(path)
+            try:
+                result = self.extractor.analyze_pdf(path)
+            finally:
+                release = getattr(self.extractor, "release", None)
+                if callable(release):
+                    release()
         status_map = {
             "extracted": ProcessingStatus.SUCCEEDED,
             "needs_review": ProcessingStatus.NEEDS_REVIEW,
@@ -131,17 +155,20 @@ class Worker:
             if job is None or document is None:
                 raise ValueError("El trabajo fue eliminado durante el procesamiento")
             if result.get("certificate") is not None:
-                self.persistence.persist_normalized(
+                certificate = self.persistence.persist_normalized(
                     session,
                     document_id=document_id,
                     normalized=result["certificate"],
                 )
+                if final_status == ProcessingStatus.NEEDS_REVIEW:
+                    certificate.approval_status = "needs_review"
             document.processing_status = final_status.value
             document.page_count = result["document"].get("page_count")
             document.metadata_json = {
                 **(document.metadata_json or {}),
                 "detection": result.get("detection"),
                 "adapter": result.get("adapter"),
+                "ingestion": result["document"].get("ingestion") or {},
             }
             job.status = final_status.value
             job.progress = 100

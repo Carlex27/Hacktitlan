@@ -8,6 +8,11 @@ correcciones, la aprobación, la clasificación, las exportaciones y los respald
 El frontend y el segundo equipo accederán exclusivamente por la API mediante
 Tailscale.
 
+El orden detallado desde el estado actual hasta el cierre del backend está en
+[`BACKEND_COMPLETION_PLAN.md`](BACKEND_COMPLETION_PLAN.md). Ese documento
+incluye la explicación individual por candidato, el cierre de OCR pendiente y
+los criterios finales de aceptación.
+
 La primera entrega implementable es API + PostgreSQL + almacenamiento + trabajos
 + historial. OCR, reportes y modelos locales se conectan posteriormente sin
 reemplazar la normalización determinista existente.

@@ -12,9 +12,11 @@ from backend.app.domain.enums import ApprovalStatus, RuleSetStatus
 from backend.app.domain.errors import ApplicationError, NotFoundError
 from backend.app.infrastructure.database.models import (
     ChemicalComposition,
+    ClassificationCandidate,
     ClassificationResult,
     ClassificationRun,
     DecisionStep,
+    EvidenceLink,
     MillCertificate,
     Observation,
     Product,
@@ -117,23 +119,99 @@ class ClassificationService:
                 details_json={
                     "missing_fields": list(decision.missing_fields),
                     "candidates": list(decision.candidates),
+                    "valid_candidate_count": len(decision.ranked_candidates),
+                    "selection_required": len(decision.ranked_candidates) == 3,
                 },
             )
             session.add(result)
             session.flush()
-            for sequence, step in enumerate(decision.steps, start=1):
+            for candidate in decision.ranked_candidates:
                 session.add(
-                    DecisionStep(
+                    ClassificationCandidate(
                         classification_result_id=result.id,
-                        sequence=sequence,
-                        rule_code=step.rule_code,
-                        outcome=step.outcome.value,
-                        input_json=step.inputs,
-                        evidence_json=list(step.evidence) or evidence,
-                        explanation=step.explanation,
+                        rank=candidate.rank,
+                        fraction=candidate.fraction,
+                        nico=candidate.nico,
+                        description=candidate.description,
+                        support_level=candidate.support_level,
+                        details_json={
+                            "missing_fields": list(candidate.missing_fields),
+                            "conflicts": list(candidate.conflicts),
+                        },
                     )
                 )
+            for sequence, step in enumerate(decision.steps, start=1):
+                exact_evidence = self._step_evidence(evidence, step.evidence_fields)
+                decision_step = DecisionStep(
+                    classification_result_id=result.id,
+                    sequence=sequence,
+                    rule_code=step.rule_code,
+                    outcome=step.outcome.value,
+                    input_json=step.inputs,
+                    evidence_json=list(step.evidence) or exact_evidence,
+                    explanation=step.explanation,
+                )
+                session.add(decision_step)
+                session.flush()
+                for item in exact_evidence:
+                    session.add(EvidenceLink(
+                        decision_step_id=decision_step.id,
+                        observation_id=item["observation_id"],
+                        source_type="observation",
+                        field_path=item["field_path"],
+                        source_reference_json={},
+                    ))
+                session.add(EvidenceLink(
+                    decision_step_id=decision_step.id,
+                    observation_id=None,
+                    source_type="rule_source",
+                    field_path=None,
+                    source_reference_json=self._rule_reference(rule_set, step),
+                ))
         return run
+
+    def _rule_reference(
+        self,
+        rule_set: RuleSet,
+        step,
+    ) -> dict[str, Any]:
+        reference: dict[str, Any] = {
+            "rule_set_id": rule_set.id,
+            "rule_set_name": rule_set.name,
+            "rule_set_version": rule_set.version,
+            "source_hash": rule_set.source_hash,
+            "rule_code": step.rule_code,
+            "source": rule_set.manifest_json.get("source"),
+        }
+        fraction = step.inputs.get("fraction")
+        nico = step.inputs.get("nico")
+        if fraction:
+            entry = self.engine.catalog.get(f"{fraction}{nico}" if nico else fraction)
+            if entry is not None:
+                reference["catalog_page"] = entry.page
+                reference["catalog_code"] = entry.code
+        return reference
+
+    @staticmethod
+    def _step_evidence(
+        evidence: list[dict[str, Any]], field_paths: tuple[str, ...]
+    ) -> list[dict[str, Any]]:
+        selected: list[dict[str, Any]] = []
+        for field_path in dict.fromkeys(field_paths):
+            matches = [item for item in evidence if item["field_path"] == field_path]
+            if not matches:
+                continue
+            best = max(
+                matches,
+                key=lambda item: (
+                    item["page_number"] is not None,
+                    item["bbox"] is not None,
+                    item["product_id"] is not None,
+                    item["observation_id"],
+                ),
+            )
+            selected.append(best)
+        return selected
 
     @staticmethod
     def _rule_set(session: Session, rule_set_id: int | None) -> RuleSet:
@@ -299,7 +377,13 @@ class ClassificationService:
         return [
             {
                 "observation_id": observation.id,
+                "heat_id": observation.heat_id,
+                "product_id": observation.product_id,
                 "field_path": observation.field_path,
+                "raw_value": observation.raw_value_json,
+                "normalized_value": observation.normalized_value_json,
+                "unit": observation.unit,
+                "confidence": observation.confidence,
                 "page_number": observation.page_number,
                 "bbox": observation.bbox_json,
                 "source_text": observation.source_text,

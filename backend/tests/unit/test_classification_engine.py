@@ -53,10 +53,12 @@ def test_missing_alloy_elements_never_become_zero():
 
 def test_cold_rolled_coil_between_one_and_three_mm():
     result = Chapter72ClassificationEngine().classify(facts())
-    assert result.outcome is ClassificationOutcome.CLASSIFIED
+    assert result.outcome is ClassificationOutcome.NEEDS_REVIEW
     assert result.fraction == "72091601"
     assert result.nico == "99"
     assert result.description == "Los demás."
+    assert len(result.ranked_candidates) == 1
+    assert "three_valid_candidates" in result.missing_fields
 
 
 def test_high_strength_boundary_is_inclusive():
@@ -83,9 +85,31 @@ def test_electrolytic_zinc_both_sides():
             coated=True,
         )
     )
-    assert result.outcome is ClassificationOutcome.CLASSIFIED
+    assert result.outcome is ClassificationOutcome.NEEDS_REVIEW
     assert result.fraction == "72103002"
     assert result.nico == "01"
+
+
+def test_three_valid_candidates_are_ranked_and_capped_deterministically():
+    result = Chapter72ClassificationEngine().classify(
+        facts(thickness_mm=Decimal("3"), porcelain_exposed_parts=None)
+    )
+
+    assert result.outcome is ClassificationOutcome.NEEDS_REVIEW
+    assert [(candidate.rank, candidate.fraction, candidate.nico) for candidate in result.ranked_candidates] == [
+        (1, "72091504", "01"),
+        (2, "72091504", "02"),
+        (3, "72091504", "03"),
+    ]
+    assert all(candidate.support_level == "conditional" for candidate in result.ranked_candidates)
+
+
+def test_candidate_list_never_pads_to_three():
+    result = Chapter72ClassificationEngine().classify(facts())
+
+    assert [(candidate.fraction, candidate.nico) for candidate in result.ranked_candidates] == [
+        ("72091601", "99")
+    ]
 
 
 def test_other_alloy_fraction_can_be_known_while_nico_needs_review():
@@ -96,6 +120,51 @@ def test_other_alloy_fraction_can_be_known_while_nico_needs_review():
     assert result.fraction == "72255091"
     assert result.nico is None
     assert "nico_qualifier" in result.missing_fields
+    alloy_step = next(
+        step for step in result.steps
+        if step.rule_code == "chapter72.definition.other_alloy"
+    )
+    assert alloy_step.evidence_fields == ("composition_pct.Ti",)
+    assert [(candidate.fraction, candidate.nico) for candidate in result.ranked_candidates] == [
+        ("72255091", "99"),
+        ("72255091", "08"),
+        ("72255091", "09"),
+    ]
+
+
+def test_boron_alloy_candidate_respects_thickness_and_coiling():
+    chemistry = complete_non_alloy_chemistry(B="0.0008")
+    result = Chapter72ClassificationEngine().classify(facts(composition_pct=chemistry))
+
+    assert [(candidate.fraction, candidate.nico) for candidate in result.ranked_candidates] == [
+        ("72255091", "01"),
+        ("72255091", "99"),
+        ("72255091", "08"),
+    ]
+
+
+def test_hot_rolled_unknown_pattern_uses_only_thickness_compatible_fractions():
+    result = Chapter72ClassificationEngine().classify(
+        facts(
+            rolling="hot",
+            thickness_mm=Decimal("6"),
+            pattern_in_relief=None,
+            pickled=None,
+        )
+    )
+
+    assert result.candidates == ("72081003", "72082502", "72083701")
+    assert [(candidate.fraction, candidate.nico) for candidate in result.ranked_candidates] == [
+        ("72081003", "02"),
+        ("72082502", "99"),
+        ("72083701", "02"),
+    ]
+
+
+def test_catalog_lists_nicos_for_a_fraction_in_source_order():
+    entries = SourceProvidedCatalog().nicos_for_fraction("7225.50.91")
+
+    assert [entry.raw["nico"] for entry in entries[:3]] == ["01", "02", "03"]
 
 
 def test_non_flat_product_is_explicitly_out_of_scope():

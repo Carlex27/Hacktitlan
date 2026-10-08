@@ -187,7 +187,10 @@ class CertificatePersistenceService:
                     raw_value_json=detail.get("raw_value"),
                     normalized_value_json=detail.get("normalized_value"),
                     unit=detail.get("unit"),
-                    confidence=1.0,
+                    confidence=detail.get("confidence", 1.0),
+                    page_number=detail.get("page_number", detail.get("page")),
+                    bbox_json=detail.get("bbox"),
+                    source_text=detail.get("source_text", detail.get("region")),
                     inherited=bool(detail.get("inherited")),
                 )
             )
@@ -269,7 +272,10 @@ class CertificatePersistenceService:
                     raw_value_json=detail.get("raw_value"),
                     normalized_value_json=percentage,
                     unit="%",
-                    confidence=1.0,
+                    confidence=detail.get("confidence", 1.0),
+                    page_number=detail.get("page_number", detail.get("page")),
+                    bbox_json=detail.get("bbox"),
+                    source_text=detail.get("source_text", detail.get("region")),
                     inherited=bool(detail.get("inherited")),
                 )
             )

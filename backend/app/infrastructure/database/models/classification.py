@@ -97,6 +97,64 @@ class ClassificationResult(TimestampMixin, Base):
     )
 
 
+class ClassificationCandidate(TimestampMixin, Base):
+    __tablename__ = "classification_candidates"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    classification_result_id: Mapped[int] = mapped_column(
+        ForeignKey("classification_results.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
+    rank: Mapped[int] = mapped_column(Integer, nullable=False)
+    fraction: Mapped[str] = mapped_column(String(8), nullable=False, index=True)
+    nico: Mapped[str] = mapped_column(String(2), nullable=False, index=True)
+    description: Mapped[str | None] = mapped_column(Text)
+    support_level: Mapped[str] = mapped_column(String(30), nullable=False)
+    details_json: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+
+    classification_result: Mapped[ClassificationResult] = relationship()
+
+    __table_args__ = (
+        UniqueConstraint(
+            "classification_result_id", "rank", name="uq_candidate_result_rank"
+        ),
+        UniqueConstraint(
+            "classification_result_id", "fraction", "nico",
+            name="uq_candidate_result_code",
+        ),
+        CheckConstraint("rank BETWEEN 1 AND 3", name="candidate_rank_range"),
+        CheckConstraint("fraction ~ '^[0-9]{8}$'", name="candidate_fraction_format"),
+        CheckConstraint("nico ~ '^[0-9]{2}$'", name="candidate_nico_format"),
+        CheckConstraint(
+            "support_level IN ('fully_supported','conditional')",
+            name="candidate_support_level",
+        ),
+    )
+
+
+class ClassificationSelection(TimestampMixin, Base):
+    __tablename__ = "classification_selections"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    classification_result_id: Mapped[int] = mapped_column(
+        ForeignKey("classification_results.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
+    candidate_id: Mapped[int] = mapped_column(
+        ForeignKey("classification_candidates.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
+    supersedes_selection_id: Mapped[int | None] = mapped_column(
+        ForeignKey("classification_selections.id", ondelete="RESTRICT"), index=True
+    )
+    person_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    workstation_name: Mapped[str] = mapped_column(String(200), nullable=False)
+
+    classification_result: Mapped[ClassificationResult] = relationship()
+    candidate: Mapped[ClassificationCandidate] = relationship()
+    supersedes_selection: Mapped[ClassificationSelection | None] = relationship(
+        remote_side="ClassificationSelection.id"
+    )
+
+
 class DecisionStep(TimestampMixin, Base):
     __tablename__ = "decision_steps"
 
@@ -116,6 +174,41 @@ class DecisionStep(TimestampMixin, Base):
             "classification_result_id", "sequence", name="uq_decision_result_sequence"
         ),
         CheckConstraint("sequence >= 1", name="sequence_positive"),
+    )
+
+
+class EvidenceLink(TimestampMixin, Base):
+    __tablename__ = "evidence_links"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    decision_step_id: Mapped[int] = mapped_column(
+        ForeignKey("decision_steps.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
+    observation_id: Mapped[int | None] = mapped_column(
+        ForeignKey("observations.id", ondelete="RESTRICT"), index=True
+    )
+    source_type: Mapped[str] = mapped_column(String(30), nullable=False)
+    field_path: Mapped[str | None] = mapped_column(String(500))
+    source_reference_json: Mapped[dict[str, Any]] = mapped_column(
+        JSON, nullable=False, default=dict
+    )
+
+    decision_step: Mapped[DecisionStep] = relationship()
+    observation: Mapped[Observation | None] = relationship()
+
+    __table_args__ = (
+        UniqueConstraint(
+            "decision_step_id", "observation_id", name="uq_evidence_step_observation"
+        ),
+        CheckConstraint(
+            "source_type IN ('observation','rule_source')",
+            name="evidence_source_type",
+        ),
+        CheckConstraint(
+            "(source_type = 'observation' AND observation_id IS NOT NULL) OR "
+            "(source_type = 'rule_source' AND observation_id IS NULL)",
+            name="evidence_source_reference",
+        ),
     )
 
 

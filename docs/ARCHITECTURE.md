@@ -124,6 +124,18 @@ nunca convierte `unknown` en `false`.
 Registra regla, operador, umbral, valor observado, evidencia y resultado. Esto
 permite reconstruir por qué se eligió o descartó cada rama.
 
+Cada producto debe conservar exactamente tres candidatos válidos antes de la
+selección humana. La selección y la aprobación son eventos distintos e
+inmutables. Cada paso enlaza sólo su evidencia específica para que el frontend
+pueda abrir el PDF en la página y región correspondientes. Los requisitos están
+en
+[`CLASSIFICATION_CANDIDATE_REVIEW_REQUIREMENTS.md`](CLASSIFICATION_CANDIDATE_REVIEW_REQUIREMENTS.md).
+
+El vínculo se persiste en `evidence_links`. La API expone el documento mediante
+un identificador administrado y devuelve página y coordenadas. Si el extractor
+no produjo geometría, el contrato exige mostrar la página completa y advertirlo;
+nunca estima una región inexistente.
+
 ### `rule_registry`
 
 Maneja versiones con `valid_from`, `valid_to`, hash de fuente y estado
@@ -181,7 +193,13 @@ documentos generados.
 - `classification_runs`: entrada, versión, resultado y estado.
 - `classification_results`: tipo de producto, fracción, NICO y descripción por
   producto para cada ejecución.
+- `classification_candidates`: tres opciones válidas, ordenadas y explicadas
+  para cada producto y ejecución.
+- `classification_selections`: selección auditada, persona, motivo, equipo y
+  fecha, separada de la aprobación.
 - `decision_steps`: explicación de cada evaluación.
+- `evidence_links`: relación precisa entre un paso, la observación del acta y
+  la fuente normativa.
 - `manual_overrides`: cambio, motivo, persona, equipo y sello de tiempo.
 - `exports`: formato, ubicación, hash, fecha y ejecución usada por el reporte.
 - `stored_files`: nombre controlado, tipo, tamaño, hash, ubicación y estado del

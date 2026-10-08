@@ -46,6 +46,18 @@ class Decision:
     explanation: str
     inputs: dict[str, Any] = field(default_factory=dict)
     evidence: list[Any] = field(default_factory=list)
+    evidence_fields: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class ClassificationCandidate:
+    rank: int
+    fraction: str
+    nico: str
+    description: str | None
+    support_level: str
+    missing_fields: tuple[str, ...] = ()
+    conflicts: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -57,5 +69,6 @@ class ClassificationDecision:
     description: str | None
     missing_fields: tuple[str, ...]
     candidates: tuple[str, ...]
+    ranked_candidates: tuple[ClassificationCandidate, ...]
     steps: tuple[Decision, ...]
 

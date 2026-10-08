@@ -61,6 +61,16 @@ class SourceProvidedCatalog:
         for entry in self.entries:
             grouped.setdefault(entry.code, []).append(entry)
         self._by_code = {code: tuple(entries) for code, entries in grouped.items()}
+        nicos_by_fraction: dict[str, list[CatalogEntry]] = {}
+        for entry in self.entries:
+            if entry.kind != "nico":
+                continue
+            fraction = compact_code(str(entry.raw.get("fraction") or ""))
+            if fraction:
+                nicos_by_fraction.setdefault(fraction, []).append(entry)
+        self._nicos_by_fraction = {
+            fraction: tuple(entries) for fraction, entries in nicos_by_fraction.items()
+        }
 
     def get(self, code: str) -> CatalogEntry | None:
         matches = self._by_code.get(compact_code(code), ())
@@ -68,6 +78,9 @@ class SourceProvidedCatalog:
 
     def find_all(self, code: str) -> tuple[CatalogEntry, ...]:
         return self._by_code.get(compact_code(code), ())
+
+    def nicos_for_fraction(self, fraction: str) -> tuple[CatalogEntry, ...]:
+        return self._nicos_by_fraction.get(compact_code(fraction), ())
 
     def description(self, fraction: str, nico: str | None = None) -> str | None:
         target = f"{fraction}{nico}" if nico else fraction
