@@ -32,6 +32,23 @@ documentos incompletos, ilegibles, contradictorios o fuera del capítulo 72.
 - Varios rollos, coladas, lotes o productos en el mismo archivo.
 - Captura manual de datos faltantes con registro de quién los agregó.
 
+### Compatibilidad y modelos locales
+
+- La aplicación base debe funcionar con 8 GB de RAM y sin GPU dedicada.
+- Los modelos OCR e IA se distribuyen como paquetes opcionales, no como una
+  obligación para instalar la aplicación.
+- El instalador o la configuración permiten descargar paquetes compatibles con
+  el equipo, mostrando requisitos, licencia, tamaño y progreso.
+- Sin modelos, los PDF digitales y las funciones deterministas continúan
+  disponibles; un documento escaneado queda en `needs_ocr`.
+- El perfil de 8 GB procesa documentos y páginas secuencialmente para controlar
+  memoria. La IA generativa no forma parte del mínimo garantizado.
+- Si hay una GPU dedicada compatible, OCR e inferencia local deben utilizarla
+  preferentemente mediante el backend validado para su fabricante y
+  controlador, con recuperación automática por CPU.
+- La configuración debe mostrar el dispositivo activo y permitir forzar CPU para
+  diagnóstico o compatibilidad.
+
 ### Procesamiento
 
 - Detección de PDF digital frente a escaneado.
@@ -74,6 +91,25 @@ documentos incompletos, ilegibles, contradictorios o fuera del capítulo 72.
   consulta filtrada, con confirmación del alcance antes de generar el archivo.
 - Libro XLSX profesional y autocontenido con hojas relacionadas, navegación
   interna, tablas filtrables, unidades, evidencia y auditoría.
+
+### Operación inicial aprobada
+
+- Sin cuentas ni roles de usuario en la primera versión.
+- Aprobación manual mediante `draft`, `needs_review`, `approved` y `rejected`.
+- PDF originales almacenados centralmente por el backend con metadatos y hash en
+  PostgreSQL.
+- Segundo equipo bloqueado si no puede acceder al backend principal por
+  Tailscale; no habrá modo offline inicial.
+- Correcciones y reclasificaciones inmutables y vinculadas con sus versiones
+  anteriores.
+- Capacidad de referencia: 10 actas diarias y 10 a 15 coladas por acta, sin
+  convertir esas cifras en límites.
+- Respaldo integral automático diario y exportación manual de un paquete completo
+  restaurable.
+- Reportes genéricos por acta, colada, día, semana, mes o rango personalizado.
+- Reglas limitadas inicialmente al PDF proporcionado, conservando versión, hash
+  y advertencia de vigencia.
+- Plataforma objetivo: Windows 11 x64.
 
 ## 4. Lo que un certificado químico no garantiza
 
@@ -140,6 +176,8 @@ elementos químicos presentes” es necesario, pero no suficiente.
 - Historial navegable por fecha, acta, colada y producto con filtros, paginación
   y vistas de detalle.
 - Reportes XLSX/CSV/PDF.
+- Almacenamiento central administrado de PDF y descarga segura mediante la API.
+- Respaldo diario y flujo verificable de exportación/restauración integral.
 - Empaquetado e instalador de Windows.
 
 ### Fase 4 - Validación
@@ -172,6 +210,13 @@ elementos químicos presentes” es necesario, pero no suficiente.
 - Exactitud de fracción y NICO medida por separado sobre un conjunto dorado.
 - Tiempo objetivo inicial: menos de 30 segundos por PDF digital típico y menos
   de 90 segundos por PDF escaneado multipágina, sujeto al hardware y al tamaño.
+- La aplicación base inicia y completa sus flujos deterministas en el equipo
+  objetivo de 8 GB sin requerir GPU ni modelos opcionales.
+- Un paquete incompatible no se descarga y la aplicación explica el requisito
+  incumplido sin bloquear las funciones base.
+- En equipos con GPU compatible, una prueba de diagnóstico confirma que el
+  runtime seleccionado ejecuta el modelo; un fallo activa CPU sin perder el
+  documento ni el trabajo pendiente.
 
 No conviene fijar un porcentaje de exactitud final hasta contar con documentos
 reales y etiquetas confiables. Una meta sin conjunto de prueba sería engañosa.
@@ -191,9 +236,8 @@ reales y etiquetas confiables. Una meta sin conjunto de prueba sería engañosa.
 ## 8. Decisiones pendientes
 
 1. Quién será responsable de validar y publicar una nueva versión de reglas.
-2. Fuentes oficiales exactas que se usarán como autoridad.
-3. Formato de reporte prioritario: XLSX, PDF o ambos.
-4. Política de operación cuando el equipo principal o la red Tailscale no estén
-   disponibles: bloquear, permitir trabajo temporal o sólo consulta.
+2. Política de retención de respaldos y ubicación de la segunda copia.
+3. Capacidad real de rollos y tamaño promedio de PDF observados durante el piloto.
+4. Momento en que será necesario incorporar autenticación y roles.
 5. Política ante evidencia insuficiente: bloquear, pedir captura o devolver
    alternativas ordenadas.

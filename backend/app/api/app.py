@@ -1,0 +1,661 @@
+"""FastAPI composition root and public API v1."""
+
+from __future__ import annotations
+
+from contextlib import asynccontextmanager
+from datetime import date, datetime, timezone
+import logging
+import time
+from typing import Any, Annotated, Literal
+from uuid import uuid4
+
+from fastapi import Depends, FastAPI, File, Query, Request, UploadFile, status
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.exceptions import RequestValidationError
+from fastapi.encoders import jsonable_encoder
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from sqlalchemy import false
+from sqlalchemy import Date, and_, cast, exists, func, select, text, tuple_
+from sqlalchemy.orm import Session, sessionmaker
+
+from backend.app.api.schemas import (
+    ActorReason,
+    ArchiveRequest,
+    CorrectionRequest,
+    ExportRequest,
+    ManualObservationRequest,
+    ReclassificationRequest,
+)
+from backend.app.application.document_service import DocumentService, decode_cursor, encode_cursor
+from backend.app.application.review_service import ReviewService
+from backend.app.config import Settings, get_settings
+from backend.app.domain.enums import ApprovalStatus
+from backend.app.domain.errors import ApplicationError, NotFoundError
+from backend.app.infrastructure.database.models import (
+    ChemicalComposition,
+    ClassificationResult,
+    ClassificationRun,
+    DecisionStep,
+    Document,
+    Export,
+    Heat,
+    Job,
+    Manufacturer,
+    MillCertificate,
+    Observation,
+    Product,
+    StoredFile,
+)
+from backend.app.infrastructure.database.session import create_session_factory
+from backend.app.infrastructure.files import FileStorage
+from backend.app.infrastructure.logging import configure_logging
+
+logger = logging.getLogger(__name__)
+
+
+def ok(data: Any = None, *, meta: dict[str, Any] | None = None, status_code: int = 200) -> JSONResponse:
+    return JSONResponse(
+        status_code=status_code,
+        content={"data": data, "meta": meta or {}, "error": None},
+    )
+
+
+def get_session(request: Request):
+    factory: sessionmaker[Session] = request.app.state.sessions
+    with factory() as session:
+        try:
+            yield session
+            session.commit()
+        except Exception:
+            session.rollback()
+            raise
+
+
+DbSession = Annotated[Session, Depends(get_session)]
+
+
+def serialize_certificate(certificate: MillCertificate, manufacturer: Manufacturer | None) -> dict[str, Any]:
+    return {
+        "id": certificate.id,
+        "document_id": certificate.document_id,
+        "manufacturer": manufacturer.name if manufacturer else None,
+        "certificate_no": certificate.certificate_no,
+        "certificate_date": certificate.certificate_date.isoformat() if certificate.certificate_date else None,
+        "uploaded_at": certificate.uploaded_at.isoformat(),
+        "revision_number": certificate.revision_number,
+        "previous_revision_id": certificate.previous_revision_id,
+        "approval_status": certificate.approval_status,
+        "standard": certificate.standard,
+        "product_name": certificate.product_name,
+        "demo_notice": certificate.demo_notice,
+    }
+
+
+def create_app(settings: Settings | None = None) -> FastAPI:
+    configure_logging()
+    settings = settings or get_settings()
+    sessions = create_session_factory(settings)
+    storage = FileStorage(settings.storage_root, settings.max_pdf_bytes)
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        app.state.settings = settings
+        app.state.sessions = sessions
+        app.state.storage = storage
+        yield
+        sessions.kw["bind"].dispose()
+
+    app = FastAPI(title="Hacktitlan Mill Certificates API", version="1.0.0", lifespan=lifespan)
+    app.state.settings = settings
+    app.state.sessions = sessions
+    app.state.storage = storage
+
+    @app.middleware("http")
+    async def correlation_id(request: Request, call_next):
+        request_id = request.headers.get("X-Request-ID") or uuid4().hex
+        started = time.perf_counter()
+        response = await call_next(request)
+        response.headers["X-Request-ID"] = request_id
+        logger.info(
+            "http_request",
+            extra={
+                "request_id": request_id,
+                "method": request.method,
+                "path": request.url.path,
+                "status_code": response.status_code,
+                "duration_ms": round((time.perf_counter() - started) * 1000, 2),
+            },
+        )
+        return response
+
+    @app.exception_handler(ApplicationError)
+    async def application_error(_request: Request, exc: ApplicationError):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={
+                "data": None,
+                "meta": {},
+                "error": {"code": exc.code, "message": exc.message, "details": exc.details},
+            },
+        )
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_error(_request: Request, exc: RequestValidationError):
+        return JSONResponse(
+            status_code=422,
+            content={
+                "data": None,
+                "meta": {},
+                "error": {
+                    "code": "validation_error",
+                    "message": "La solicitud contiene datos inválidos",
+                    "details": {"issues": jsonable_encoder(exc.errors())},
+                },
+            },
+        )
+
+    @app.exception_handler(StarletteHTTPException)
+    async def http_error(_request: Request, exc: StarletteHTTPException):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={
+                "data": None,
+                "meta": {},
+                "error": {"code": "http_error", "message": str(exc.detail), "details": {}},
+            },
+        )
+
+    @app.exception_handler(Exception)
+    async def unexpected_error(_request: Request, exc: Exception):
+        logger.exception("unhandled_error")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "data": None,
+                "meta": {},
+                "error": {
+                    "code": "internal_error",
+                    "message": "Ocurrió un error interno",
+                    "details": {},
+                },
+            },
+        )
+
+    @app.get("/api/v1/health/live")
+    def live():
+        return ok({"status": "ok"})
+
+    @app.get("/api/v1/health/ready")
+    def ready(session: DbSession):
+        session.execute(text("SELECT 1"))
+        settings.storage_root.mkdir(parents=True, exist_ok=True)
+        return ok({"status": "ready", "database": "available", "storage": "available"})
+
+    @app.post("/api/v1/documents", status_code=status.HTTP_202_ACCEPTED)
+    def upload_document(request: Request, session: DbSession, file: UploadFile = File(...)):
+        result = DocumentService(settings, request.app.state.storage).upload(
+            session, file.file, file.filename or "document.pdf"
+        )
+        return ok(
+            {
+                "document_id": result.document_id,
+                "certificate_id": result.certificate_id,
+                "job_id": result.job_id,
+                "duplicate": result.duplicate,
+            },
+            status_code=200 if result.duplicate else 202,
+        )
+
+    @app.get("/api/v1/certificates")
+    def list_certificates(
+        session: DbSession,
+        limit: int = Query(50, ge=1, le=200),
+        cursor: str | None = None,
+        certificate_no: str | None = None,
+        manufacturer: str | None = None,
+        approval_status: ApprovalStatus | None = None,
+        date_from: date | None = None,
+        date_to: date | None = None,
+        date_basis: Literal["certificate", "uploaded"] = "certificate",
+    ):
+        rows, next_cursor = DocumentService(settings, storage).list_certificates(
+            session,
+            limit=limit,
+            cursor=cursor,
+            certificate_no=certificate_no,
+            manufacturer=manufacturer,
+            approval_status=approval_status,
+            date_from=date_from,
+            date_to=date_to,
+            date_basis=date_basis,
+        )
+        return ok(
+            [serialize_certificate(certificate, maker) for certificate, maker in rows],
+            meta={"next_cursor": next_cursor, "limit": limit, "date_basis": date_basis},
+        )
+
+    @app.get("/api/v1/certificates/{certificate_id}")
+    def certificate_detail(certificate_id: int, session: DbSession):
+        certificate = DocumentService.get_certificate(session, certificate_id)
+        manufacturer = session.get(Manufacturer, certificate.manufacturer_id) if certificate.manufacturer_id else None
+        heats = session.scalars(select(Heat).where(Heat.certificate_id == certificate.id).order_by(Heat.id)).all()
+        products = session.scalars(select(Product).where(Product.certificate_id == certificate.id).order_by(Product.id)).all()
+        observations = session.scalars(
+            select(Observation).where(Observation.certificate_id == certificate.id).order_by(Observation.id)
+        ).all()
+        heat_ids = [heat.id for heat in heats]
+        product_ids = [product.id for product in products]
+        heat_filter = ChemicalComposition.heat_id.in_(heat_ids) if heat_ids else false()
+        product_filter = ChemicalComposition.product_id.in_(product_ids) if product_ids else false()
+        chemistry = session.scalars(
+            select(ChemicalComposition).where(heat_filter | product_filter).order_by(ChemicalComposition.id)
+        ).all()
+        data = serialize_certificate(certificate, manufacturer)
+        data.update({
+            "heats": [{"id": h.id, "heat_no": h.heat_no, "standard": h.standard, "grade": h.grade} for h in heats],
+            "products": [{
+                "id": p.id, "heat_id": p.heat_id, "product_identifier": p.product_identifier,
+                "label_no": p.label_no, "product_type": p.product_type, "form": p.form,
+                "coiled": p.coiled, "rolling": p.rolling,
+                "width_mm": str(p.width_mm) if p.width_mm is not None else None,
+                "thickness_mm": str(p.thickness_mm) if p.thickness_mm is not None else None,
+                "weight_kg": str(p.weight_kg) if p.weight_kg is not None else None,
+            } for p in products],
+            "observations": [{
+                "id": o.id, "heat_id": o.heat_id, "product_id": o.product_id,
+                "field_path": o.field_path, "raw_value": o.raw_value_json,
+                "normalized_value": o.normalized_value_json, "unit": o.unit,
+                "confidence": o.confidence, "page_number": o.page_number,
+                "bbox": o.bbox_json, "source_text": o.source_text,
+                "inherited": o.inherited, "supersedes_id": o.supersedes_id,
+                "is_current": o.is_current,
+            } for o in observations],
+            "chemical_compositions": [{
+                "id": c.id, "heat_id": c.heat_id, "product_id": c.product_id,
+                "element": c.element, "raw_value": c.raw_value_json,
+                "percentage": str(c.percentage) if c.percentage is not None else None,
+                "inherited": c.inherited, "source_label": c.source_label,
+            } for c in chemistry],
+        })
+        return ok(data)
+
+    @app.get("/api/v1/heats")
+    def list_heats(
+        session: DbSession,
+        limit: int = Query(50, ge=1, le=200),
+        cursor: str | None = None,
+        heat_no: str | None = None,
+        certificate_no: str | None = None,
+        manufacturer: str | None = None,
+        date_from: date | None = None,
+        date_to: date | None = None,
+        date_basis: Literal["certificate", "uploaded"] = "certificate",
+    ):
+        uploaded_date = cast(MillCertificate.uploaded_at, Date)
+        sort_date = uploaded_date if date_basis == "uploaded" else func.coalesce(MillCertificate.certificate_date, uploaded_date)
+        query = (
+            select(Heat, MillCertificate, Manufacturer)
+            .join(MillCertificate, MillCertificate.id == Heat.certificate_id)
+            .outerjoin(Manufacturer, Manufacturer.id == MillCertificate.manufacturer_id)
+        )
+        if heat_no:
+            query = query.where(Heat.heat_no.ilike(f"%{heat_no}%"))
+        if certificate_no:
+            query = query.where(MillCertificate.certificate_no.ilike(f"%{certificate_no}%"))
+        if manufacturer:
+            query = query.where(Manufacturer.name.ilike(f"%{manufacturer}%"))
+        if date_from:
+            query = query.where(sort_date >= date_from)
+        if date_to:
+            query = query.where(sort_date <= date_to)
+        if cursor:
+            cursor_date, cursor_id = decode_cursor(cursor)
+            query = query.where(tuple_(sort_date, Heat.id) < (cursor_date, cursor_id))
+        rows = list(session.execute(query.order_by(sort_date.desc(), Heat.id.desc()).limit(limit + 1)).all())
+        has_more = len(rows) > limit
+        rows = rows[:limit]
+        next_cursor = None
+        if has_more and rows:
+            heat, certificate, _ = rows[-1]
+            cursor_date = certificate.uploaded_at.date() if date_basis == "uploaded" else certificate.certificate_date or certificate.uploaded_at.date()
+            next_cursor = encode_cursor(cursor_date, heat.id)
+        return ok([{
+            "id": heat.id, "certificate_id": certificate.id, "certificate_no": certificate.certificate_no,
+            "certificate_date": certificate.certificate_date.isoformat() if certificate.certificate_date else None,
+            "manufacturer": maker.name if maker else None, "heat_no": heat.heat_no,
+            "standard": heat.standard, "grade": heat.grade, "properties": heat.properties_json,
+        } for heat, certificate, maker in rows], meta={"next_cursor": next_cursor, "limit": limit, "date_basis": date_basis})
+
+    @app.get("/api/v1/products")
+    def list_products(
+        session: DbSession,
+        limit: int = Query(50, ge=1, le=200),
+        cursor: str | None = None,
+        product_identifier: str | None = None,
+        heat_no: str | None = None,
+        certificate_no: str | None = None,
+        fraction: str | None = None,
+        nico: str | None = None,
+        date_from: date | None = None,
+        date_to: date | None = None,
+        date_basis: Literal["certificate", "uploaded"] = "certificate",
+    ):
+        uploaded_date = cast(MillCertificate.uploaded_at, Date)
+        sort_date = uploaded_date if date_basis == "uploaded" else func.coalesce(MillCertificate.certificate_date, uploaded_date)
+        query = (
+            select(Product, Heat, MillCertificate)
+            .join(MillCertificate, MillCertificate.id == Product.certificate_id)
+            .outerjoin(Heat, Heat.id == Product.heat_id)
+        )
+        if fraction or nico:
+            classification_filters = [
+                ClassificationResult.product_id == Product.id,
+                ClassificationRun.id == ClassificationResult.classification_run_id,
+                ClassificationRun.approval_status == ApprovalStatus.APPROVED.value,
+            ]
+            if fraction:
+                classification_filters.append(ClassificationResult.fraction == fraction)
+            if nico:
+                classification_filters.append(ClassificationResult.nico == nico)
+            query = query.where(
+                exists(select(1).select_from(ClassificationResult, ClassificationRun).where(and_(*classification_filters)))
+            )
+        if product_identifier:
+            query = query.where(Product.product_identifier.ilike(f"%{product_identifier}%"))
+        if heat_no:
+            query = query.where(Heat.heat_no.ilike(f"%{heat_no}%"))
+        if certificate_no:
+            query = query.where(MillCertificate.certificate_no.ilike(f"%{certificate_no}%"))
+        if date_from:
+            query = query.where(sort_date >= date_from)
+        if date_to:
+            query = query.where(sort_date <= date_to)
+        if cursor:
+            cursor_date, cursor_id = decode_cursor(cursor)
+            query = query.where(tuple_(sort_date, Product.id) < (cursor_date, cursor_id))
+        rows = list(session.execute(query.order_by(sort_date.desc(), Product.id.desc()).limit(limit + 1)).all())
+        has_more = len(rows) > limit
+        rows = rows[:limit]
+        next_cursor = None
+        if has_more and rows:
+            product, _, certificate = rows[-1]
+            cursor_date = certificate.uploaded_at.date() if date_basis == "uploaded" else certificate.certificate_date or certificate.uploaded_at.date()
+            next_cursor = encode_cursor(cursor_date, product.id)
+        return ok([{
+            "id": product.id, "certificate_id": certificate.id, "certificate_no": certificate.certificate_no,
+            "heat_id": product.heat_id, "heat_no": heat.heat_no if heat else None,
+            "product_identifier": product.product_identifier, "label_no": product.label_no,
+            "product_type": product.product_type, "form": product.form, "coiled": product.coiled,
+            "rolling": product.rolling, "width_mm": str(product.width_mm) if product.width_mm is not None else None,
+            "thickness_mm": str(product.thickness_mm) if product.thickness_mm is not None else None,
+            "weight_kg": str(product.weight_kg) if product.weight_kg is not None else None,
+        } for product, heat, certificate in rows], meta={"next_cursor": next_cursor, "limit": limit, "date_basis": date_basis})
+
+    @app.get("/api/v1/documents/{document_id}/file")
+    def download_document(document_id: int, request: Request, session: DbSession):
+        document = session.get(Document, document_id)
+        if document is None:
+            raise NotFoundError("Documento", document_id)
+        stored = session.get(StoredFile, document.stored_file_id)
+        if stored is None:
+            raise NotFoundError("Archivo", document.stored_file_id)
+        path = request.app.state.storage.resolve(stored.relative_path)
+        return FileResponse(path, media_type=stored.media_type, filename=stored.original_name)
+
+    @app.post("/api/v1/documents/{document_id}/archive")
+    def archive_document(document_id: int, payload: ArchiveRequest, session: DbSession):
+        document = session.get(Document, document_id)
+        if document is None:
+            raise NotFoundError("Documento", document_id)
+        metadata = dict(document.metadata_json or {})
+        events = list(metadata.get("archive_events") or [])
+        events.append({
+            "archived": payload.archived,
+            "person_name": payload.person_name,
+            "reason": payload.reason,
+            "workstation_name": settings.workstation_name,
+            "occurred_at": datetime.now(timezone.utc).isoformat(),
+        })
+        metadata["archive_events"] = events
+        document.metadata_json = metadata
+        document.archived = payload.archived
+        return ok({"document_id": document.id, "archived": document.archived})
+
+    @app.get("/api/v1/jobs/{job_id}")
+    def job_detail(job_id: int, session: DbSession):
+        job = session.get(Job, job_id)
+        if job is None:
+            raise NotFoundError("Trabajo", job_id)
+        return ok({
+            "id": job.id, "document_id": job.document_id, "kind": job.kind,
+            "status": job.status, "progress": job.progress, "attempts": job.attempts,
+            "max_attempts": job.max_attempts, "error_code": job.error_code,
+            "error_message": job.error_message, "result": job.result_json,
+        })
+
+    @app.post("/api/v1/jobs/{job_id}/cancel")
+    def cancel_job(job_id: int, payload: ActorReason, session: DbSession):
+        job = session.get(Job, job_id)
+        if job is None:
+            raise NotFoundError("Trabajo", job_id)
+        if job.status != "queued":
+            raise ApplicationError(
+                "job_not_cancellable",
+                "Sólo se puede cancelar un trabajo que todavía está en cola",
+                status_code=409,
+            )
+        job.status = "cancelled"
+        job.finished_at = datetime.now(timezone.utc)
+        job.result_json = {
+            "cancelled_by": payload.person_name,
+            "reason": payload.reason,
+            "workstation_name": settings.workstation_name,
+        }
+        export_id = job.payload_json.get("export_id")
+        export = session.get(Export, export_id) if export_id else None
+        if export is not None:
+            export.status = "failed"
+            export.error_message = "Cancelada por la persona solicitante"
+        return ok({"job_id": job.id, "status": job.status})
+
+    @app.post("/api/v1/exports", status_code=status.HTTP_202_ACCEPTED)
+    def request_export(payload: ExportRequest, session: DbSession):
+        certificate_ids = list(dict.fromkeys(payload.certificate_ids))
+        heat_ids = list(dict.fromkeys(payload.heat_ids))
+        run_ids = list(dict.fromkeys(payload.classification_run_ids))
+        existing_count = session.scalar(
+            select(func.count(MillCertificate.id)).where(MillCertificate.id.in_(certificate_ids))
+        ) if certificate_ids else 0
+        if existing_count != len(certificate_ids):
+            raise ApplicationError("invalid_export_scope", "Una o más actas seleccionadas no existen")
+        selected_heats = session.scalars(select(Heat).where(Heat.id.in_(heat_ids))).all() if heat_ids else []
+        if len(selected_heats) != len(heat_ids):
+            raise ApplicationError("invalid_export_scope", "Una o más coladas seleccionadas no existen")
+        certificate_ids = list(dict.fromkeys(certificate_ids + [heat.certificate_id for heat in selected_heats]))
+        selected_runs = session.scalars(
+            select(ClassificationRun).where(ClassificationRun.id.in_(run_ids))
+        ).all() if run_ids else []
+        if len(selected_runs) != len(run_ids):
+            raise ApplicationError("invalid_export_scope", "Una o más ejecuciones seleccionadas no existen")
+        certificate_ids = list(dict.fromkeys(
+            certificate_ids + [run.certificate_id for run in selected_runs]
+        ))
+        export = Export(
+            format="xlsx",
+            status="queued",
+            scope_json={
+                "certificate_ids": certificate_ids,
+                "heat_ids": heat_ids,
+                "classification_run_ids": run_ids,
+                "official": payload.official,
+            },
+            filters_json={},
+            person_name=payload.person_name,
+            workstation_name=settings.workstation_name,
+        )
+        session.add(export)
+        session.flush()
+        job = Job(
+            kind="export_xlsx",
+            status="queued",
+            payload_json={"export_id": export.id},
+        )
+        session.add(job)
+        session.flush()
+        return ok({"export_id": export.id, "job_id": job.id}, status_code=202)
+
+    @app.get("/api/v1/exports/{export_id}/file")
+    def download_export(export_id: int, request: Request, session: DbSession):
+        export = session.get(Export, export_id)
+        if export is None:
+            raise NotFoundError("Exportación", export_id)
+        if export.status != "succeeded" or export.stored_file_id is None:
+            raise ApplicationError("export_not_ready", "La exportación todavía no está disponible", status_code=409)
+        stored = session.get(StoredFile, export.stored_file_id)
+        if stored is None:
+            raise NotFoundError("Archivo", export.stored_file_id)
+        path = request.app.state.storage.resolve(stored.relative_path)
+        return FileResponse(path, media_type=stored.media_type, filename=stored.original_name)
+
+    @app.post("/api/v1/observations/{observation_id}/corrections")
+    def correct_observation(observation_id: int, payload: CorrectionRequest, session: DbSession):
+        observation = ReviewService(settings).correct_observation(
+            session,
+            observation_id=observation_id,
+            normalized_value=payload.normalized_value,
+            raw_value=payload.raw_value,
+            unit=payload.unit,
+            person_name=payload.person_name,
+            reason=payload.reason,
+        )
+        return ok({"observation_id": observation.id, "supersedes_id": observation.supersedes_id})
+
+    @app.post("/api/v1/certificates/{certificate_id}/observations")
+    def add_manual_observation(
+        certificate_id: int,
+        payload: ManualObservationRequest,
+        session: DbSession,
+    ):
+        observation = ReviewService(settings).add_manual_observation(
+            session,
+            certificate_id=certificate_id,
+            product_id=payload.product_id,
+            heat_id=payload.heat_id,
+            field_path=payload.field_path,
+            normalized_value=payload.normalized_value,
+            raw_value=payload.raw_value,
+            unit=payload.unit,
+            person_name=payload.person_name,
+            reason=payload.reason,
+        )
+        return ok({"observation_id": observation.id, "field_path": observation.field_path})
+
+    def transition(run_id: int, target: ApprovalStatus, payload: ActorReason, session: Session):
+        run = ReviewService(settings).transition_classification(
+            session,
+            run_id=run_id,
+            target=target,
+            person_name=payload.person_name,
+            reason=payload.reason,
+        )
+        return ok({"classification_run_id": run.id, "approval_status": run.approval_status})
+
+    @app.post("/api/v1/classification-runs/{run_id}/approve")
+    def approve(run_id: int, payload: ActorReason, session: DbSession):
+        return transition(run_id, ApprovalStatus.APPROVED, payload, session)
+
+    @app.post("/api/v1/classification-runs/{run_id}/reject")
+    def reject(run_id: int, payload: ActorReason, session: DbSession):
+        return transition(run_id, ApprovalStatus.REJECTED, payload, session)
+
+    @app.post("/api/v1/certificates/{certificate_id}/reclassify", status_code=status.HTTP_202_ACCEPTED)
+    def reclassify_certificate(
+        certificate_id: int,
+        payload: ReclassificationRequest,
+        session: DbSession,
+    ):
+        certificate = session.get(MillCertificate, certificate_id)
+        if certificate is None:
+            raise NotFoundError("Acta", certificate_id)
+        job = Job(
+            document_id=certificate.document_id,
+            kind="reclassify",
+            status="queued",
+            payload_json={
+                "certificate_id": certificate_id,
+                "person_name": payload.person_name,
+                "reason": payload.reason,
+                "rule_set_id": payload.rule_set_id,
+            },
+        )
+        session.add(job)
+        session.flush()
+        return ok({"certificate_id": certificate_id, "job_id": job.id}, status_code=202)
+
+    @app.get("/api/v1/certificates/{certificate_id}/classification-runs")
+    def list_classification_runs(certificate_id: int, session: DbSession):
+        if session.get(MillCertificate, certificate_id) is None:
+            raise NotFoundError("Acta", certificate_id)
+        runs = session.scalars(
+            select(ClassificationRun)
+            .where(ClassificationRun.certificate_id == certificate_id)
+            .order_by(ClassificationRun.id.desc())
+        ).all()
+        return ok([{
+            "id": run.id,
+            "rule_set_id": run.rule_set_id,
+            "parent_run_id": run.parent_run_id,
+            "approval_status": run.approval_status,
+            "demo_notice": run.demo_notice,
+            "created_at": run.created_at.isoformat(),
+        } for run in runs])
+
+    @app.get("/api/v1/classification-runs/{run_id}")
+    def classification_run_detail(run_id: int, session: DbSession):
+        run = session.get(ClassificationRun, run_id)
+        if run is None:
+            raise NotFoundError("Ejecución de clasificación", run_id)
+        results = session.scalars(
+            select(ClassificationResult)
+            .where(ClassificationResult.classification_run_id == run.id)
+            .order_by(ClassificationResult.id)
+        ).all()
+        result_ids = [result.id for result in results]
+        steps = session.scalars(
+            select(DecisionStep)
+            .where(DecisionStep.classification_result_id.in_(result_ids))
+            .order_by(DecisionStep.classification_result_id, DecisionStep.sequence)
+        ).all() if result_ids else []
+        steps_by_result: dict[int, list[dict[str, Any]]] = {}
+        for step in steps:
+            steps_by_result.setdefault(step.classification_result_id, []).append({
+                "sequence": step.sequence,
+                "rule_code": step.rule_code,
+                "outcome": step.outcome,
+                "inputs": step.input_json,
+                "evidence": step.evidence_json,
+                "explanation": step.explanation,
+            })
+        return ok({
+            "id": run.id,
+            "certificate_id": run.certificate_id,
+            "rule_set_id": run.rule_set_id,
+            "parent_run_id": run.parent_run_id,
+            "approval_status": run.approval_status,
+            "input_snapshot": run.input_snapshot_json,
+            "demo_notice": run.demo_notice,
+            "results": [{
+                "id": result.id,
+                "product_id": result.product_id,
+                "product_type": result.product_type,
+                "fraction": result.fraction,
+                "nico": result.nico,
+                "description": result.description,
+                "outcome": result.outcome,
+                "details": result.details_json,
+                "steps": steps_by_result.get(result.id, []),
+            } for result in results],
+        })
+
+    return app
+

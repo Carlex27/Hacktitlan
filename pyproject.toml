@@ -1,0 +1,35 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "hacktitlan-backend"
+version = "0.1.0"
+description = "Backend local para extracción y clasificación de actas de molino"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "alembic==1.20.0",
+    "fastapi==0.142.4",
+    "openpyxl==3.1.5",
+    "psycopg[binary,pool]==3.3.6",
+    "pydantic-settings==2.15.0",
+    "pdfplumber==0.11.10",
+    "python-multipart==0.0.32",
+    "sqlalchemy==2.1.4",
+    "uvicorn[standard]==0.54.0",
+]
+
+[dependency-groups]
+dev = [
+    "httpx==0.28.1",
+    "pytest==9.1.1",
+    "pytest-cov==7.1.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["backend"]
+
+[tool.pytest.ini_options]
+testpaths = ["backend/tests"]
+addopts = "-ra"
+

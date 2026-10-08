@@ -30,6 +30,17 @@ PDF -> extracción/OCR -> normalización -> validación -> motor de reglas
 | Empaquetado Python | PyInstaller | Sidecar autocontenido para Windows |
 | Instalador | Tauri Bundler (MSI/NSIS) | Una sola instalación |
 
+La aplicación base tiene como objetivo equipos Windows con 8 GB de RAM y CPU,
+sin requerir GPU. OCR e IA local se distribuyen como paquetes opcionales que el
+instalador o la propia aplicación pueden descargar después de comprobar memoria,
+procesador, GPU y espacio disponible. Los requisitos completos están en
+[`LOCAL_MODELS_REQUIREMENTS.md`](LOCAL_MODELS_REQUIREMENTS.md).
+
+Cuando exista una GPU dedicada compatible, OCR e inferencia deben preferirla y
+descargar el runtime de aceleración correspondiente. La selección se valida con
+una prueba local, conserva margen de VRAM para el sistema y siempre mantiene una
+ruta de recuperación por CPU.
+
 ## 3. PostgreSQL central mediante Tailscale
 
 PostgreSQL es la base de datos oficial del proyecto. Para la demostración y el
@@ -69,6 +80,12 @@ Equipo secundario
 SQLite deja de formar parte de la arquitectura objetivo. El dominio y los casos
 de uso deben continuar separados del adaptador PostgreSQL para conservar pruebas
 aisladas y evitar reglas de negocio dentro de consultas o modelos de persistencia.
+
+Los PDF se guardan en almacenamiento central administrado por el backend; la
+base conserva metadatos y hashes. El segundo equipo consume archivos y datos por
+la API. Si el servicio principal no está disponible, queda bloqueado y no intenta
+sincronización offline. Las decisiones completas están en
+[`PRODUCT_DECISIONS.md`](PRODUCT_DECISIONS.md).
 
 ## 4. Componentes
 
@@ -165,8 +182,21 @@ documentos generados.
 - `classification_results`: tipo de producto, fracción, NICO y descripción por
   producto para cada ejecución.
 - `decision_steps`: explicación de cada evaluación.
-- `manual_overrides`: cambio, motivo, usuario y sello de tiempo.
+- `manual_overrides`: cambio, motivo, persona, equipo y sello de tiempo.
 - `exports`: formato, ubicación, hash, fecha y ejecución usada por el reporte.
+- `stored_files`: nombre controlado, tipo, tamaño, hash, ubicación y estado del
+  archivo administrado por el backend.
+- `approval_events`: cambio de estado de una clasificación, fecha, equipo y
+  nombre de persona y motivo obligatorios mientras no exista autenticación;
+  el equipo se registra automáticamente.
+- `backup_runs`: alcance, destino, estado, manifiesto, hash y fechas de cada
+  respaldo o restauración.
+
+Las relaciones de acta, colada, producto, clasificación y archivo deben usar
+claves foráneas con índices explícitos. Los listados históricos deben usar
+paginación por cursor estable, no descargar todo el historial ni depender de
+`OFFSET` para páginas profundas. El backend utilizará un pool de conexiones y un
+rol PostgreSQL sin privilegios de superusuario.
 
 ## 6. Consultas históricas obligatorias
 
@@ -259,6 +289,10 @@ Hacktitlan/
 - `conflict`: los datos se contradicen.
 - `out_of_scope`: no pertenece al capítulo 72.
 - `extraction_failed`: no se pudo leer el documento con confiabilidad.
+
+Los resultados de clasificación agregan el flujo de aprobación `draft`,
+`needs_review`, `approved` y `rejected`. Estos estados son independientes del
+estado técnico de extracción.
 
 La opción de revisión humana debe mostrar la evidencia y el punto exacto del
 árbol donde se detuvo, no una caja para elegir arbitrariamente un código.

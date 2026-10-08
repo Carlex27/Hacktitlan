@@ -52,6 +52,28 @@ un libro profesional, autocontenido y relacionado internamente; los detalles se
 encuentran en
 [`docs/EXCEL_EXPORT_REQUIREMENTS.md`](docs/EXCEL_EXPORT_REQUIREMENTS.md).
 
+La aplicación base tiene como objetivo equipos con 8 GB de RAM y sin GPU
+dedicada. Los paquetes de OCR e IA local serán descargas opcionales ofrecidas
+durante la instalación o posteriormente, siempre después de comprobar la
+compatibilidad del equipo. La especificación está en
+[`docs/LOCAL_MODELS_REQUIREMENTS.md`](docs/LOCAL_MODELS_REQUIREMENTS.md).
+Cuando exista una GPU dedicada compatible, OCR e inferencia la utilizarán de
+forma preferente, con selección automática del backend y respaldo por CPU.
+
+Las decisiones operativas iniciales —sin usuarios, aprobación manual, archivos
+centralizados, bloqueo sin servidor, volumen estimado, respaldos diarios,
+reportes genéricos, fuente de reglas y Windows 11 x64— están consolidadas en
+[`docs/PRODUCT_DECISIONS.md`](docs/PRODUCT_DECISIONS.md).
+
+El plan ejecutable del backend y PostgreSQL está en
+[`docs/BACKEND_DEVELOPMENT_PLAN.md`](docs/BACKEND_DEVELOPMENT_PLAN.md).
+La instalación del servidor, migraciones, ejecución y respaldo se describen en
+[`docs/BACKEND_RUNBOOK.md`](docs/BACKEND_RUNBOOK.md).
+El avance verificable y lo pendiente por diseño están en
+[`docs/BACKEND_IMPLEMENTATION_STATUS.md`](docs/BACKEND_IMPLEMENTATION_STATUS.md).
+Las reglas, límites y comportamiento conservador del segundo hito están en
+[`docs/CLASSIFICATION_ENGINE_RULES.md`](docs/CLASSIFICATION_ENGINE_RULES.md).
+
 ## Regenerar la extracción
 
 ```powershell

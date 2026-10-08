@@ -89,7 +89,7 @@ toda la colada.
 El backend genera el libro; el frontend solicita la exportación, muestra su
 progreso y permite elegir la ubicación final. Cada exportación debe registrar:
 
-- usuario solicitante;
+- persona solicitante y equipo registrado automáticamente;
 - fecha y zona horaria;
 - filtros y alcance;
 - identificadores de las ejecuciones incluidas;
