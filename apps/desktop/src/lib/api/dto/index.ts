@@ -5,9 +5,12 @@
 export type { ActorReasonDto, JsonObject, JsonValue } from "./common";
 export type {
   ApprovalStatusDto,
+  CandidateFactorDto,
+  CandidateFactorOutcomeDto,
   CandidateSelectionDto,
   CandidateSelectionRequestDto,
   CandidateSupportLevelDto,
+  ClassificationCandidateDetailDto,
   ClassificationCandidateDto,
   ClassificationOutcomeDto,
   ClassificationResultDto,
@@ -38,5 +41,26 @@ export type {
   GpuDeviceDto,
   HardwareCompatibilityDto,
   HardwareProfileDto,
+  OcrModelPackageStateDto,
+  OcrModelPackageStatusDto,
+  OcrSmokeCheckDto,
   OcrStatusDto,
 } from "./ocr";
+export type {
+  ExportCreatedDto,
+  ExportRequestDto,
+  ExportStateDto,
+  ExportStatusDto,
+} from "./exports";
+export type {
+  DocumentQualityReportDto,
+  DocumentReviewIssueSummaryDto,
+  DocumentReviewQueueItemDto,
+  ProductFamilyDto,
+  QualityCategoryDto,
+  QualityIssueDto,
+  QualitySeverityDto,
+  ReprocessRequestDto,
+  ReprocessResultDto,
+  ReprocessStageDto,
+} from "./quality";

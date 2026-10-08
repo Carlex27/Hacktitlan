@@ -35,6 +35,17 @@ const ocrStatus: OcrStatusDto = {
     reasons: ["Sin GPU dedicada"],
   },
   message: "El paquete OCR no está instalado",
+  models: {
+    name: "PP-StructureV3",
+    version: "3.0",
+    status: "not_installed",
+    installed_files: 0,
+    total_files: 4,
+    installed_bytes: 0,
+    total_bytes: 52428800,
+    backend: "paddle",
+    message: "Modelos no instalados",
+  },
 };
 
 const run: ClassificationRunDto = {
@@ -64,8 +75,11 @@ const run: ClassificationRunDto = {
           description: null,
           support_level: "conditional",
           details: {},
+          detail_url: "/api/v1/classification-candidates/51",
+          factors: [],
         },
       ],
+      current_selection: null,
       selections: [],
       steps: [
         {
@@ -95,6 +109,7 @@ const run: ClassificationRunDto = {
 const evidence: EvidenceDetailDto = {
   id: 90,
   decision_step_id: 70,
+  candidate_factor_id: null,
   source_type: "observation",
   field_path: "products[0].thickness_mm",
   observation: {

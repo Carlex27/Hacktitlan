@@ -1,6 +1,7 @@
 export { getCertificate } from "./certificates";
 export {
   approveClassificationRun,
+  getClassificationCandidate,
   getClassificationRun,
   listClassificationRuns,
   rejectClassificationRun,
@@ -9,4 +10,11 @@ export {
 export { getJob, uploadDocument } from "./documents";
 export { getEvidence } from "./evidence";
 export { getHealthLive, getHealthReady } from "./health";
-export { getOcrStatus } from "./ocr";
+export { createExport, getExport } from "./exports";
+export { getOcrModels, getOcrStatus, runOcrSmokeCheck } from "./ocr";
+export {
+  getCertificateQualityReport,
+  listDocumentReviews,
+  reprocessCertificate,
+} from "./quality";
+export type { DocumentReviewQuery } from "./quality";

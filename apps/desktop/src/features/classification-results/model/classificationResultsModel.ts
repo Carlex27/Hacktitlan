@@ -1,18 +1,9 @@
 import type {
   ClassificationOutcomeDto,
   ClassificationResultDto,
-  ClassificationSelectionDto,
   DecisionStepOutcomeDto,
 } from "@/lib/api";
 import type { ProcessingStatus } from "@/types";
-
-/** Devuelve la última selección registrada (la vigente). */
-export function getCurrentSelection(
-  selections: readonly ClassificationSelectionDto[],
-): ClassificationSelectionDto | null {
-  if (!selections || selections.length === 0) return null;
-  return selections[selections.length - 1] ?? null;
-}
 
 /** Formatea fracción y NICO legal sin inventar ceros ni cadenas vacías. */
 export function formatTariffCode(fraction: string | null, nico: string | null): string {

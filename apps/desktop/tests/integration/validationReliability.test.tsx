@@ -66,6 +66,7 @@ describe("Validación: todos los productos de la ejecución", () => {
   it("permite revisar cada producto y muestra el historial de todos", async () => {
     const base = createFakeClassificationRun();
     const first = base.results[0] as ClassificationResultDto;
+    const secondSelection = { id: 402, candidate_id: 311, supersedes_selection_id: null, person_name: "Luis Gómez", reason: "Revisión de bobina", workstation_name: "Estación 2", created_at: "2024-05-17T09:00:00Z" };
     const second: ClassificationResultDto = {
       ...first,
       id: 202,
@@ -75,11 +76,10 @@ describe("Validación: todos los productos de la ejecución", () => {
       nico: null,
       outcome: "needs_review",
       candidates: [
-        { id: 311, rank: 1, fraction: "7209.16", nico: "99", description: "Segundo producto", support_level: "conditional", details: {} },
+        { id: 311, rank: 1, fraction: "7209.16", nico: "99", description: "Segundo producto", support_level: "conditional", details: {}, detail_url: "/api/v1/classification-candidates/311", factors: [] },
       ],
-      selections: [
-        { id: 402, candidate_id: 311, supersedes_selection_id: null, person_name: "Luis Gómez", reason: "Revisión de bobina", workstation_name: "Estación 2", created_at: "2024-05-17T09:00:00Z" },
-      ],
+      current_selection: secondSelection,
+      selections: [secondSelection],
     };
     const backend = backendWith({}, { ...base, results: [first, second] });
 
@@ -210,5 +210,26 @@ describe("Validación: evidencia", () => {
     releaseFirst?.();
     await waitFor(() => expect(screen.getByText("dimensions.width_mm")).toBeInTheDocument());
     expect(screen.queryByText(/#601/)).not.toBeInTheDocument();
+  });
+});
+
+describe("Validación: selección vigente", () => {
+  it("marca el candidato de `current_selection` del backend, no el último del historial", async () => {
+    const run = createFakeClassificationRun();
+    const result = run.results[0] as ClassificationResultDto;
+    const vigente = { id: 405, candidate_id: 302, supersedes_selection_id: null, person_name: "Ana", reason: "Vigente", workstation_name: "E1", created_at: "2024-05-18T09:00:00Z" };
+    const backend = backendWith({}, {
+      ...run,
+      results: [{ ...result, current_selection: vigente, selections: [vigente, ...result.selections] }],
+    });
+
+    const user = await openValidation(backend);
+    await openTab(user, "Validación");
+
+    const candidates = await screen.findByRole("radiogroup", { name: "Candidatos disponibles" });
+    const radios = within(candidates).getAllByRole("radio");
+    expect(radios).toHaveLength(2);
+    expect(radios[1]).toBeChecked();
+    expect(radios[0]).not.toBeChecked();
   });
 });

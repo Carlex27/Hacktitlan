@@ -204,6 +204,8 @@ export function createFakeClassificationRun(
             description: "De espesor superior a 10 mm",
             support_level: "fully_supported",
             details: {},
+            detail_url: "/api/v1/classification-candidates/301",
+            factors: [],
           },
           {
             id: 302,
@@ -213,8 +215,19 @@ export function createFakeClassificationRun(
             description: "De espesor superior o igual a 4.75 mm pero inferior o igual a 10 mm",
             support_level: "conditional",
             details: {},
+            detail_url: "/api/v1/classification-candidates/302",
+            factors: [],
           },
         ],
+        current_selection: {
+          id: 401,
+          candidate_id: 301,
+          supersedes_selection_id: null,
+          person_name: "María Pérez",
+          reason: "Verificación de espesor 12.7mm acorde a partida 7208.51",
+          workstation_name: "Estación 1",
+          created_at: "2024-05-16T11:00:00Z",
+        },
         selections: [
           {
             id: 401,
@@ -259,6 +272,7 @@ export function createFakeEvidence(
   return {
     id: 601,
     decision_step_id: 501,
+    candidate_factor_id: null,
     source_type: "observation",
     field_path: "dimensions.thickness_mm",
     observation: {

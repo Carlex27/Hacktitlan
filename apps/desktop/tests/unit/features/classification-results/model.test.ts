@@ -2,47 +2,15 @@ import { describe, expect, it } from "vitest";
 
 import type {
   ClassificationResultDto,
-  ClassificationSelectionDto,
 } from "@/lib/api";
 import {
   extractReviewIndicators,
   findActiveResult,
   formatTariffCode,
-  getCurrentSelection,
   outcomeToProcessingStatus,
 } from "@/features/classification-results/model";
 
 describe("classificationResultsModel", () => {
-  describe("getCurrentSelection", () => {
-    it("devuelve null cuando no hay selecciones", () => {
-      expect(getCurrentSelection([])).toBeNull();
-    });
-
-    it("devuelve la última selección registrada (la vigente)", () => {
-      const selections: ClassificationSelectionDto[] = [
-        {
-          id: 1,
-          candidate_id: 10,
-          supersedes_selection_id: null,
-          person_name: "Juan",
-          reason: "Primera opción",
-          workstation_name: "W1",
-          created_at: "2024-01-01T00:00:00Z",
-        },
-        {
-          id: 2,
-          candidate_id: 20,
-          supersedes_selection_id: 1,
-          person_name: "Ana",
-          reason: "Corrección técnica",
-          workstation_name: "W2",
-          created_at: "2024-01-02T00:00:00Z",
-        },
-      ];
-
-      expect(getCurrentSelection(selections)).toEqual(selections[1]);
-    });
-  });
 
   describe("formatTariffCode", () => {
     it("devuelve 'Sin determinar' cuando la fracción es null o vacía", () => {
@@ -86,6 +54,7 @@ describe("classificationResultsModel", () => {
         outcome: "needs_review",
         details: {},
         candidates: [],
+        current_selection: null,
         selections: [],
         steps: [
           {

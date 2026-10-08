@@ -3,7 +3,9 @@ import type { JsonObject, JsonValue } from "./common";
 /** Evidencia que proviene de la fuente de reglas (LIGIE), no del PDF. */
 export interface RuleSourceEvidenceDto {
   id: number;
-  decision_step_id: number;
+  /** Paso de decisión o factor de candidato al que respalda (uno de los dos). */
+  decision_step_id: number | null;
+  candidate_factor_id: number | null;
   source_type: "rule_source";
   reference: JsonObject;
 }
@@ -11,7 +13,8 @@ export interface RuleSourceEvidenceDto {
 /** Evidencia que apunta a una observación extraída del acta. */
 export interface ObservationEvidenceDto {
   id: number;
-  decision_step_id: number;
+  decision_step_id: number | null;
+  candidate_factor_id: number | null;
   source_type: "observation";
   field_path: string | null;
   observation: {

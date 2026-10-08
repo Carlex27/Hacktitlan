@@ -3,6 +3,7 @@ import type {
   ActorReasonDto,
   CandidateSelectionDto,
   CandidateSelectionRequestDto,
+  ClassificationCandidateDetailDto,
   ClassificationRunDto,
   ClassificationRunSummaryDto,
   RunApprovalResultDto,
@@ -68,6 +69,20 @@ export async function rejectClassificationRun(
     await api.post<RunApprovalResultDto>(
       `/api/v1/classification-runs/${runId}/reject`,
       request,
+      options,
+    )
+  ).data;
+}
+
+/** Detalle de un candidato con sus factores y evidencia. */
+export async function getClassificationCandidate(
+  api: ApiClient,
+  candidateId: number,
+  options?: RequestOptions,
+) {
+  return (
+    await api.get<ClassificationCandidateDetailDto>(
+      `/api/v1/classification-candidates/${candidateId}`,
       options,
     )
   ).data;

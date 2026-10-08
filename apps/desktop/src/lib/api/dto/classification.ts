@@ -10,6 +10,14 @@ export type CandidateSupportLevelDto = "fully_supported" | "conditional";
 
 export type EvidenceSourceTypeDto = "observation" | "rule_source";
 
+export type CandidateFactorOutcomeDto =
+  | "matched"
+  | "not_matched"
+  | "missing"
+  | "ambiguous"
+  | "unknown"
+  | "conflict";
+
 /** `GET /api/v1/certificates/{id}/classification-runs` (más reciente primero). */
 export interface ClassificationRunSummaryDto {
   id: number;
@@ -20,6 +28,22 @@ export interface ClassificationRunSummaryDto {
   created_at: string;
 }
 
+/** Condición evaluada para sostener un candidato (valor esperado vs observado). */
+export interface CandidateFactorDto {
+  id: number;
+  sequence: number;
+  rule_code: string;
+  outcome: CandidateFactorOutcomeDto;
+  operator: string | null;
+  expected: JsonObject;
+  observed: JsonObject;
+  unit: string | null;
+  explanation: string;
+  /** Si es `true`, el candidato no debe elegirse mientras el factor no se cumpla. */
+  required_for_selection: boolean;
+  evidence_links: readonly EvidenceLinkDto[];
+}
+
 export interface ClassificationCandidateDto {
   id: number;
   rank: number;
@@ -28,6 +52,16 @@ export interface ClassificationCandidateDto {
   description: string | null;
   support_level: CandidateSupportLevelDto;
   details: JsonObject;
+  /** Ruta relativa al detalle del candidato; resolver con `ApiClient.url()`. */
+  detail_url: string;
+  /** Ordenados por `sequence`. */
+  factors: readonly CandidateFactorDto[];
+}
+
+/** `GET /api/v1/classification-candidates/{id}`. */
+export interface ClassificationCandidateDetailDto
+  extends Omit<ClassificationCandidateDto, "detail_url"> {
+  classification_result_id: number;
 }
 
 export interface ClassificationSelectionDto {
@@ -73,7 +107,9 @@ export interface ClassificationResultDto {
   details: JsonObject;
   /** Ordenados por `rank`. */
   candidates: readonly ClassificationCandidateDto[];
-  /** Historial inmutable; la última selección reemplaza a las anteriores. */
+  /** Selección vigente según el backend (considera reemplazos); `null` si no hay. */
+  current_selection: ClassificationSelectionDto | null;
+  /** Historial inmutable de selecciones. */
   selections: readonly ClassificationSelectionDto[];
   steps: readonly DecisionStepDto[];
 }

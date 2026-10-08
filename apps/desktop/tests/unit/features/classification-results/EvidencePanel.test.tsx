@@ -14,6 +14,7 @@ describe("EvidencePanel", () => {
     const evidence: ObservationEvidenceDto = {
       id: 99,
       decision_step_id: 10,
+      candidate_factor_id: null,
       source_type: "observation",
       field_path: "dimensions.thickness_mm",
       observation: {
@@ -56,6 +57,7 @@ describe("EvidencePanel", () => {
     const evidence: RuleSourceEvidenceDto = {
       id: 100,
       decision_step_id: 12,
+      candidate_factor_id: null,
       source_type: "rule_source",
       reference: {
         rule_code: "RULE_LIGIE_7208",

@@ -24,6 +24,32 @@ export interface HardwareProfileDto {
   reasons: readonly string[];
 }
 
+export type OcrModelPackageStateDto = "installed" | "not_installed" | "downloading" | "corrupted";
+
+/** `GET /api/v1/ocr/models` y campo `models` de `OcrStatusDto`. */
+export interface OcrModelPackageStatusDto {
+  name: string;
+  version: string;
+  status: OcrModelPackageStateDto;
+  installed_files: number;
+  total_files: number;
+  installed_bytes: number;
+  total_bytes: number;
+  backend: string;
+  message: string;
+}
+
+/** `POST /api/v1/ocr/smoke-check`. */
+export interface OcrSmokeCheckDto {
+  success: boolean;
+  requested_device: string;
+  effective_device: string | null;
+  elapsed_ms: number;
+  paddle_version: string | null;
+  paddleocr_version: string | null;
+  message: string;
+}
+
 export interface OcrStatusDto {
   enabled: boolean;
   installed: boolean;
@@ -34,4 +60,5 @@ export interface OcrStatusDto {
   paddleocr_version: string | null;
   hardware: HardwareProfileDto;
   message: string;
+  models: OcrModelPackageStatusDto | null;
 }

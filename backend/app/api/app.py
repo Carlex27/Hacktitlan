@@ -150,14 +150,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.sessions = sessions
     app.state.storage = storage
 
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-
     @app.middleware("http")
     async def correlation_id(request: Request, call_next):
         request_id = request.headers.get("X-Request-ID") or uuid4().hex
@@ -178,6 +170,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     # Registrado después del middleware de correlación para que sea el más externo
     # y también agregue encabezados CORS a respuestas de error.
+    # Lista explícita (HACKTITLAN_CORS_ORIGINS): el API no tiene autenticación, así
+    # que "*" permitiría a cualquier página web abierta en la red aprobar, rechazar
+    # o subir documentos. Para otro cliente, agregue su origen a la variable.
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,

@@ -14,11 +14,19 @@
 |---|---|---|
 | Salud | `getHealthLive`, `getHealthReady` | `GET /health/live`, `GET /health/ready` |
 | Documentos | `uploadDocument`, `getJob` | `POST /documents`, `GET /jobs/{id}` |
-| OCR | `getOcrStatus` | `GET /ocr/status` |
+| Actas | `getCertificate` | `GET /certificates/{id}` |
+| Calidad | `getCertificateQualityReport` | `GET /certificates/{id}/quality-report` |
+| | `listDocumentReviews` | `GET /document-reviews` |
+| | `reprocessCertificate` | `POST /certificates/{id}/reprocess` |
+| OCR | `getOcrStatus`, `getOcrModels` | `GET /ocr/status`, `GET /ocr/models` |
+| | `runOcrSmokeCheck` | `POST /ocr/smoke-check` |
 | Clasificación | `listClassificationRuns` | `GET /certificates/{id}/classification-runs` |
-| | `getClassificationRun` | `GET /classification-runs/{id}` (candidatos, selecciones, evidencia) |
+| | `getClassificationRun` | `GET /classification-runs/{id}` (candidatos con factores, `current_selection`, evidencia) |
+| | `getClassificationCandidate` | `GET /classification-candidates/{id}` |
 | | `selectClassificationCandidate` | `POST /classification-results/{id}/select` |
+| | `approveClassificationRun`, `rejectClassificationRun` | `POST /classification-runs/{id}/approve`, `/reject` |
 | Evidencia | `getEvidence` | `GET /evidence/{id}` |
+| Exportación | `createExport`, `getExport` | `POST /exports`, `GET /exports/{id}` |
 
 Las rutas relativas que devuelve el backend (`file_url`, `detail_url`) se
 convierten en URL absolutas con `api.url(ruta)`.

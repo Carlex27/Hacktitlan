@@ -23,15 +23,16 @@ pnpm tauri build      # instaladores NSIS/MSI en src-tauri/target/release/bundle
 
 ## Servidor
 
-La app consume el API v1 del backend central; no accede a PostgreSQL. La URL se
-configura con `VITE_API_BASE_URL` (ver `.env.example`; por defecto
-`http://127.0.0.1:8765`). Para el segundo equipo use el nombre MagicDNS de
-Tailscale, p. ej. `http://servidor.tailnet.ts.net:8765`.
+La app consume el API v1 del backend central; no accede a PostgreSQL/Supabase
+(sólo el backend tiene sus credenciales). La URL se configura con
+`VITE_API_BASE_URL` en `apps/desktop/.env` (ver `.env.example`; por defecto
+`http://127.0.0.1:8765`). El servidor de la demostración está en Tailscale:
+`http://100.74.94.9:8765` (MagicDNS: `carlonsioz.taile215a8.ts.net`).
 
 Si cambia el host, actualice también:
 
 - `connect-src` de la CSP en `src-tauri/tauri.conf.json` (permite `127.0.0.1`,
-  `localhost` y `*.ts.net` en el puerto 8765).
+  `localhost`, `100.74.94.9` y `*.ts.net` en el puerto 8765).
 - `HACKTITLAN_CORS_ORIGINS` del backend si cambia el origen del webview.
 
 Sin servidor la app queda bloqueada y muestra qué componente falla (backend

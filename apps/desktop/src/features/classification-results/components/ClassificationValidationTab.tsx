@@ -4,7 +4,7 @@ import { LoadErrorAlert } from "@/components/feedback";
 import type { ClassificationRunDto } from "@/lib/api";
 import { es } from "@/lib/i18n";
 
-import { extractReviewIndicators, findActiveResult, getCurrentSelection } from "../model";
+import { extractReviewIndicators, findActiveResult } from "../model";
 import { CandidateList } from "./CandidateList";
 import { ClassificationEngineCard } from "./ClassificationEngineCard";
 import { DecisionChecklist } from "./DecisionChecklist";
@@ -37,7 +37,8 @@ export function ClassificationValidationTab({
 
   const results = run?.results ?? [];
   const activeResult = findActiveResult(results, selectedResultId);
-  const currentSelection = getCurrentSelection(activeResult?.selections ?? []);
+  // La selección vigente la determina el backend (considera reemplazos).
+  const currentSelection = activeResult?.current_selection ?? null;
   const reviewIndicators = extractReviewIndicators(activeResult);
 
   return (
