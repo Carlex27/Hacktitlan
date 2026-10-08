@@ -17,6 +17,8 @@ class StepOutcome(StrEnum):
     NOT_MATCHED = "not_matched"
     MISSING = "missing"
     AMBIGUOUS = "ambiguous"
+    UNKNOWN = "unknown"
+    CONFLICT = "conflict"
 
 
 @dataclass(frozen=True)
@@ -37,6 +39,20 @@ class ProductFacts:
     pattern_in_relief: bool | None = None
     porcelain_exposed_parts: bool | None = None
     pipeline_steel: bool | None = None
+    high_speed_steel: bool | None = None
+    tool_steel: bool | None = None
+    grain_oriented: bool | None = None
+    magnetic_silicon: bool | None = None
+    stainless_series: str | None = None
+    rolled_four_faces: bool | None = None
+    clad: bool | None = None
+    temper: str | None = None
+    magnetic_loss_w_per_kg: Decimal | None = None
+    magnetic_induction_tesla: Decimal | None = None
+    secondary_reduction_ratio: Decimal | None = None
+    can_body_end_use: bool | None = None
+    deep_drawing_class: str | None = None
+    cladding_weight_percentage: Decimal | None = None
 
 
 @dataclass(frozen=True)
@@ -58,6 +74,29 @@ class ClassificationCandidate:
     support_level: str
     missing_fields: tuple[str, ...] = ()
     conflicts: tuple[str, ...] = ()
+    factors: tuple[CandidateFactor, ...] = ()
+
+
+@dataclass(frozen=True)
+class CandidateFactor:
+    sequence: int
+    rule_code: str
+    outcome: StepOutcome
+    explanation: str
+    operator: str | None = None
+    expected: dict[str, Any] = field(default_factory=dict)
+    observed: dict[str, Any] = field(default_factory=dict)
+    unit: str | None = None
+    evidence_fields: tuple[str, ...] = ()
+    required_for_selection: bool = True
+
+
+@dataclass(frozen=True)
+class DiscardedCandidate:
+    fraction: str
+    nico: str
+    reason_code: str
+    explanation: str
 
 
 @dataclass(frozen=True)
@@ -70,5 +109,5 @@ class ClassificationDecision:
     missing_fields: tuple[str, ...]
     candidates: tuple[str, ...]
     ranked_candidates: tuple[ClassificationCandidate, ...]
+    discarded_candidates: tuple[DiscardedCandidate, ...]
     steps: tuple[Decision, ...]
-

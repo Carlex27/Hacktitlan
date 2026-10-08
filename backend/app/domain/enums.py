@@ -28,6 +28,7 @@ class ApprovalStatus(StrEnum):
 
 class JobKind(StrEnum):
     EXTRACT_DOCUMENT = "extract_document"
+    NORMALIZE_DOCUMENT = "normalize_document"
     RECLASSIFY = "reclassify"
     EXPORT_XLSX = "export_xlsx"
     BACKUP = "backup"
@@ -52,4 +53,3 @@ class BackupStatus(StrEnum):
     SUCCEEDED = "succeeded"
     FAILED = "failed"
     VERIFIED = "verified"
-

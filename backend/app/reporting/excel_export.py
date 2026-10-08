@@ -14,9 +14,15 @@ from sqlalchemy.orm import Session
 
 from backend.app.config import Settings
 from backend.app.infrastructure.database.models import (
+    ApprovalEvent,
+    CandidateFactor,
+    ChemicalComposition,
+    ClassificationCandidate,
     ClassificationResult,
     ClassificationRun,
+    ClassificationSelection,
     Correction,
+    EvidenceLink,
     Heat,
     Manufacturer,
     MillCertificate,
@@ -24,7 +30,6 @@ from backend.app.infrastructure.database.models import (
     Product,
     RuleSet,
 )
-from backend.app.infrastructure.database.models.core import ChemicalComposition
 
 
 class ExcelExportService:
@@ -50,11 +55,20 @@ class ExcelExportService:
             raise ValueError("Debe seleccionar al menos un acta")
         certificate_ids = list(dict.fromkeys(certificate_ids))
         requested_heat_ids = list(dict.fromkeys(heat_ids or []))
+
         certificates = session.scalars(
             select(MillCertificate).where(MillCertificate.id.in_(certificate_ids)).order_by(MillCertificate.id)
         ).all()
         if len(certificates) != len(set(certificate_ids)):
             raise ValueError("Una o más actas no existen")
+
+        if official:
+            unapproved_certs = [c.id for c in certificates if c.approval_status != "approved"]
+            if unapproved_certs:
+                raise ValueError(
+                    f"Un reporte oficial sólo admite actas aprobadas (actas pendientes: {unapproved_certs})"
+                )
+
         restrict_heats = bool(requested_heat_ids)
         heats_query = select(Heat).where(Heat.certificate_id.in_(certificate_ids))
         if restrict_heats:
@@ -63,17 +77,21 @@ class ExcelExportService:
         if restrict_heats and len(heats) != len(requested_heat_ids):
             raise ValueError("Una o más coladas no pertenecen al alcance seleccionado")
         selected_heat_ids = [item.id for item in heats]
+
         products_query = select(Product).where(Product.certificate_id.in_(certificate_ids))
         if restrict_heats:
             products_query = products_query.where(Product.heat_id.in_(selected_heat_ids))
         products = session.scalars(products_query.order_by(Product.id)).all()
         product_ids = [item.id for item in products]
+
         observation_query = select(Observation).where(Observation.certificate_id.in_(certificate_ids))
         if restrict_heats:
             observation_query = observation_query.where(
                 or_(Observation.heat_id.in_(selected_heat_ids), Observation.product_id.in_(product_ids))
             )
         observations = session.scalars(observation_query.order_by(Observation.id)).all()
+        obs_by_product: dict[int, int] = {}  # product_id -> row index in Evidencia sheet
+
         chemistry = []
         if selected_heat_ids or product_ids:
             chemistry = session.scalars(
@@ -81,6 +99,7 @@ class ExcelExportService:
                 .where(or_(ChemicalComposition.heat_id.in_(selected_heat_ids), ChemicalComposition.product_id.in_(product_ids)))
                 .order_by(ChemicalComposition.id)
             ).all()
+
         runs_query = select(ClassificationRun).where(
             ClassificationRun.certificate_id.in_(certificate_ids)
         )
@@ -102,12 +121,73 @@ class ExcelExportService:
             for run in available_runs:
                 latest_by_certificate.setdefault(run.certificate_id, run)
             runs = list(latest_by_certificate.values())
+            if official and not runs:
+                raise ValueError("Un reporte oficial requiere al menos una ejecución de clasificación aprobada")
+
         run_ids = [item.id for item in runs]
         results = session.scalars(
             select(ClassificationResult).where(ClassificationResult.classification_run_id.in_(run_ids)).order_by(ClassificationResult.id)
         ).all() if run_ids else []
+        result_ids = [item.id for item in results]
+
+        candidates = session.scalars(
+            select(ClassificationCandidate)
+            .where(ClassificationCandidate.classification_result_id.in_(result_ids))
+            .order_by(ClassificationCandidate.classification_result_id, ClassificationCandidate.rank)
+        ).all() if result_ids else []
+        candidates_by_result: dict[int, list[ClassificationCandidate]] = {}
+        for cand in candidates:
+            candidates_by_result.setdefault(cand.classification_result_id, []).append(cand)
+
+        candidate_ids = [cand.id for cand in candidates]
+        factors = session.scalars(
+            select(CandidateFactor)
+            .where(CandidateFactor.candidate_id.in_(candidate_ids))
+            .order_by(CandidateFactor.candidate_id, CandidateFactor.sequence)
+        ).all() if candidate_ids else []
+        factors_by_candidate: dict[int, list[CandidateFactor]] = {}
+        for factor in factors:
+            factors_by_candidate.setdefault(factor.candidate_id, []).append(factor)
+
+        factor_ids = [factor.id for factor in factors]
+        factor_links = session.scalars(
+            select(EvidenceLink)
+            .where(EvidenceLink.candidate_factor_id.in_(factor_ids))
+            .order_by(EvidenceLink.candidate_factor_id, EvidenceLink.id)
+        ).all() if factor_ids else []
+        rule_by_observation: dict[int, str] = {}
+        factor_by_id = {f.id: f for f in factors}
+        for link in factor_links:
+            if link.observation_id and link.candidate_factor_id in factor_by_id:
+                rule_by_observation[link.observation_id] = factor_by_id[link.candidate_factor_id].rule_code
+
+        selections = session.scalars(
+            select(ClassificationSelection)
+            .where(ClassificationSelection.classification_result_id.in_(result_ids))
+            .order_by(ClassificationSelection.classification_result_id, ClassificationSelection.id)
+        ).all() if result_ids else []
+        selections_by_result: dict[int, list[ClassificationSelection]] = {}
+        active_selection_by_result: dict[int, ClassificationSelection] = {}
+        for sel in selections:
+            selections_by_result.setdefault(sel.classification_result_id, []).append(sel)
+        for r_id in result_ids:
+            r_sels = selections_by_result.get(r_id, [])
+            superseded = {s.supersedes_selection_id for s in r_sels if s.supersedes_selection_id is not None}
+            active = [s for s in r_sels if s.id not in superseded]
+            if active:
+                active_selection_by_result[r_id] = active[-1]
+            elif r_sels:
+                active_selection_by_result[r_id] = r_sels[-1]
+
+        approval_events = session.scalars(
+            select(ApprovalEvent)
+            .where(ApprovalEvent.classification_run_id.in_(run_ids))
+            .order_by(ApprovalEvent.id)
+        ).all() if run_ids else []
+
         makers = {item.id: item for item in session.scalars(select(Manufacturer)).all()}
         rules = {item.id: item for item in session.scalars(select(RuleSet)).all()}
+        products_by_id = {p.id: p for p in products}
         corrections = session.scalars(
             select(Correction).where(Correction.certificate_id.in_(certificate_ids)).order_by(Correction.id)
         ).all()
@@ -116,61 +196,188 @@ class ExcelExportService:
         workbook.remove(workbook.active)
         for name in self.sheet_names:
             workbook.create_sheet(name)
-        notice = self.settings.demo_notice if official else f"PRELIMINAR — {self.settings.demo_notice}"
+
+        notice = self.settings.demo_notice if official else f"PRELIMINAR — PENDIENTE DE APROBACIÓN — {self.settings.demo_notice}"
+
+        # 1. Resumen Sheet
         summary_rows = [
-            ["Aviso", notice],
+            ["Aviso Legal", notice],
             ["Generado UTC", datetime.now(timezone.utc).isoformat()],
-            ["Tipo", "Oficial (sólo aprobados)" if official else "Preliminar"],
-            ["Actas", len(certificates)], ["Coladas", len(heats)], ["Rollos", len(products)],
+            ["Tipo de Reporte", "Oficial (sólo expedientes aprobados)" if official else "Preliminar (borrador de trabajo)"],
+            ["Actas incluidas", len(certificates)],
+            ["Coladas incluidas", len(heats)],
+            ["Rollos incluidos", len(products)],
+            ["Clasificaciones incluidas", len(results)],
+            ["Selecciones registradas", len(selections)],
             ["Ejecuciones de clasificación", ", ".join(str(run.id) for run in runs) or "Ninguna"],
-        ] + [[f"Hoja {name}", f"Ir a {name}"] for name in self.sheet_names if name != "Resumen"]
-        self._write_sheet(workbook["Resumen"], ["Campo", "Valor"], summary_rows, "ResumenTable", notice)
+        ] + [[f"Hoja {name}", f"Ir a hoja {name}"] for name in self.sheet_names if name != "Resumen"]
+        self._write_sheet(workbook["Resumen"], ["Concepto", "Detalle"], summary_rows, "ResumenTable", notice)
+
+        # Internal hyperlinks on Resumen
         for row in range(4, workbook["Resumen"].max_row + 1):
             label = workbook["Resumen"].cell(row, 1).value
             if isinstance(label, str) and label.startswith("Hoja "):
                 target = label.removeprefix("Hoja ")
-                link = workbook["Resumen"].cell(row, 2)
-                link.hyperlink = f"#'{target}'!A1"
-                link.style = "Hyperlink"
+                link_cell = workbook["Resumen"].cell(row, 2)
+                link_cell.hyperlink = f"#'{target}'!A1"
+                link_cell.font = Font(color="0563C1", underline="single", bold=True)
+
+        # 2. Actas Sheet
         self._write_sheet(workbook["Actas"],
             ["certificate_id", "document_id", "número", "fabricante", "fecha_acta", "fecha_carga", "estado", "revisión"],
             [[c.id, c.document_id, c.certificate_no, makers.get(c.manufacturer_id).name if c.manufacturer_id in makers else None,
               c.certificate_date, c.uploaded_at, c.approval_status, c.revision_number] for c in certificates],
             "ActasTable", notice)
+
+        # 3. Coladas Sheet
         self._write_sheet(workbook["Coladas"],
             ["heat_id", "certificate_id", "colada", "norma", "grado", "propiedades"],
             [[h.id, h.certificate_id, h.heat_no, h.standard, h.grade, str(h.properties_json)] for h in heats],
             "ColadasTable", notice)
+
+        # 4. Rollos Sheet
         self._write_sheet(workbook["Rollos"],
             ["product_id", "certificate_id", "heat_id", "identificador", "etiqueta", "tipo", "forma", "enrollado", "laminado", "ancho_mm", "espesor_mm", "peso_kg"],
             [[p.id, p.certificate_id, p.heat_id, p.product_identifier, p.label_no, p.product_type, p.form,
               p.coiled, p.rolling, p.width_mm, p.thickness_mm, p.weight_kg] for p in products],
             "RollosTable", notice)
+
+        # 5. Composición Sheet
         self._write_sheet(workbook["Composición"],
             ["composition_id", "heat_id", "product_id", "elemento", "valor_original", "porcentaje", "heredado", "etiqueta_fuente"],
             [[c.id, c.heat_id, c.product_id, c.element, str(c.raw_value_json) if c.raw_value_json is not None else None,
               c.percentage, c.inherited, c.source_label] for c in chemistry],
             "ComposicionTable", notice)
-        run_by_id = {run.id: run for run in runs}
-        self._write_sheet(workbook["Clasificación"],
-            ["result_id", "classification_run_id", "product_id", "tipo", "fracción", "NICO", "descripción", "resultado", "faltantes", "candidatos", "estado", "reglas"],
-            [[r.id, r.classification_run_id, r.product_id, r.product_type, r.fraction, r.nico, r.description, r.outcome,
-              ", ".join(r.details_json.get("missing_fields") or []),
-              ", ".join(r.details_json.get("candidates") or []),
-              run_by_id[r.classification_run_id].approval_status,
-              rules.get(run_by_id[r.classification_run_id].rule_set_id).version if run_by_id[r.classification_run_id].rule_set_id in rules else None]
-             for r in results], "ClasificacionTable", notice)
+
+        # 7. Evidencia Sheet (Built before Clasificación to map product row indices)
+        evidencia_rows = []
+        for row_idx, o in enumerate(observations, start=4):
+            if o.product_id and o.product_id not in obs_by_product:
+                obs_by_product[o.product_id] = row_idx
+            regla_asociada = rule_by_observation.get(o.id, "")
+            evidencia_rows.append([
+                o.id, o.certificate_id, o.heat_id, o.product_id, o.field_path,
+                str(o.raw_value_json) if o.raw_value_json is not None else None,
+                str(o.normalized_value_json) if o.normalized_value_json is not None else None,
+                o.unit, o.confidence, o.page_number, str(o.bbox_json) if o.bbox_json else None,
+                o.source_text, regla_asociada, o.is_current,
+            ])
         self._write_sheet(workbook["Evidencia"],
-            ["observation_id", "certificate_id", "heat_id", "product_id", "campo", "original", "normalizado", "unidad", "confianza", "página", "coordenadas", "texto_fuente", "vigente"],
-            [[o.id, o.certificate_id, o.heat_id, o.product_id, o.field_path, str(o.raw_value_json) if o.raw_value_json is not None else None,
-              str(o.normalized_value_json) if o.normalized_value_json is not None else None, o.unit, o.confidence,
-              o.page_number, str(o.bbox_json) if o.bbox_json else None, o.source_text, o.is_current] for o in observations],
-            "EvidenciaTable", notice)
+            ["observation_id", "certificate_id", "heat_id", "product_id", "campo", "original", "normalizado", "unidad", "confianza", "página", "coordenadas", "texto_fuente", "regla_factor", "vigente"],
+            evidencia_rows, "EvidenciaTable", notice)
+
+        # 6. Clasificación Sheet
+        run_by_id = {run.id: run for run in runs}
+        clasificacion_rows = []
+        evidence_link_cells: list[tuple[int, int]] = []  # (row_index, target_evidence_row)
+
+        for result_idx, r in enumerate(results, start=4):
+            res_cands = candidates_by_result.get(r.id, [])
+            cands_by_rank = {c.rank: c for c in res_cands}
+
+            # Candidate 1, 2, 3
+            cand1_code = f"{cands_by_rank[1].fraction}-{cands_by_rank[1].nico}" if 1 in cands_by_rank else None
+            cand2_code = f"{cands_by_rank[2].fraction}-{cands_by_rank[2].nico}" if 2 in cands_by_rank else "—"
+            cand3_code = f"{cands_by_rank[3].fraction}-{cands_by_rank[3].nico}" if 3 in cands_by_rank else "—"
+
+            # Selection resolution
+            active_sel = active_selection_by_result.get(r.id)
+            if active_sel:
+                active_cand = next((c for c in res_cands if c.id == active_sel.candidate_id), None)
+                chosen_code = f"{active_cand.fraction}-{active_cand.nico}" if active_cand else (f"{r.fraction}-{r.nico}" if r.fraction and r.nico else "Seleccionado")
+                chosen_by = active_sel.person_name
+                chosen_reason = active_sel.reason
+                chosen_date = active_sel.created_at.isoformat()
+            elif r.outcome == "classified" and r.fraction and r.nico:
+                chosen_code = f"{r.fraction}-{r.nico}"
+                chosen_by = "Motor determinista"
+                chosen_reason = "Resolución unívoca aprobada"
+                chosen_date = r.created_at.isoformat()
+            else:
+                chosen_code = "Pendiente de selección"
+                chosen_by = "—"
+                chosen_reason = "Pendiente de revisión documental"
+                chosen_date = "—"
+
+            # Factores explicativos
+            active_cand_id = active_sel.candidate_id if active_sel else (cands_by_rank[1].id if 1 in cands_by_rank else None)
+            res_factors = factors_by_candidate.get(active_cand_id, []) if active_cand_id else []
+            factores_str = "; ".join(f"{f.rule_code}: {f.outcome}" for f in res_factors[:4]) if res_factors else "Reglas de partida y subpartida"
+
+            prod = products_by_id.get(r.product_id)
+            prod_ident = prod.product_identifier if prod else str(r.product_id)
+
+            clasificacion_rows.append([
+                r.id, r.classification_run_id, r.product_id, prod_ident,
+                chosen_code, cand2_code, cand3_code,
+                chosen_by, chosen_reason, chosen_date,
+                factores_str, "Ver evidencia",
+                r.outcome,
+                ", ".join(r.details_json.get("missing_fields") or []) or "Ninguno",
+                run_by_id[r.classification_run_id].approval_status,
+                rules.get(run_by_id[r.classification_run_id].rule_set_id).version if run_by_id[r.classification_run_id].rule_set_id in rules else "—",
+            ])
+
+            target_ev_row = obs_by_product.get(r.product_id, 4)
+            evidence_link_cells.append((result_idx, target_ev_row))
+
+        self._write_sheet(workbook["Clasificación"],
+            ["result_id", "run_id", "product_id", "rollo_identificador", "candidato_elegido", "alternativa_2", "alternativa_3",
+             "seleccionado_por", "motivo_selección", "fecha_selección", "factores_clave", "evidencia_enlace",
+             "resultado", "faltantes", "estado_ejecución", "reglas_versión"],
+            clasificacion_rows, "ClasificacionTable", notice)
+
+        # Apply internal evidence links in Clasificación sheet
+        for clasif_row, target_ev_row in evidence_link_cells:
+            link_cell = workbook["Clasificación"].cell(clasif_row, 12)
+            link_cell.hyperlink = f"#'Evidencia'!A{target_ev_row}"
+            link_cell.font = Font(color="0563C1", underline="single", bold=True)
+
+        # 8. Auditoría Sheet (Unified timeline of selections, approvals, and corrections)
+        auditoria_rows = []
+
+        # Selections timeline
+        for sel in selections:
+            sel_cand = next((c for c in candidates if c.id == sel.candidate_id), None)
+            cand_repr = f"{sel_cand.fraction}-{sel_cand.nico}" if sel_cand else f"candidato-{sel.candidate_id}"
+            res = next((r for r in results if r.id == sel.classification_result_id), None)
+            is_active = active_selection_by_result.get(sel.classification_result_id) == sel
+            auditoria_rows.append([
+                "SELECCION_CANDIDATO", sel.id,
+                run_by_id[res.classification_run_id].certificate_id if res else None,
+                res.classification_run_id if res else None,
+                res.product_id if res else None,
+                f"Seleccionó {cand_repr} (Reemplaza selección #{sel.supersedes_selection_id})" if sel.supersedes_selection_id else f"Seleccionó {cand_repr}",
+                sel.person_name, sel.reason, sel.workstation_name, sel.created_at.isoformat(),
+                "Vigente" if is_active else "Reemplazada",
+            ])
+
+        # Approval events timeline
+        for app in approval_events:
+            auditoria_rows.append([
+                "APROBACION_ESTADO", app.id,
+                run_by_id[app.classification_run_id].certificate_id if app.classification_run_id in run_by_id else None,
+                app.classification_run_id, None,
+                f"Cambio de estado: {app.from_status} -> {app.to_status}",
+                app.person_name, app.reason, app.workstation_name, app.created_at.isoformat(),
+                "Vigente",
+            ])
+
+        # Corrections timeline
+        for cor in corrections:
+            auditoria_rows.append([
+                "CORRECCION_DATO", cor.id, cor.certificate_id, None, None,
+                f"Corrección obs {cor.previous_observation_id} -> {cor.replacement_observation_id}",
+                cor.person_name, cor.reason, cor.workstation_name, cor.created_at.isoformat(),
+                "Vigente",
+            ])
+
+        auditoria_rows.sort(key=lambda item: str(item[9]))
+
         self._write_sheet(workbook["Auditoría"],
-            ["correction_id", "certificate_id", "observación_anterior", "observación_nueva", "persona", "motivo", "equipo", "fecha"],
-            [[c.id, c.certificate_id, c.previous_observation_id, c.replacement_observation_id,
-              c.person_name, c.reason, c.workstation_name, c.created_at] for c in corrections],
-            "AuditoriaTable", notice)
+            ["tipo_evento", "id_evento", "certificate_id", "run_id", "product_id", "detalle", "persona", "motivo", "estación", "fecha_utc", "vigencia"],
+            auditoria_rows, "AuditoriaTable", notice)
+
         destination.parent.mkdir(parents=True, exist_ok=True)
         workbook.save(destination)
         self._validate(destination, len(certificates), len(heats), len(products))
@@ -183,7 +390,13 @@ class ExcelExportService:
         sheet.append([])
         sheet.append(headers)
         for row in rows:
-            sheet.append(row)
+            clean_row = [
+                cell_val.astimezone(timezone.utc).replace(tzinfo=None)
+                if isinstance(cell_val, datetime) and cell_val.tzinfo is not None
+                else cell_val
+                for cell_val in row
+            ]
+            sheet.append(clean_row)
         for cell in sheet[3]:
             cell.fill = PatternFill("solid", fgColor="1F4E78")
             cell.font = Font(color="FFFFFF", bold=True)
@@ -202,6 +415,12 @@ class ExcelExportService:
     def _validate(path: Path, certificates: int, heats: int, products: int) -> None:
         workbook = load_workbook(path, read_only=True, data_only=False)
         try:
+            expected_sheets = {
+                "Resumen", "Actas", "Coladas", "Rollos", "Composición",
+                "Clasificación", "Evidencia", "Auditoría",
+            }
+            if set(workbook.sheetnames) != expected_sheets:
+                raise RuntimeError(f"El libro no contiene exactamente las 8 hojas requeridas: {workbook.sheetnames}")
             if len(list(workbook["Actas"].iter_rows(min_row=4, values_only=True))) != certificates:
                 raise RuntimeError("El conteo de actas exportadas no coincide")
             if len(list(workbook["Coladas"].iter_rows(min_row=4, values_only=True))) != heats:

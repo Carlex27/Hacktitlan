@@ -63,6 +63,19 @@ class CertificateExtractionServiceTests(unittest.TestCase):
         self.assertEqual(len(result["products"]), 6)
         self.assertEqual(result["products"][0]["composition_pct"]["C"], 0.0013)
 
+    def test_known_profile_without_registered_adapter_fails_closed(self):
+        layout = document(
+            PageSource.DIGITAL,
+            "BX STEEL POSCO BTA BLZ112 COLD ROLLED STEEL STRIP E02511200001",
+        )
+
+        result = CertificateExtractionService(FakeReader(layout)).analyze_pdf("ignored.pdf")
+
+        self.assertEqual(result["status"], "needs_review")
+        self.assertEqual(result["profile"]["name"], "MOLINO_1_BX_POSCO")
+        self.assertNotIn("certificate", result)
+        self.assertIn("no tiene un adaptador registrado", result["reasons"][0])
+
 
 if __name__ == "__main__":
     unittest.main()

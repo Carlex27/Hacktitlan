@@ -1,5 +1,6 @@
 from backend.app.infrastructure.database.models.classification import (
     ApprovalEvent,
+    CandidateFactor,
     ClassificationCandidate,
     ClassificationResult,
     ClassificationRun,
@@ -25,6 +26,7 @@ from backend.app.infrastructure.database.models.processing import ExtractionRun,
 __all__ = [
     "ApprovalEvent",
     "BackupRun",
+    "CandidateFactor",
     "ChemicalComposition",
     "ClassificationCandidate",
     "ClassificationResult",

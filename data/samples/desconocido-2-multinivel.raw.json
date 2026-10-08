@@ -1,0 +1,65 @@
+{
+  "document": {
+    "source_name": "DESCONOCIDO 2 MULTINIVEL.pdf",
+    "supplier": "Eastern Global Steel Mill Ltd.",
+    "certificate_no": "EGSM-2026-X492",
+    "customer": "Pacific Trading Corp.",
+    "issue_date_raw": "JUL. 04, 2026"
+  },
+  "standard": "EN 10025-2 S275JR",
+  "rolling": "hot",
+  "condition": ["sheet_coil"],
+  "chemistry_scales": {
+    "C": "10^-2",
+    "Si": "10^-2",
+    "Mn": "10^-2",
+    "P": "10^-3",
+    "S": "10^-3",
+    "Al": "10^-3"
+  },
+  "total_pieces": 3,
+  "rows": [
+    {
+      "product_id": "EG-8801",
+      "heat_no": "H-7741",
+      "thickness_mm": 3.0,
+      "width_mm": 1250,
+      "length_raw": "C",
+      "weight_kg": 8500,
+      "weight_kind": "mass",
+      "yield_strength_mpa": 295,
+      "tensile_strength_mpa": 430,
+      "elongation_pct": 28.0,
+      "chemistry": {"C": 15, "Si": 20, "Mn": 60, "P": 14, "S": 6, "Al": 25},
+      "evidence": [{"page": 1, "region": "row_1"}]
+    },
+    {
+      "product_id": "EG-8802",
+      "heat_no": "H-7741",
+      "thickness_mm": 3.0,
+      "width_mm": 1250,
+      "length_raw": "C",
+      "weight_kg": 8520,
+      "weight_kind": "mass",
+      "yield_strength_mpa": 295,
+      "tensile_strength_mpa": 430,
+      "elongation_pct": 28.0,
+      "chemistry": {"C": 15, "Si": 20, "Mn": 60, "P": 14, "S": 6, "Al": 25},
+      "evidence": [{"page": 1, "region": "row_2"}]
+    },
+    {
+      "product_id": "EG-8803",
+      "heat_no": "H-7741",
+      "thickness_mm": 3.0,
+      "width_mm": 1250,
+      "length_raw": "C",
+      "weight_kg": 8490,
+      "weight_kind": "mass",
+      "yield_strength_mpa": 295,
+      "tensile_strength_mpa": 430,
+      "elongation_pct": 28.0,
+      "chemistry": {"C": 15, "Si": 20, "Mn": 60, "P": 14, "S": 6, "Al": 25},
+      "evidence": [{"page": 1, "region": "row_3"}]
+    }
+  ]
+}

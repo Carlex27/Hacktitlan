@@ -156,12 +156,14 @@ def normalize_certificate(raw: dict[str, Any]) -> dict[str, Any]:
             chemistry_raw[source_label] = raw_value
 
         length_raw = row.get("length_raw")
+        if length_raw in (None, "") and row.get("length_m") is not None:
+            length_raw = row.get("length_m")
         coiled = str(length_raw).strip().upper() in {"C", "COIL", "COILED", "ROLLO"}
         quantity = int(row.get("quantity") or 1)
         if quantity < 1:
             raise CertificateParseError(f"Row {index} has an invalid quantity: {quantity}")
-        width_mm = _json_number(_decimal(row["width_mm"], "width_mm"))
-        thickness_mm = _json_number(_decimal(row["thickness_mm"], "thickness_mm"))
+        width_mm = _optional_number(row, "width_mm")
+        thickness_mm = _optional_number(row, "thickness_mm")
         length_m = (
             None
             if coiled or length_raw in (None, "")
@@ -171,7 +173,7 @@ def normalize_certificate(raw: dict[str, Any]) -> dict[str, Any]:
             "thickness_mm": {
                 "raw_value": original_row.get("thickness_mm"),
                 "normalized_value": thickness_mm,
-                "unit": "mm",
+                "unit": "mm" if thickness_mm is not None else None,
                 "inherited": _is_ditto(original_row.get("thickness_mm")),
                 "inherited_from": previous_product_id
                 if _is_ditto(original_row.get("thickness_mm"))
@@ -180,7 +182,7 @@ def normalize_certificate(raw: dict[str, Any]) -> dict[str, Any]:
             "width_mm": {
                 "raw_value": original_row.get("width_mm"),
                 "normalized_value": width_mm,
-                "unit": "mm",
+                "unit": "mm" if width_mm is not None else None,
                 "inherited": _is_ditto(original_row.get("width_mm")),
                 "inherited_from": previous_product_id
                 if _is_ditto(original_row.get("width_mm"))
@@ -306,6 +308,7 @@ def normalize_certificate(raw: dict[str, Any]) -> dict[str, Any]:
 
     return {
         "document": raw.get("document", {}),
+        "standard": raw.get("standard"),
         "products": products,
         "validation": checks,
     }
