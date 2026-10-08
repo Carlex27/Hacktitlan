@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     storage_root: Path = Path(r"C:\ProgramData\Hacktitlan\storage")
     backup_root: Path = Path(r"C:\ProgramData\Hacktitlan\backups")
     secondary_backup_root: Path | None = None
+    model_root: Path = Path(r"C:\ProgramData\Hacktitlan\models")
     api_host: str = "127.0.0.1"
     api_port: int = Field(default=8765, ge=1, le=65535)
     # Orígenes del webview de Tauri (Windows y macOS/Linux) y del servidor de desarrollo Vite.
@@ -44,8 +45,10 @@ class Settings(BaseSettings):
     ocr_enabled: bool = False
     ocr_device: str = "auto"
     ocr_language: str = "en"
+    ocr_model_package: str = "PP-StructureV3"
     ocr_min_confidence: float = Field(default=0.50, ge=0, le=1)
     ocr_cpu_threads: int = Field(default=4, ge=1, le=16)
+    ocr_max_page_dimension: int = Field(default=2000, ge=500, le=8000)
     demo_notice: str = "DEMOSTRACIÓN — SIN VALIDEZ ADUANERA"
 
     @field_validator("ocr_device")

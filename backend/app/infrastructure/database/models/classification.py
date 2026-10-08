@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date
 from typing import Any
 
-from sqlalchemy import BigInteger, CheckConstraint, Date, ForeignKey, Identity, Index, Integer, JSON, String, Text, UniqueConstraint
+from sqlalchemy import BigInteger, Boolean, CheckConstraint, Date, ForeignKey, Identity, Index, Integer, JSON, String, Text, UniqueConstraint, event, inspect, select
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.app.domain.enums import ApprovalStatus, RuleSetStatus
@@ -28,6 +28,19 @@ class RuleSet(TimestampMixin, Base):
         UniqueConstraint("name", "version", name="uq_rule_set_name_version"),
         CheckConstraint("status IN ('draft','approved','retired')", name="valid_status"),
     )
+
+
+@event.listens_for(RuleSet, "before_update")
+def prevent_immutable_rule_set_update(mapper, connection, target: RuleSet) -> None:
+    from backend.app.classification_engine.versioning import validate_rule_set_immutability
+
+    old_status = connection.execute(
+        select(RuleSet.status).where(RuleSet.id == target.id)
+    ).scalar_one()
+    state = inspect(target)
+    for field in ("name", "version", "source_hash", "valid_from", "valid_to", "manifest_json"):
+        if state.attrs[field].history.has_changes():
+            validate_rule_set_immutability(old_status, field)
 
 
 class ClassificationRun(TimestampMixin, Base):
@@ -155,6 +168,37 @@ class ClassificationSelection(TimestampMixin, Base):
     )
 
 
+class CandidateFactor(TimestampMixin, Base):
+    __tablename__ = "candidate_factors"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    candidate_id: Mapped[int] = mapped_column(
+        ForeignKey("classification_candidates.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    sequence: Mapped[int] = mapped_column(Integer, nullable=False)
+    rule_code: Mapped[str] = mapped_column(String(200), nullable=False)
+    outcome: Mapped[str] = mapped_column(String(30), nullable=False)
+    operator: Mapped[str | None] = mapped_column(String(100))
+    expected_json: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    observed_json: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    unit: Mapped[str | None] = mapped_column(String(50))
+    explanation: Mapped[str] = mapped_column(Text, nullable=False)
+    required_for_selection: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+    candidate: Mapped[ClassificationCandidate] = relationship()
+
+    __table_args__ = (
+        UniqueConstraint("candidate_id", "sequence", name="uq_factor_candidate_sequence"),
+        CheckConstraint("sequence >= 1", name="candidate_factor_sequence_positive"),
+        CheckConstraint(
+            "outcome IN ('matched','not_matched','missing','ambiguous','unknown','conflict')",
+            name="candidate_factor_outcome",
+        ),
+    )
+
+
 class DecisionStep(TimestampMixin, Base):
     __tablename__ = "decision_steps"
 
@@ -181,8 +225,11 @@ class EvidenceLink(TimestampMixin, Base):
     __tablename__ = "evidence_links"
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
-    decision_step_id: Mapped[int] = mapped_column(
-        ForeignKey("decision_steps.id", ondelete="RESTRICT"), nullable=False, index=True
+    decision_step_id: Mapped[int | None] = mapped_column(
+        ForeignKey("decision_steps.id", ondelete="RESTRICT"), index=True
+    )
+    candidate_factor_id: Mapped[int | None] = mapped_column(
+        ForeignKey("candidate_factors.id", ondelete="RESTRICT"), index=True
     )
     observation_id: Mapped[int | None] = mapped_column(
         ForeignKey("observations.id", ondelete="RESTRICT"), index=True
@@ -193,12 +240,21 @@ class EvidenceLink(TimestampMixin, Base):
         JSON, nullable=False, default=dict
     )
 
-    decision_step: Mapped[DecisionStep] = relationship()
+    decision_step: Mapped[DecisionStep | None] = relationship()
+    candidate_factor: Mapped[CandidateFactor | None] = relationship()
     observation: Mapped[Observation | None] = relationship()
 
     __table_args__ = (
         UniqueConstraint(
             "decision_step_id", "observation_id", name="uq_evidence_step_observation"
+        ),
+        UniqueConstraint(
+            "candidate_factor_id", "observation_id", name="uq_evidence_factor_observation"
+        ),
+        CheckConstraint(
+            "(decision_step_id IS NOT NULL AND candidate_factor_id IS NULL) OR "
+            "(decision_step_id IS NULL AND candidate_factor_id IS NOT NULL)",
+            name="evidence_exactly_one_owner",
         ),
         CheckConstraint(
             "source_type IN ('observation','rule_source')",
@@ -253,4 +309,3 @@ class ApprovalEvent(TimestampMixin, Base):
             name="valid_to_status",
         ),
     )
-

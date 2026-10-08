@@ -2,14 +2,18 @@ from __future__ import annotations
 
 from dataclasses import replace
 from decimal import Decimal
+from hashlib import sha256
+from pathlib import Path
 from typing import Iterable
 
 from backend.app.classification_engine.catalog import SourceProvidedCatalog
 from backend.app.classification_engine.models import (
+    CandidateFactor,
     ClassificationCandidate,
     ClassificationDecision,
     ClassificationOutcome,
     Decision,
+    DiscardedCandidate,
     ProductFacts,
     StepOutcome,
 )
@@ -44,6 +48,7 @@ class Chapter72ClassificationEngine:
 
     def __init__(self, catalog: SourceProvidedCatalog | None = None) -> None:
         self.catalog = catalog or SourceProvidedCatalog()
+        self.source_sha256 = sha256(Path(__file__).read_bytes()).hexdigest()
 
     def classify(self, facts: ProductFacts) -> ClassificationDecision:
         steps: list[Decision] = []
@@ -382,16 +387,40 @@ class Chapter72ClassificationEngine:
              "coated": facts.coated, "coiled": facts.coiled},
             evidence_fields=("width_mm", "rolling", "coated", "coiled"),
         )]
+        if heading == "7208":
+            fraction, nico, missing, candidates = self._non_alloy_hot_wide(facts)
+            return fraction, nico, missing, candidates, steps
         if heading == "7209":
             return (*self._non_alloy_cold_wide(facts), steps)
         if heading == "7210":
             fraction, nico, missing, candidates = self._non_alloy_coated_wide(facts)
             return fraction, nico, missing, candidates, steps
-        if heading == "7208":
-            fraction, nico, missing, candidates = self._non_alloy_hot_wide(facts)
+        if heading == "7211":
+            fraction, nico, missing, candidates = self._non_alloy_narrow(facts)
             return fraction, nico, missing, candidates, steps
-        if heading == "7225" and facts.rolling == "cold" and facts.coated is False:
-            return "72255091", None, {"nico_qualifier"}, ("72255091" ,), steps
+        if heading == "7212":
+            fraction, nico, missing, candidates = self._non_alloy_coated_narrow(facts)
+            return fraction, nico, missing, candidates, steps
+        if heading == "7219":
+            fraction, nico, missing, candidates = self._stainless_wide(facts)
+            if "ambiguous_source_code_7219_35_02" in missing:
+                steps.append(Decision(
+                    "chapter72.stainless.source_anomaly_7219_35_02",
+                    StepOutcome.AMBIGUOUS,
+                    "Anomalía en la fuente original (PDF LIGIE SIN VIGENCIA páginas 38-39): la fracción 7219.35.02 aparece duplicada con distintas descripciones.",
+                    {"fraction": fraction, "thickness_mm": str(facts.thickness_mm)},
+                    evidence_fields=("thickness_mm",),
+                ))
+            return fraction, nico, missing, candidates, steps
+        if heading == "7220":
+            fraction, nico, missing, candidates = self._stainless_narrow(facts)
+            return fraction, nico, missing, candidates, steps
+        if heading == "7225":
+            fraction, nico, missing, candidates = self._other_alloy_wide(facts)
+            return fraction, nico, missing, candidates, steps
+        if heading == "7226":
+            fraction, nico, missing, candidates = self._other_alloy_narrow(facts)
+            return fraction, nico, missing, candidates, steps
         return None, None, {"implemented_tariff_branch"}, ((heading,) if heading else ()), steps
 
     def _non_alloy_cold_wide(
@@ -409,7 +438,10 @@ class Chapter72ClassificationEngine:
                     return fraction, "02", set(), ()
                 if facts.porcelain_exposed_parts is False and carbon is not None and facts.yield_strength_mpa is not None:
                     return fraction, "99", set(), ()
-                return fraction, None, {"porcelain_exposed_parts"}, ("01", "02", "03", "99")
+                missing = {"porcelain_exposed_parts"}
+                if facts.deep_drawing_class is None:
+                    missing.add("deep_drawing_class")
+                return fraction, None, missing, ("01", "02", "03", "99")
             if thickness > Decimal("1"):
                 return self._high_strength_nico("72091601", facts)
             if thickness >= Decimal("0.5"):
@@ -438,13 +470,268 @@ class Chapter72ClassificationEngine:
     ) -> tuple[str | None, str | None, set[str], tuple[str, ...]]:
         metal = (facts.coating_metal or "").casefold()
         process = (facts.coating_process or "").casefold()
+
+        # Tinplate / estañados (7210.11 / 7210.12)
+        if metal in {"sn", "tin", "estaño", "estano", "hojalata"}:
+            if facts.thickness_mm is not None and facts.thickness_mm >= Decimal("0.5"):
+                return "72101101", "00", set(), ()
+            if facts.secondary_reduction_ratio is None or facts.can_body_end_use is None:
+                return "72101204", None, {
+                    "secondary_reduction_ratio", "can_body_end_use"
+                }, ("01", "02", "99")
+            return "72101204", None, {"official_nico_qualifier"}, ("01", "02", "03", "99")
+
+        # Lead / terne (7210.20)
+        if metal in {"pb", "lead", "plomo", "terne"}:
+            return "72102001", "00", set(), ()
+
+        # Electrolytic zinc (7210.30)
         if metal in {"zn", "zinc", "zincado", "cinc"} and process in {
             "electrolytic", "electrolytic zinc", "electrogalvanized",
         }:
             if facts.coating_both_sides is None:
                 return "72103002", None, {"coating_both_sides"}, ("01", "99")
             return "72103002", ("01" if facts.coating_both_sides else "99"), set(), ()
-        return None, None, {"coating_type"}, ("7210",)
+
+        # Hot-dip galvanized / otros cincados (7210.41 / 7210.49)
+        if metal in {"zn", "zinc", "zincado", "cinc", "galvanizado", "galvanized"}:
+            if facts.pattern_in_relief is True:
+                return "72104101", "00", set(), ()
+            fraction = "72104999"
+            if facts.yield_strength_mpa is not None and facts.yield_strength_mpa >= Decimal("355"):
+                return fraction, "04", set(), ()
+            if facts.thickness_mm is not None:
+                if facts.thickness_mm <= Decimal("0.35"):
+                    return fraction, "01", set(), ()
+                if facts.thickness_mm <= Decimal("1.0"):
+                    return fraction, "02", set(), ()
+                return fraction, "03", set(), ()
+            return fraction, "99", set(), ()
+
+        # Chromium oxides / TFS (7210.50)
+        if metal in {"cr_oxide", "cr", "cromo", "tfs", "oxido de cromo"}:
+            return "72105003", "00", set(), ()
+
+        # Aluminum-zinc alloy (7210.61)
+        if metal in {"al-zn", "aluzinc", "galvalume", "aluminio-cinc", "aluminio cinc"}:
+            return "72106101", "01", set(), ()
+
+        # Aluminum other (7210.69)
+        if metal in {"al", "aluminio", "aluminum"}:
+            return "72106999", "00", set(), ()
+
+        # Painted / plastic (7210.70)
+        if metal in {"paint", "plastic", "pintado", "plastico", "barniz", "prepintado"}:
+            return "72107002", "99", set(), ()
+
+        if metal:
+            return "72109099", "00", set(), ()
+
+        return None, None, {"coating_metal"}, (
+            "72101101", "72103002", "72104999", "72106101", "72107002"
+        )
+
+    @staticmethod
+    def _non_alloy_narrow(
+        facts: ProductFacts,
+    ) -> tuple[str | None, str | None, set[str], tuple[str, ...]]:
+        thickness = facts.thickness_mm
+        carbon = facts.composition_pct.get("C")
+
+        if facts.rolling == "hot":
+            if facts.rolled_four_faces is True:
+                return "72111301", "00", set(), ()
+            if thickness is not None:
+                fraction = "72111491" if thickness >= Decimal("4.75") else "72111999"
+                if carbon is not None:
+                    nico = "01" if carbon >= Decimal("0.6") else "02" if carbon >= Decimal("0.25") else "99"
+                    return fraction, nico, set(), ()
+                return fraction, "99", set(), ()
+            return "72111999", "99", set(), ()
+
+        if facts.rolling == "cold":
+            if carbon is not None and carbon >= Decimal("0.25"):
+                fraction = "72112999"
+                nico = "02" if carbon >= Decimal("0.6") else "01"
+                return fraction, nico, set(), ()
+            fraction = "72112303"
+            if thickness is not None:
+                nico = "01" if thickness <= Decimal("0.35") else "02"
+                return fraction, nico, set(), ()
+            return fraction, "99", set(), ()
+
+        return "72119099", "00", set(), ()
+
+    @staticmethod
+    def _non_alloy_coated_narrow(
+        facts: ProductFacts,
+    ) -> tuple[str | None, str | None, set[str], tuple[str, ...]]:
+        metal = (facts.coating_metal or "").casefold()
+        process = (facts.coating_process or "").casefold()
+
+        if facts.clad is True:
+            if facts.cladding_weight_percentage is None:
+                return "72126004", None, {"cladding_weight_percentage"}, ("72126004",)
+            return "72126004", None, {"cladding_material"}, ("72126004",)
+        if metal in {"sn", "tin", "estaño", "estano", "hojalata"}:
+            return "72121003", "00", set(), ()
+        if metal in {"zn", "zinc", "cinc"} and process in {"electrolytic", "electrogalvanized"}:
+            return "72122003", ("01" if facts.coating_both_sides else "99"), set(), ()
+        if metal in {"zn", "zinc", "cinc", "galvanizado"}:
+            nico = "01" if facts.yield_strength_mpa is not None and facts.yield_strength_mpa >= Decimal("355") else "99"
+            return "72123003", nico, set(), ()
+        if metal in {"paint", "plastic", "pintado", "plastico"}:
+            return "72124004", "00", set(), ()
+        return "72125001", "00", set(), ()
+
+    @staticmethod
+    def _stainless_wide(
+        facts: ProductFacts,
+    ) -> tuple[str | None, str | None, set[str], tuple[str, ...]]:
+        thickness = facts.thickness_mm
+        if thickness is None:
+            return None, None, {"thickness_mm"}, ("72191301", "72193301")
+
+        ni = facts.composition_pct.get("Ni")
+        cr = facts.composition_pct.get("Cr")
+        mn = facts.composition_pct.get("Mn")
+        series = facts.stainless_series
+        if not series:
+            if ni is not None and cr is not None and ni >= Decimal("8") and cr >= Decimal("16"):
+                series = "300"
+            elif ni is not None and cr is not None and ni < Decimal("1") and cr >= Decimal("10.5"):
+                series = "400"
+            elif mn is not None and mn >= Decimal("5"):
+                series = "200"
+
+        nico = "01" if series == "300" else "03" if series == "400" else "04" if series == "200" else "99"
+
+        if facts.rolling == "hot":
+            if facts.coiled is True:
+                fraction = (
+                    "72191101" if thickness > Decimal("10")
+                    else "72191202" if thickness >= Decimal("4.75")
+                    else "72191301" if thickness >= Decimal("3")
+                    else "72191401"
+                )
+                if fraction == "72191101":
+                    return fraction, "00", set(), ()
+                if fraction == "72191202":
+                    return fraction, ("01" if series == "300" else "99"), set(), ()
+                return fraction, nico, set(), ()
+            if facts.coiled is False:
+                fraction = (
+                    "72192101" if thickness > Decimal("10")
+                    else "72192201" if thickness >= Decimal("4.75")
+                    else "72192301" if thickness >= Decimal("3")
+                    else "72192401"
+                )
+                if fraction in {"72192101", "72192301", "72192401"}:
+                    return fraction, "00", set(), ()
+                return fraction, nico, set(), ()
+            return None, None, {"coiled"}, ("72191301", "72192301")
+
+        if facts.rolling == "cold":
+            if thickness >= Decimal("4.75"):
+                return "72193101", ("01" if series == "300" else "99"), set(), ()
+            if thickness >= Decimal("3"):
+                return "72193202", nico, set(), ()
+            if thickness > Decimal("1"):
+                return "72193301", nico, set(), ()
+
+            # Source anomaly detection for 7219.35.02:
+            # Documented in data/ligie/chapter-72/source-provided/SOURCE.md
+            # Page 38 (under 7219.34) and Page 39 (under 7219.35) both list 7219.35.02 with conflicting entries.
+            return (
+                "72193502",
+                None,
+                {"ambiguous_source_code_7219_35_02"},
+                ("72193502",),
+            )
+
+        return "72199099", "00", set(), ()
+
+    @staticmethod
+    def _stainless_narrow(
+        facts: ProductFacts,
+    ) -> tuple[str | None, str | None, set[str], tuple[str, ...]]:
+        thickness = facts.thickness_mm
+        if facts.rolling == "hot":
+            if thickness is not None and thickness >= Decimal("4.75"):
+                return "72201101", "99", set(), ()
+            return "72201201", "99", set(), ()
+        if facts.rolling == "cold":
+            return "72202003", "99", set(), ()
+        return "72209099", "00", set(), ()
+
+    def _other_alloy_wide(
+        self, facts: ProductFacts
+    ) -> tuple[str | None, str | None, set[str], tuple[str, ...]]:
+        # Silicon electrical steel (7225.11 / 7225.19)
+        if facts.magnetic_silicon is True or facts.grain_oriented is True:
+            missing = {
+                name for name, value in (
+                    ("magnetic_loss_w_per_kg", facts.magnetic_loss_w_per_kg),
+                    ("magnetic_induction_tesla", facts.magnetic_induction_tesla),
+                ) if value is None
+            }
+            if facts.grain_oriented is True:
+                return "72251101", (None if missing else "00"), missing, ("72251101",)
+            return "72251999", (None if missing else "00"), missing, ("72251999",)
+
+        # Coated other alloy (7225.91 / 7225.92 / 7225.99)
+        if facts.coated is True:
+            metal = (facts.coating_metal or "").casefold()
+            process = (facts.coating_process or "").casefold()
+            if metal in {"zn", "zinc", "cinc"} and process in {"electrolytic", "electrogalvanized"}:
+                return "72259101", "00", set(), ()
+            if metal in {"zn", "zinc", "cinc", "galvanizado"}:
+                return "72259201", "00", set(), ()
+            return "72259999", "00", set(), ()
+
+        # Hot-rolled other alloy (7225.30 / 7225.40)
+        if facts.rolling == "hot":
+            if facts.coiled is True:
+                return "72253091", "99", set(), ()
+            if facts.coiled is False:
+                return "72254091", "99", set(), ()
+            return None, None, {"coiled"}, ("72253091", "72254091")
+
+        # Cold-rolled other alloy (7225.50)
+        if facts.rolling == "cold" and facts.coated is False:
+            missing = {"nico_qualifier"}
+            if facts.deep_drawing_class is None:
+                missing.add("deep_drawing_class")
+            return "72255091", None, missing, ("72255091",)
+
+        return None, None, {"implemented_tariff_branch"}, ("7225",)
+
+    @staticmethod
+    def _other_alloy_narrow(
+        facts: ProductFacts,
+    ) -> tuple[str | None, str | None, set[str], tuple[str, ...]]:
+        if facts.grain_oriented is True:
+            missing = Chapter72ClassificationEngine._magnetic_missing(facts)
+            return "72261101", (None if missing else "00"), missing, ("72261101",)
+        if facts.magnetic_silicon is True:
+            missing = Chapter72ClassificationEngine._magnetic_missing(facts)
+            return "72261999", (None if missing else "00"), missing, ("72261999",)
+        if facts.high_speed_steel is True:
+            return "72262001", "00", set(), ()
+        if facts.rolling == "hot":
+            return "72269107", "99", set(), ()
+        if facts.rolling == "cold":
+            return "72269206", "99", set(), ()
+        return "72269999", "00", set(), ()
+
+    @staticmethod
+    def _magnetic_missing(facts: ProductFacts) -> set[str]:
+        return {
+            name for name, value in (
+                ("magnetic_loss_w_per_kg", facts.magnetic_loss_w_per_kg),
+                ("magnetic_induction_tesla", facts.magnetic_induction_tesla),
+            ) if value is None
+        }
 
     @staticmethod
     def _non_alloy_hot_wide(
@@ -538,7 +825,7 @@ class Chapter72ClassificationEngine:
     ) -> ClassificationDecision:
         description = self.catalog.description(fraction, nico) if fraction else None
         raw_candidates = tuple(candidates)
-        ranked_candidates = self._ranked_candidates(
+        ranked_candidates, discarded_candidates = self._ranked_candidates(
             fraction=fraction,
             nico=nico,
             raw_candidates=raw_candidates,
@@ -563,6 +850,7 @@ class Chapter72ClassificationEngine:
             missing_fields=tuple(sorted(missing)),
             candidates=raw_candidates,
             ranked_candidates=ranked_candidates,
+            discarded_candidates=discarded_candidates,
             steps=tuple(steps),
         )
 
@@ -574,14 +862,31 @@ class Chapter72ClassificationEngine:
         raw_candidates: tuple[str, ...],
         missing: set[str],
         facts: ProductFacts,
-    ) -> tuple[ClassificationCandidate, ...]:
+    ) -> tuple[tuple[ClassificationCandidate, ...], tuple[DiscardedCandidate, ...]]:
         pairs: list[tuple[int, str, str, str]] = []
+        discarded: list[DiscardedCandidate] = []
         if fraction is not None and nico is not None:
             pairs.append((-100, fraction, nico, "fully_supported" if not missing else "conditional"))
         for raw_index, raw in enumerate(raw_candidates):
             compact = raw.replace(".", "").replace("-", "")
             if fraction is not None and len(compact) == 2 and compact.isdigit():
-                pairs.append((raw_index, fraction, compact, "conditional"))
+                compatible, qualifier_priority = self._candidate_compatibility(
+                    facts, fraction, compact
+                )
+                if compatible:
+                    pairs.append((
+                        raw_index + qualifier_priority,
+                        fraction,
+                        compact,
+                        "conditional",
+                    ))
+                else:
+                    discarded.append(DiscardedCandidate(
+                        fraction=fraction,
+                        nico=compact,
+                        reason_code="known_facts_conflict",
+                        explanation="La opción contradice propiedades conocidas del producto.",
+                    ))
             elif len(compact) == 8 and compact.isdigit():
                 for entry in self.catalog.nicos_for_fraction(compact):
                     candidate_nico = str(entry.raw.get("nico") or entry.code[-2:])
@@ -594,6 +899,13 @@ class Chapter72ClassificationEngine:
                             compact,
                             candidate_nico,
                             "conditional",
+                        ))
+                    else:
+                        discarded.append(DiscardedCandidate(
+                            fraction=compact,
+                            nico=candidate_nico,
+                            reason_code="known_facts_conflict",
+                            explanation="La opción contradice propiedades conocidas del producto.",
                         ))
             elif len(compact) == 10 and compact.isdigit():
                 pairs.append((raw_index, compact[:8], compact[8:], "conditional"))
@@ -609,23 +921,52 @@ class Chapter72ClassificationEngine:
             try:
                 self.catalog.validate_result(candidate_fraction, candidate_nico)
             except ValueError:
+                discarded.append(DiscardedCandidate(
+                    fraction=candidate_fraction,
+                    nico=candidate_nico,
+                    reason_code="source_catalog_invalid",
+                    explanation="La combinación no es única o no existe en el catálogo versionado.",
+                ))
                 continue
             seen.add(key)
             unique.append((priority, candidate_fraction, candidate_nico, support_level))
 
-        return tuple(
-            ClassificationCandidate(
-                rank=rank,
+        ranked_list: list[ClassificationCandidate] = []
+        for rank, (_, candidate_fraction, candidate_nico, support_level) in enumerate(
+            unique[:3], start=1
+        ):
+            factors = self._candidate_factors(
+                facts, candidate_fraction, candidate_nico, support_level
+            )
+            candidate_missing = set(missing) if support_level == "conditional" else set()
+            if support_level == "conditional":
+                for factor in factors:
+                    if factor.outcome is StepOutcome.UNKNOWN:
+                        for field_name, value in factor.observed.items():
+                            if value is None:
+                                candidate_missing.add(field_name)
+            ranked_list.append(
+                ClassificationCandidate(
+                    rank=rank,
+                    fraction=candidate_fraction,
+                    nico=candidate_nico,
+                    description=self.catalog.description(candidate_fraction, candidate_nico),
+                    support_level=support_level,
+                    missing_fields=tuple(sorted(candidate_missing)),
+                    factors=factors,
+                )
+            )
+        ranked = tuple(ranked_list)
+        discarded.extend(
+            DiscardedCandidate(
                 fraction=candidate_fraction,
                 nico=candidate_nico,
-                description=self.catalog.description(candidate_fraction, candidate_nico),
-                support_level=support_level,
-                missing_fields=tuple(sorted(missing)) if support_level == "conditional" else (),
+                reason_code="outside_top_three",
+                explanation="La opción es válida, pero quedó fuera de las tres mejor respaldadas.",
             )
-            for rank, (_, candidate_fraction, candidate_nico, support_level) in enumerate(
-                unique[:3], start=1
-            )
+            for _, candidate_fraction, candidate_nico, _ in unique[3:]
         )
+        return ranked, tuple(discarded)
 
     @staticmethod
     def _candidate_compatibility(
@@ -634,6 +975,24 @@ class Chapter72ClassificationEngine:
         nico: str,
     ) -> tuple[bool, int]:
         thickness = facts.thickness_mm
+        if fraction == "72091504":
+            carbon = facts.composition_pct.get("C")
+            if nico == "01" and carbon is not None:
+                return carbon > Decimal("0.4"), 0
+            if nico == "02" and facts.yield_strength_mpa is not None:
+                return facts.yield_strength_mpa >= Decimal("355"), 0
+            if nico == "03" and facts.porcelain_exposed_parts is not None:
+                return facts.porcelain_exposed_parts, 0
+            if nico == "99" and all(
+                value is not None
+                for value in (carbon, facts.yield_strength_mpa, facts.porcelain_exposed_parts)
+            ):
+                return (
+                    carbon <= Decimal("0.4")
+                    and facts.yield_strength_mpa < Decimal("355")
+                    and facts.porcelain_exposed_parts is False
+                ), 10
+            return True, 10 if nico == "99" else 20
         if fraction == "72081003" and thickness is not None:
             valid = {
                 "01": thickness > Decimal("10"),
@@ -655,6 +1014,8 @@ class Chapter72ClassificationEngine:
             boron = facts.composition_pct.get("B")
             boron_grade = nico in {"01", "02", "03", "04", "05", "06", "07"}
             if boron_grade and boron is not None and boron < Decimal("0.0008"):
+                return False, 0
+            if boron_grade and facts.tool_steel is True:
                 return False, 0
             if boron_grade and thickness is not None:
                 dimensions = {
@@ -680,5 +1041,344 @@ class Chapter72ClassificationEngine:
                 return thickness >= Decimal("4.75"), 10
             if nico == "92" and facts.porcelain_exposed_parts is False:
                 return False, 20
+            if nico == "08" and facts.high_speed_steel is not None:
+                return facts.high_speed_steel, 0
+            if nico == "09" and facts.tool_steel is not None:
+                return facts.tool_steel, 0
+            if nico == "99" and (
+                facts.high_speed_steel is True or facts.tool_steel is True
+            ):
+                return False, 10
             return True, 10 if nico == "99" else 20
+        if fraction == "72104999":
+            if nico == "04" and facts.yield_strength_mpa is not None:
+                return facts.yield_strength_mpa >= Decimal("355"), 0
+            if thickness is not None:
+                valid = {
+                    "01": thickness <= Decimal("0.35"),
+                    "02": Decimal("0.35") < thickness <= Decimal("1.0"),
+                    "03": thickness > Decimal("1.0"),
+                }.get(nico, True)
+                return valid, 10 if nico == "99" else 0
+            return True, 10 if nico == "99" else 0
+        if fraction in {"72111491", "72111999"}:
+            carbon = facts.composition_pct.get("C")
+            if carbon is not None:
+                valid = {
+                    "01": carbon >= Decimal("0.6"),
+                    "02": Decimal("0.25") <= carbon < Decimal("0.6"),
+                    "99": carbon < Decimal("0.25"),
+                }.get(nico, True)
+                return valid, 10 if nico == "99" else 0
+            return True, 10 if nico == "99" else 0
+        if fraction == "72112303" and thickness is not None:
+            valid = thickness <= Decimal("0.35") if nico == "01" else thickness > Decimal("0.35")
+            return valid, 10 if nico == "99" else 0
+        if fraction == "72112999":
+            carbon = facts.composition_pct.get("C")
+            if carbon is not None:
+                valid = {
+                    "01": Decimal("0.25") <= carbon < Decimal("0.6"),
+                    "02": carbon >= Decimal("0.6"),
+                }.get(nico, True)
+                return valid, 10 if nico == "99" else 0
+            return True, 10 if nico == "99" else 0
+        if fraction.startswith("7219"):
+            series = facts.stainless_series
+            ni = facts.composition_pct.get("Ni")
+            cr = facts.composition_pct.get("Cr")
+            mn = facts.composition_pct.get("Mn")
+            if not series:
+                if ni is not None and cr is not None and ni >= Decimal("8") and cr >= Decimal("16"):
+                    series = "300"
+                elif ni is not None and cr is not None and ni < Decimal("1") and cr >= Decimal("10.5"):
+                    series = "400"
+                elif mn is not None and mn >= Decimal("5"):
+                    series = "200"
+            if series:
+                expected_nico = "01" if series == "300" else "03" if series == "400" else "04" if series == "200" else "99"
+                return (nico == expected_nico), 0 if nico == expected_nico else 10
+            return True, 10 if nico == "99" else 0
         return True, 10 if nico == "99" else 0
+
+    def _candidate_factors(
+        self,
+        facts: ProductFacts,
+        fraction: str,
+        nico: str,
+        support_level: str,
+    ) -> tuple[CandidateFactor, ...]:
+        factors: list[CandidateFactor] = []
+        matched_alloys = {
+            element: value
+            for element, threshold in ALLOY_THRESHOLDS.items()
+            if (value := facts.composition_pct.get(element)) is not None
+            and value >= threshold
+        }
+        if fraction.startswith(("7225", "7226")) and matched_alloys:
+            factors.append(CandidateFactor(
+                sequence=len(factors) + 1,
+                rule_code="chapter72.definition.other_alloy",
+                outcome=StepOutcome.MATCHED,
+                explanation="Al menos un elemento alcanza el umbral de acero aleado.",
+                operator=">=",
+                expected={
+                    element: str(ALLOY_THRESHOLDS[element])
+                    for element in matched_alloys
+                },
+                observed={element: str(value) for element, value in matched_alloys.items()},
+                unit="%",
+                evidence_fields=tuple(
+                    f"composition_pct.{element}" for element in matched_alloys
+                ),
+            ))
+        elif fraction.startswith(("7219", "7220")):
+            cr = facts.composition_pct.get("Cr")
+            c = facts.composition_pct.get("C")
+            if cr is not None and cr >= Decimal("10.5"):
+                factors.append(CandidateFactor(
+                    sequence=len(factors) + 1,
+                    rule_code="chapter72.definition.stainless_steel",
+                    outcome=StepOutcome.MATCHED,
+                    explanation="Contenido de cromo >= 10.5% y carbono <= 1.2% (acero inoxidable).",
+                    operator=">=",
+                    expected={"Cr": "10.5", "C": "1.2"},
+                    observed={"Cr": str(cr), "C": str(c) if c is not None else None},
+                    unit="%",
+                    evidence_fields=("composition_pct.Cr", "composition_pct.C"),
+                ))
+        elif fraction.startswith(("7208", "7209", "7210", "7211", "7212")) and not matched_alloys:
+            sample_elements = tuple(e for e in ("B", "Cr", "Ni", "Mo", "Ti") if e in facts.composition_pct)
+            if sample_elements:
+                factors.append(CandidateFactor(
+                    sequence=len(factors) + 1,
+                    rule_code="chapter72.definition.non_alloy",
+                    outcome=StepOutcome.MATCHED,
+                    explanation="Los elementos de aleación analizados se encuentran estrictamente por debajo de los umbrales de la Nota 1(f).",
+                    operator="<",
+                    expected={e: str(ALLOY_THRESHOLDS[e]) for e in sample_elements},
+                    observed={e: str(facts.composition_pct[e]) for e in sample_elements},
+                    unit="%",
+                    evidence_fields=tuple(f"composition_pct.{e}" for e in sample_elements),
+                ))
+
+        factors.append(CandidateFactor(
+            sequence=len(factors) + 1,
+            rule_code=f"chapter72.fraction.{fraction}",
+            outcome=StepOutcome.MATCHED,
+            explanation=f"Las propiedades conocidas son compatibles con la fracción {fraction}.",
+            operator="all",
+            expected={"fraction": fraction},
+            observed={
+                "width_mm": str(facts.width_mm) if facts.width_mm is not None else None,
+                "thickness_mm": str(facts.thickness_mm) if facts.thickness_mm is not None else None,
+                "rolling": facts.rolling,
+                "coiled": facts.coiled,
+                "coated": facts.coated,
+            },
+            unit=None,
+            evidence_fields=("width_mm", "thickness_mm", "rolling", "coiled", "coated"),
+        ))
+
+        catalog_description = self.catalog.description(fraction, nico)
+        observed, evidence_fields = self._nico_observations(facts, fraction, nico)
+        expected = self._nico_expectation(fraction, nico)
+        expected["description"] = catalog_description
+        nico_outcome = (
+            StepOutcome.MATCHED
+            if support_level == "fully_supported" or all(
+                value is not None for value in observed.values()
+            )
+            else StepOutcome.UNKNOWN
+        )
+        factors.append(CandidateFactor(
+            sequence=len(factors) + 1,
+            rule_code=f"chapter72.nico.{fraction}.{nico}",
+            outcome=nico_outcome,
+            explanation=(
+                f"Cumple la condición del NICO {nico}."
+                if nico_outcome is StepOutcome.MATCHED
+                else f"El NICO {nico} es posible; el personal debe verificar su condición específica."
+            ),
+            operator="catalog_qualifier",
+            expected=expected,
+            observed=observed,
+            evidence_fields=evidence_fields,
+            required_for_selection=True,
+        ))
+        return tuple(factors)
+
+    @staticmethod
+    def _nico_expectation(fraction: str, nico: str) -> dict[str, object]:
+        if fraction == "72091504":
+            return {
+                "01": {"composition_pct.C": {"operator": ">", "value": "0.4", "unit": "%"}},
+                "02": {"mechanical_properties.yield_strength_mpa": {"operator": ">=", "value": "355", "unit": "MPa"}},
+                "03": {"porcelain_exposed_parts": {"operator": "=", "value": True}},
+                "99": {"qualifier": "other"},
+            }.get(nico, {})
+        if fraction == "72104999":
+            return {
+                "01": {"thickness_mm": {"operator": "<=", "value": "0.35", "unit": "mm"}},
+                "02": {"thickness_mm": {"operator": "<=", "value": "1.0", "unit": "mm"}},
+                "03": {"thickness_mm": {"operator": ">", "value": "1.0", "unit": "mm"}},
+                "04": {"yield_strength_mpa": {"operator": ">=", "value": "355", "unit": "MPa"}},
+                "99": {"qualifier": "other"},
+            }.get(nico, {})
+        if fraction in {"72111491", "72111999"}:
+            return {
+                "01": {"composition_pct.C": {"operator": ">=", "value": "0.6", "unit": "%"}},
+                "02": {"composition_pct.C": {"operator": ">=", "value": "0.25", "unit": "%"}},
+                "99": {"qualifier": "other"},
+            }.get(nico, {})
+        if fraction == "72112303":
+            return {
+                "01": {"thickness_mm": {"operator": "<=", "value": "0.35", "unit": "mm"}},
+                "02": {"thickness_mm": {"operator": ">", "value": "0.35", "unit": "mm"}},
+            }.get(nico, {})
+        if fraction == "72112999":
+            return {
+                "01": {"composition_pct.C": {"operator": "<", "value": "0.6", "unit": "%"}},
+                "02": {"composition_pct.C": {"operator": ">=", "value": "0.6", "unit": "%"}},
+            }.get(nico, {})
+        if fraction.startswith("7219"):
+            return {
+                "01": {"series": "300", "Ni_min_pct": "8", "Cr_min_pct": "16"},
+                "03": {"series": "400", "Cr_min_pct": "10.5", "Ni_max_pct": "1"},
+                "04": {"series": "200", "Mn_min_pct": "5"},
+                "99": {"qualifier": "other"},
+            }.get(nico, {})
+        if fraction == "72255091":
+            expectations: dict[str, dict[str, object]] = {
+                "01": {"B_min_pct": "0.0008", "thickness_mm": "1 < x < 3", "coiled": True, "tool_steel": False},
+                "02": {"B_min_pct": "0.0008", "thickness_mm": "0.5 <= x <= 1", "coiled": True, "tool_steel": False},
+                "03": {"B_min_pct": "0.0008", "thickness_mm": "x < 0.5", "coiled": True, "tool_steel": False},
+                "04": {"B_min_pct": "0.0008", "thickness_mm": "3 <= x < 4.75", "coiled": True, "tool_steel": False},
+                "05": {"B_min_pct": "0.0008", "thickness_mm": "x >= 4.75", "coiled": True, "tool_steel": False},
+                "06": {"B_min_pct": "0.0008", "thickness_mm": "x < 4.75", "coiled": False, "tool_steel": False},
+                "07": {"B_min_pct": "0.0008", "thickness_mm": "x >= 4.75", "coiled": False, "tool_steel": False},
+                "08": {"high_speed_steel": True},
+                "09": {"tool_steel": True},
+                "10": {"porcelain_exposed_parts": True, "thickness_mm": "x >= 4.75"},
+                "11": {"yield_strength_mpa": {"operator": ">=", "value": "355", "unit": "MPa"}},
+                "91": {"qualifier": "other", "thickness_mm": "x >= 4.75"},
+                "92": {"qualifier": "other", "porcelain_exposed_parts": True},
+                "99": {"qualifier": "other"},
+            }
+            return expectations.get(nico, {})
+        return {}
+
+    @staticmethod
+    def _nico_observations(
+        facts: ProductFacts,
+        fraction: str,
+        nico: str,
+    ) -> tuple[dict[str, object], tuple[str, ...]]:
+        if fraction == "72091504":
+            fields = {
+                "01": ("composition_pct.C", facts.composition_pct.get("C")),
+                "02": ("mechanical_properties.yield_strength_mpa", facts.yield_strength_mpa),
+                "03": ("porcelain_exposed_parts", facts.porcelain_exposed_parts),
+            }
+            if nico in fields:
+                field_path, value = fields[nico]
+                return {field_path: str(value) if isinstance(value, Decimal) else value}, (field_path,)
+            return {
+                "composition_pct.C": (
+                    str(facts.composition_pct.get("C"))
+                    if facts.composition_pct.get("C") is not None else None
+                ),
+                "mechanical_properties.yield_strength_mpa": (
+                    str(facts.yield_strength_mpa)
+                    if facts.yield_strength_mpa is not None else None
+                ),
+                "porcelain_exposed_parts": facts.porcelain_exposed_parts,
+            }, (
+                "composition_pct.C",
+                "mechanical_properties.yield_strength_mpa",
+                "porcelain_exposed_parts",
+            )
+        if fraction == "72104999":
+            if nico in {"01", "02", "03"}:
+                return {
+                    "thickness_mm": str(facts.thickness_mm) if facts.thickness_mm is not None else None
+                }, ("thickness_mm",)
+            if nico == "04":
+                return {
+                    "mechanical_properties.yield_strength_mpa": (
+                        str(facts.yield_strength_mpa)
+                        if facts.yield_strength_mpa is not None else None
+                    )
+                }, ("mechanical_properties.yield_strength_mpa",)
+            return {
+                "thickness_mm": str(facts.thickness_mm) if facts.thickness_mm is not None else None,
+                "mechanical_properties.yield_strength_mpa": (
+                    str(facts.yield_strength_mpa)
+                    if facts.yield_strength_mpa is not None else None
+                ),
+            }, ("thickness_mm", "mechanical_properties.yield_strength_mpa")
+        if fraction in {"72111491", "72111999", "72112999"}:
+            return {
+                "composition_pct.C": (
+                    str(facts.composition_pct.get("C"))
+                    if facts.composition_pct.get("C") is not None else None
+                )
+            }, ("composition_pct.C",)
+        if fraction == "72112303":
+            return {
+                "thickness_mm": str(facts.thickness_mm) if facts.thickness_mm is not None else None
+            }, ("thickness_mm",)
+        if fraction.startswith("7219"):
+            return {
+                "stainless_series": facts.stainless_series,
+                "composition_pct.Ni": (
+                    str(facts.composition_pct.get("Ni"))
+                    if facts.composition_pct.get("Ni") is not None else None
+                ),
+                "composition_pct.Cr": (
+                    str(facts.composition_pct.get("Cr"))
+                    if facts.composition_pct.get("Cr") is not None else None
+                ),
+            }, ("stainless_series", "composition_pct.Ni", "composition_pct.Cr")
+        if fraction == "72255091":
+            if nico in {"01", "02", "03", "04", "05", "06", "07"}:
+                return {
+                    "composition_pct.B": (
+                        str(facts.composition_pct.get("B"))
+                        if facts.composition_pct.get("B") is not None else None
+                    ),
+                    "thickness_mm": str(facts.thickness_mm) if facts.thickness_mm is not None else None,
+                    "coiled": facts.coiled,
+                    "tool_steel": facts.tool_steel,
+                }, ("composition_pct.B", "thickness_mm", "coiled", "tool_steel")
+            if nico == "08":
+                return {"high_speed_steel": facts.high_speed_steel}, ("high_speed_steel",)
+            if nico == "09":
+                return {"tool_steel": facts.tool_steel}, ("tool_steel",)
+            if nico == "11":
+                return {
+                    "mechanical_properties.yield_strength_mpa": (
+                        str(facts.yield_strength_mpa)
+                        if facts.yield_strength_mpa is not None else None
+                    )
+                }, ("mechanical_properties.yield_strength_mpa",)
+            if nico in {"10", "92"}:
+                return {
+                    "porcelain_exposed_parts": facts.porcelain_exposed_parts,
+                    "thickness_mm": str(facts.thickness_mm) if facts.thickness_mm is not None else None,
+                }, ("porcelain_exposed_parts", "thickness_mm")
+            if nico == "91":
+                return {
+                    "thickness_mm": str(facts.thickness_mm) if facts.thickness_mm is not None else None
+                }, ("thickness_mm",)
+            return {
+                "high_speed_steel": facts.high_speed_steel,
+                "tool_steel": facts.tool_steel,
+                "porcelain_exposed_parts": facts.porcelain_exposed_parts,
+            }, ("high_speed_steel", "tool_steel", "porcelain_exposed_parts")
+        return {
+            "thickness_mm": str(facts.thickness_mm) if facts.thickness_mm is not None else None,
+            "yield_strength_mpa": (
+                str(facts.yield_strength_mpa) if facts.yield_strength_mpa is not None else None
+            ),
+        }, ("thickness_mm", "mechanical_properties.yield_strength_mpa")

@@ -145,3 +145,8 @@ Generación, persistencia, selección auditada, bloqueo de aprobación y enlace
 exacto paso–observación implementados. El backend ya entrega página, región y
 URL administrada para navegación. El componente visual del visor PDF permanece
 pendiente del frontend.
+
+La explicación individual quedó implementada mediante `candidate_factors` y
+`GET /api/v1/classification-candidates/{candidate_id}`. Cada factor conserva
+regla, comparación, valores, resultado y enlaces de evidencia. El motor también
+registra por qué descartó opciones evaluadas.

@@ -6,8 +6,15 @@ from types import SimpleNamespace
 from backend.app.config import Settings
 from backend.app.domain.document import DocumentLayout, PageLayout, PageSource
 from backend.app.infrastructure.ocr.hardware import GpuDevice, HardwareProfile
-from backend.app.infrastructure.ocr.reader import PaddleStructureReader
-from backend.app.infrastructure.ocr.runtime import OcrRuntimeStatus, probe_ocr_runtime
+from backend.app.infrastructure.ocr.reader import (
+    OcrCancellationRequested,
+    PaddleStructureReader,
+)
+from backend.app.infrastructure.ocr.runtime import (
+    OcrRuntimeStatus,
+    probe_ocr_runtime,
+    run_smoke_check,
+)
 
 
 def hardware(*, with_gpu: bool = True) -> HardwareProfile:
@@ -210,3 +217,127 @@ def test_gpu_inference_failure_retries_once_on_cpu():
     assert result.pages[0].source == PageSource.OCR
     assert result.metadata["ocr"]["selected_device"] == "cpu"
     assert "GPU falló" in result.metadata["ocr"]["message"]
+
+
+def test_smoke_check_success_and_timing():
+    class FakePipeline:
+        def predict(self):
+            return []
+
+    settings = Settings(ocr_enabled=True, ocr_device="cpu")
+    result = run_smoke_check(
+        settings,
+        runtime_probe=lambda _s: runtime_status(healthy=True, device="cpu"),
+        pipeline_factory=lambda **_kw: FakePipeline(),
+    )
+
+    assert result["success"] is True
+    assert result["effective_device"] == "cpu"
+    assert result["elapsed_ms"] >= 0.0
+    assert "Verificación OCR completada" in result["message"]
+
+
+def test_smoke_check_gpu_fallback_to_cpu():
+    devices: list[str] = []
+
+    class FakePipeline:
+        def __init__(self, device: str):
+            self.device = device
+
+        def predict(self):
+            if self.device == "gpu:0":
+                raise RuntimeError("CUDA initialization failed")
+
+    def factory(**kw):
+        devices.append(kw["device"])
+        return FakePipeline(kw["device"])
+
+    settings = Settings(ocr_enabled=True, ocr_device="gpu:0")
+    result = run_smoke_check(
+        settings,
+        runtime_probe=lambda _s: runtime_status(healthy=True, device="gpu:0"),
+        pipeline_factory=factory,
+    )
+
+    assert result["success"] is True
+    assert result["effective_device"] == "cpu"
+    assert devices == ["gpu:0", "cpu"]
+    assert "GPU falló" in result["message"]
+
+
+def test_sequential_page_processing_and_progress_callback():
+    pages_reported: list[tuple[int, int]] = []
+
+    class MultiPageDigitalReader:
+        def read(self, _path):
+            return DocumentLayout(
+                "multi.pdf",
+                "abc",
+                (
+                    PageLayout(1, 612, 792, 0, PageSource.UNREADABLE),
+                    PageLayout(2, 612, 792, 0, PageSource.UNREADABLE),
+                ),
+            )
+
+    class FakeResult:
+        def __init__(self, page_index: int):
+            self.json = {
+                "res": {
+                    "page_index": page_index,
+                    "overall_ocr_res": {
+                        "rec_texts": [f"PAGE {page_index + 1}"],
+                        "rec_scores": [0.95],
+                        "rec_polys": [[[10, 10], [50, 10], [50, 20], [10, 20]]],
+                    },
+                }
+            }
+
+    class FakePipeline:
+        def predict(self, **_kw):
+            return [FakeResult(0), FakeResult(1)]
+
+    reader = PaddleStructureReader(
+        Settings(ocr_enabled=True),
+        digital_reader=MultiPageDigitalReader(),
+        runtime_probe=lambda _s: runtime_status(healthy=True, device="cpu"),
+        pipeline_factory=lambda **_kw: FakePipeline(),
+    )
+
+    result = reader.read(
+        "ignored.pdf",
+        page_callback=lambda cur, tot: pages_reported.append((cur, tot)),
+    )
+
+    assert len(result.pages) == 2
+    assert pages_reported == [(1, 2), (2, 2)]
+
+
+def test_ocr_cancellation_between_pages():
+    import pytest
+
+    class FakeResult:
+        json = {
+            "res": {
+                "page_index": 0,
+                "overall_ocr_res": {
+                    "rec_texts": ["PAGE 1"],
+                    "rec_scores": [0.95],
+                    "rec_polys": [[[0, 0], [10, 10]]],
+                },
+            }
+        }
+
+    class FakePipeline:
+        def predict(self, **_kw):
+            return [FakeResult()]
+
+    reader = PaddleStructureReader(
+        Settings(ocr_enabled=True),
+        digital_reader=FakeDigitalReader(),
+        runtime_probe=lambda _s: runtime_status(healthy=True, device="cpu"),
+        pipeline_factory=lambda **_kw: FakePipeline(),
+    )
+
+    with pytest.raises(OcrCancellationRequested):
+        reader.read("ignored.pdf", cancel_check=lambda: True)
+

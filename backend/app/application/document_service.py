@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 import base64
 import json
 from typing import BinaryIO
@@ -15,10 +15,14 @@ from backend.app.config import Settings
 from backend.app.domain.enums import JobKind, ProcessingStatus
 from backend.app.domain.errors import ApplicationError, NotFoundError
 from backend.app.infrastructure.database.models import (
+    ClassificationResult,
+    ClassificationRun,
     Document,
+    Heat,
     Job,
     Manufacturer,
     MillCertificate,
+    Product,
     StoredFile,
 )
 from backend.app.infrastructure.files import FileStorage
@@ -44,6 +48,20 @@ def decode_cursor(value: str) -> tuple[date, int]:
         return date.fromisoformat(decoded[0]), int(decoded[1])
     except Exception as exc:
         raise ApplicationError("invalid_cursor", "El cursor de paginación no es válido") from exc
+
+
+def resolve_period_dates(period: str | None, today: date | None = None) -> tuple[date | None, date | None]:
+    if not period or period in {"all", "custom"}:
+        return None, None
+    ref_date = today or datetime.now(timezone.utc).date()
+    norm = period.strip().lower()
+    if norm in {"day", "today"}:
+        return ref_date, ref_date
+    elif norm == "week":
+        return ref_date - timedelta(days=7), ref_date
+    elif norm == "month":
+        return ref_date - timedelta(days=30), ref_date
+    return None, None
 
 
 class DocumentService:
@@ -120,10 +138,23 @@ class DocumentService:
         certificate_no: str | None = None,
         manufacturer: str | None = None,
         approval_status: str | None = None,
+        processing_status: str | None = None,
+        heat_no: str | None = None,
+        product_identifier: str | None = None,
+        fraction: str | None = None,
+        nico: str | None = None,
+        period: str | None = None,
         date_from: date | None = None,
         date_to: date | None = None,
         date_basis: str = "certificate",
     ) -> tuple[list[tuple[MillCertificate, Manufacturer | None]], str | None]:
+        if period:
+            p_from, p_to = resolve_period_dates(period)
+            if p_from is not None:
+                date_from = date_from or p_from
+            if p_to is not None:
+                date_to = date_to or p_to
+
         uploaded_date = cast(MillCertificate.uploaded_at, Date)
         sort_date = (
             uploaded_date
@@ -142,6 +173,38 @@ class DocumentService:
             statement = statement.where(Manufacturer.name.ilike(f"%{manufacturer}%"))
         if approval_status:
             statement = statement.where(MillCertificate.approval_status == approval_status)
+        if processing_status:
+            statement = statement.where(Document.processing_status == processing_status)
+        if heat_no:
+            statement = statement.where(
+                MillCertificate.id.in_(
+                    select(Heat.certificate_id).where(Heat.heat_no.ilike(f"%{heat_no}%"))
+                )
+            )
+        if product_identifier:
+            statement = statement.where(
+                MillCertificate.id.in_(
+                    select(Product.certificate_id).where(Product.product_identifier.ilike(f"%{product_identifier}%"))
+                )
+            )
+        if fraction:
+            clean_frac = fraction.replace(".", "").replace("-", "")
+            statement = statement.where(
+                MillCertificate.id.in_(
+                    select(ClassificationRun.certificate_id)
+                    .join(ClassificationResult, ClassificationResult.classification_run_id == ClassificationRun.id)
+                    .where(ClassificationResult.fraction.ilike(f"{clean_frac}%"))
+                )
+            )
+        if nico:
+            clean_nico = nico.strip()
+            statement = statement.where(
+                MillCertificate.id.in_(
+                    select(ClassificationRun.certificate_id)
+                    .join(ClassificationResult, ClassificationResult.classification_run_id == ClassificationRun.id)
+                    .where(ClassificationResult.nico == clean_nico)
+                )
+            )
         if date_from:
             statement = statement.where(sort_date >= date_from)
         if date_to:

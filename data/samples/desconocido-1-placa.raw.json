@@ -1,0 +1,68 @@
+{
+  "document": {
+    "source_name": "DESCONOCIDO 1 PLACA.pdf",
+    "supplier": "Laminadora Industrial del Norte S.A. de C.V.",
+    "certificate_no": "LIN-2026-8801",
+    "customer": "Distribuidora de Aceros S.A.",
+    "issue_date_raw": "2026-05-12"
+  },
+  "standard": "ASTM A36",
+  "rolling": "hot",
+  "condition": ["plate", "as_rolled"],
+  "chemistry_scales": {
+    "C": 0,
+    "Si": 0,
+    "Mn": 0,
+    "P": 0,
+    "S": 0
+  },
+  "rows": [
+    {
+      "product_id": "PL-101",
+      "heat_no": "COL-5510",
+      "thickness_mm": 6.35,
+      "width_mm": 1500,
+      "length_m": 6.0,
+      "weight_kg": 4485,
+      "weight_kind": "mass",
+      "yield_strength_mpa": 280,
+      "tensile_strength_mpa": 440,
+      "elongation_pct": 26.5,
+      "chemistry": {
+        "C": 0.18,
+        "Si": 0.22,
+        "Mn": 0.75,
+        "P": 0.018,
+        "S": 0.012
+      },
+      "evidence": [{"page": 1, "region": "table_row_1"}]
+    },
+    {
+      "product_id": "PL-102",
+      "heat_no": "COL-5510",
+      "thickness_mm": 6.35,
+      "width_mm": 1500,
+      "length_m": 6.0,
+      "weight_kg": 4490,
+      "weight_kind": "mass",
+      "yield_strength_mpa": 285,
+      "tensile_strength_mpa": 445,
+      "elongation_pct": 26.0,
+      "chemistry": {
+        "C": 0.18,
+        "Si": 0.22,
+        "Mn": 0.75,
+        "P": 0.018,
+        "S": 0.012
+      },
+      "evidence": [{"page": 1, "region": "table_row_2"}]
+    }
+  ],
+  "unmapped_blocks": [
+    {
+      "page_number": 1,
+      "text": "CONDICIONES DE INSPECCION: SUPERFICIE LIMPIA LIBRE DE DEFECTOS",
+      "bbox": {"x0": 50, "top": 500, "x1": 450, "bottom": 515}
+    }
+  ]
+}

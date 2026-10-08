@@ -22,19 +22,30 @@ from sqlalchemy.orm import Session, sessionmaker
 from backend.app.api.schemas import (
     ActorReason,
     ArchiveRequest,
+    CandidateDetailEnvelope,
+    CandidateSelectionEnvelope,
     CandidateSelectionRequest,
     CorrectionRequest,
+    DocumentQualityReportEnvelope,
+    DocumentReviewQueueEnvelope,
+    Envelope,
+    ErrorEnvelope,
     ExportRequest,
     ManualObservationRequest,
     ReclassificationRequest,
+    ReprocessEnvelope,
+    ReprocessRequest,
 )
+from backend.app.application.document_quality_service import DocumentQualityService
 from backend.app.application.document_service import DocumentService, decode_cursor, encode_cursor
+
 from backend.app.application.review_service import ReviewService
 from backend.app.config import Settings, get_settings
 from backend.app.domain.enums import ApprovalStatus
 from backend.app.domain.errors import ApplicationError, NotFoundError
 from backend.app.infrastructure.database.models import (
     ChemicalComposition,
+    CandidateFactor,
     ClassificationCandidate,
     ClassificationResult,
     ClassificationRun,
@@ -54,9 +65,32 @@ from backend.app.infrastructure.database.models import (
 from backend.app.infrastructure.database.session import create_session_factory
 from backend.app.infrastructure.files import FileStorage
 from backend.app.infrastructure.logging import configure_logging
-from backend.app.infrastructure.ocr import probe_ocr_runtime
+from backend.app.infrastructure.ocr import (
+    OcrModelManager,
+    probe_ocr_runtime,
+    run_smoke_check,
+)
 
 logger = logging.getLogger(__name__)
+
+
+def serialize_candidate_factor(
+    factor: CandidateFactor,
+    evidence_links: list[dict[str, Any]],
+) -> dict[str, Any]:
+    return {
+        "id": factor.id,
+        "sequence": factor.sequence,
+        "rule_code": factor.rule_code,
+        "outcome": factor.outcome,
+        "operator": factor.operator,
+        "expected": factor.expected_json,
+        "observed": factor.observed_json,
+        "unit": factor.unit,
+        "explanation": factor.explanation,
+        "required_for_selection": factor.required_for_selection,
+        "evidence_links": evidence_links,
+    }
 
 
 def ok(data: Any = None, *, meta: dict[str, Any] | None = None, status_code: int = 200) -> JSONResponse:
@@ -115,6 +149,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings
     app.state.sessions = sessions
     app.state.storage = storage
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     @app.middleware("http")
     async def correlation_id(request: Request, call_next):
@@ -211,6 +253,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def ocr_status():
         return ok(probe_ocr_runtime(settings).as_dict())
 
+    @app.get("/api/v1/ocr/models")
+    def ocr_models():
+        return ok(OcrModelManager(settings.model_root).get_status().as_dict())
+
+    @app.post("/api/v1/ocr/smoke-check")
+    def ocr_smoke_check():
+        return ok(run_smoke_check(settings))
+
     @app.post("/api/v1/documents", status_code=status.HTTP_202_ACCEPTED)
     def upload_document(request: Request, session: DbSession, file: UploadFile = File(...)):
         result = DocumentService(settings, request.app.state.storage).upload(
@@ -234,6 +284,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         certificate_no: str | None = None,
         manufacturer: str | None = None,
         approval_status: ApprovalStatus | None = None,
+        processing_status: str | None = None,
+        heat_no: str | None = None,
+        product_identifier: str | None = None,
+        fraction: str | None = None,
+        nico: str | None = None,
+        period: Literal["day", "today", "week", "month"] | None = None,
         date_from: date | None = None,
         date_to: date | None = None,
         date_basis: Literal["certificate", "uploaded"] = "certificate",
@@ -245,13 +301,39 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             certificate_no=certificate_no,
             manufacturer=manufacturer,
             approval_status=approval_status,
+            processing_status=processing_status,
+            heat_no=heat_no,
+            product_identifier=product_identifier,
+            fraction=fraction,
+            nico=nico,
+            period=period,
             date_from=date_from,
             date_to=date_to,
             date_basis=date_basis,
         )
         return ok(
             [serialize_certificate(certificate, maker) for certificate, maker in rows],
-            meta={"next_cursor": next_cursor, "limit": limit, "date_basis": date_basis},
+            meta={
+                "next_cursor": next_cursor,
+                "limit": limit,
+                "date_basis": date_basis,
+                "period": period,
+                "filters": {
+                    k: v for k, v in {
+                        "certificate_no": certificate_no,
+                        "manufacturer": manufacturer,
+                        "approval_status": approval_status.value if approval_status else None,
+                        "processing_status": processing_status,
+                        "heat_no": heat_no,
+                        "product_identifier": product_identifier,
+                        "fraction": fraction,
+                        "nico": nico,
+                        "period": period,
+                        "date_from": date_from.isoformat() if date_from else None,
+                        "date_to": date_to.isoformat() if date_to else None,
+                    }.items() if v is not None
+                },
+            },
         )
 
     @app.get("/api/v1/certificates/{certificate_id}")
@@ -298,6 +380,36 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             } for c in chemistry],
         })
         return ok(data)
+
+    @app.get(
+        "/api/v1/certificates/{certificate_id}/quality-report",
+        responses={
+            200: {"model": DocumentQualityReportEnvelope, "description": "Reporte de calidad y validación documental"},
+            404: {"model": ErrorEnvelope, "description": "Acta no encontrada"},
+        },
+    )
+    def certificate_quality_report(certificate_id: int, session: DbSession):
+        report = DocumentQualityService(settings).evaluate_certificate(session, certificate_id)
+        return ok(report.as_dict())
+
+    @app.get(
+        "/api/v1/document-reviews",
+        responses={
+            200: {"model": DocumentReviewQueueEnvelope, "description": "Cola de revisión documental con incidencias"},
+        },
+    )
+    def list_document_reviews(
+        session: DbSession,
+        limit: int = Query(50, ge=1, le=200),
+        status_filter: str | None = Query(None),
+    ):
+        items = DocumentQualityService(settings).get_review_queue(
+            session,
+            limit=limit,
+            status_filter=status_filter,
+        )
+        return ok(items, meta={"limit": limit, "count": len(items)})
+
 
     @app.get("/api/v1/heats")
     def list_heats(
@@ -438,6 +550,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             return ok({
                 "id": link.id,
                 "decision_step_id": link.decision_step_id,
+                "candidate_factor_id": link.candidate_factor_id,
                 "source_type": link.source_type,
                 "reference": link.source_reference_json,
             })
@@ -452,6 +565,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return ok({
             "id": link.id,
             "decision_step_id": link.decision_step_id,
+            "candidate_factor_id": link.candidate_factor_id,
             "source_type": link.source_type,
             "field_path": link.field_path,
             "observation": {
@@ -472,6 +586,54 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "can_focus_region": can_focus_region,
                 "fallback": None if can_focus_region else "full_page",
             },
+        })
+
+    @app.get(
+        "/api/v1/classification-candidates/{candidate_id}",
+        responses={
+            200: {"model": CandidateDetailEnvelope, "description": "Detalle del candidato con factores y evidencia"},
+            404: {"model": ErrorEnvelope, "description": "Candidato no encontrado"},
+        },
+    )
+    def classification_candidate_detail(candidate_id: int, session: DbSession):
+        candidate = session.get(ClassificationCandidate, candidate_id)
+        if candidate is None:
+            raise NotFoundError("Candidato de clasificación", candidate_id)
+        factors = session.scalars(
+            select(CandidateFactor)
+            .where(CandidateFactor.candidate_id == candidate.id)
+            .order_by(CandidateFactor.sequence)
+        ).all()
+        factor_ids = [factor.id for factor in factors]
+        links = session.scalars(
+            select(EvidenceLink)
+            .where(EvidenceLink.candidate_factor_id.in_(factor_ids))
+            .order_by(EvidenceLink.candidate_factor_id, EvidenceLink.id)
+        ).all() if factor_ids else []
+        links_by_factor: dict[int, list[dict[str, Any]]] = {}
+        for link in links:
+            assert link.candidate_factor_id is not None
+            links_by_factor.setdefault(link.candidate_factor_id, []).append({
+                "id": link.id,
+                "source_type": link.source_type,
+                "field_path": link.field_path,
+                "observation_id": link.observation_id,
+                "reference": link.source_reference_json,
+                "detail_url": f"/api/v1/evidence/{link.id}",
+            })
+        return ok({
+            "id": candidate.id,
+            "classification_result_id": candidate.classification_result_id,
+            "rank": candidate.rank,
+            "fraction": candidate.fraction,
+            "nico": candidate.nico,
+            "description": candidate.description,
+            "support_level": candidate.support_level,
+            "details": candidate.details_json,
+            "factors": [
+                serialize_candidate_factor(factor, links_by_factor.get(factor.id, []))
+                for factor in factors
+            ],
         })
 
     @app.post("/api/v1/documents/{document_id}/archive")
@@ -552,6 +714,28 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         certificate_ids = list(dict.fromkeys(
             certificate_ids + [run.certificate_id for run in selected_runs]
         ))
+        if payload.official:
+            unapproved = session.scalars(
+                select(MillCertificate.id)
+                .where(MillCertificate.id.in_(certificate_ids), MillCertificate.approval_status != "approved")
+            ).all()
+            if unapproved:
+                raise ApplicationError(
+                    "official_export_requires_approval",
+                    f"Un reporte oficial sólo admite actas aprobadas (actas pendientes: {list(unapproved)})",
+                    status_code=409,
+                )
+            if run_ids:
+                unapproved_runs = session.scalars(
+                    select(ClassificationRun.id)
+                    .where(ClassificationRun.id.in_(run_ids), ClassificationRun.approval_status != "approved")
+                ).all()
+                if unapproved_runs:
+                    raise ApplicationError(
+                        "official_export_requires_approval",
+                        f"Un reporte oficial sólo admite ejecuciones aprobadas (ejecuciones pendientes: {list(unapproved_runs)})",
+                        status_code=409,
+                    )
         export = Export(
             format="xlsx",
             status="queued",
@@ -561,9 +745,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "classification_run_ids": run_ids,
                 "official": payload.official,
             },
-            filters_json={},
+            filters_json=payload.filters or {},
             person_name=payload.person_name,
-            workstation_name=settings.workstation_name,
+            workstation_name=payload.workstation_name or settings.workstation_name,
         )
         session.add(export)
         session.flush()
@@ -575,6 +759,26 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         session.add(job)
         session.flush()
         return ok({"export_id": export.id, "job_id": job.id}, status_code=202)
+
+    @app.get("/api/v1/exports/{export_id}")
+    def get_export_status(export_id: int, session: DbSession):
+        export = session.get(Export, export_id)
+        if export is None:
+            raise NotFoundError("Exportación", export_id)
+        return ok({
+            "id": export.id,
+            "format": export.format,
+            "status": export.status,
+            "scope": export.scope_json,
+            "filters": export.filters_json,
+            "person_name": export.person_name,
+            "workstation_name": export.workstation_name,
+            "sha256": export.sha256,
+            "stored_file_id": export.stored_file_id,
+            "error_message": export.error_message,
+            "created_at": export.created_at.isoformat(),
+            "download_url": f"/api/v1/exports/{export.id}/file" if export.status == "succeeded" else None,
+        })
 
     @app.get("/api/v1/exports/{export_id}/file")
     def download_export(export_id: int, request: Request, session: DbSession):
@@ -632,7 +836,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         )
         return ok({"classification_run_id": run.id, "approval_status": run.approval_status})
 
-    @app.post("/api/v1/classification-runs/{run_id}/approve")
+    @app.post(
+        "/api/v1/classification-runs/{run_id}/approve",
+        responses={
+            200: {"model": Envelope, "description": "Ejecución de clasificación aprobada"},
+            404: {"model": ErrorEnvelope, "description": "Ejecución no encontrada"},
+            409: {"model": ErrorEnvelope, "description": "No se puede aprobar la ejecución"},
+        },
+    )
     def approve(run_id: int, payload: ActorReason, session: DbSession):
         return transition(run_id, ApprovalStatus.APPROVED, payload, session)
 
@@ -640,7 +851,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def reject(run_id: int, payload: ActorReason, session: DbSession):
         return transition(run_id, ApprovalStatus.REJECTED, payload, session)
 
-    @app.post("/api/v1/classification-results/{result_id}/select")
+    @app.post(
+        "/api/v1/classification-results/{result_id}/select",
+        responses={
+            200: {"model": CandidateSelectionEnvelope, "description": "Selección registrada correctamente"},
+            404: {"model": ErrorEnvelope, "description": "Resultado o candidato no encontrado"},
+            409: {"model": ErrorEnvelope, "description": "Conflicto en la selección del candidato"},
+        },
+    )
     def select_classification_candidate(
         result_id: int,
         payload: CandidateSelectionRequest,
@@ -685,11 +903,35 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "person_name": payload.person_name,
                 "reason": payload.reason,
                 "rule_set_id": payload.rule_set_id,
+                "source_run_id": payload.source_run_id,
             },
         )
         session.add(job)
         session.flush()
         return ok({"certificate_id": certificate_id, "job_id": job.id}, status_code=202)
+
+    @app.post(
+        "/api/v1/certificates/{certificate_id}/reprocess",
+        responses={
+            200: {"model": ReprocessEnvelope, "description": "Reprocesamiento ejecutado o encolado"},
+            400: {"model": ErrorEnvelope, "description": "Solicitud inválida"},
+            404: {"model": ErrorEnvelope, "description": "Acta o documento no encontrado"},
+        },
+    )
+    def reprocess_certificate(
+        certificate_id: int,
+        payload: ReprocessRequest,
+        session: DbSession,
+    ):
+        result = DocumentQualityService(settings).reprocess_certificate(
+            session,
+            certificate_id=certificate_id,
+            from_stage=payload.from_stage,  # type: ignore[arg-type]
+            person_name=payload.person_name,
+            reason=payload.reason,
+        )
+        return ok(result)
+
 
     @app.get("/api/v1/certificates/{certificate_id}/classification-runs")
     def list_classification_runs(certificate_id: int, session: DbSession):
@@ -709,7 +951,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "created_at": run.created_at.isoformat(),
         } for run in runs])
 
-    @app.get("/api/v1/classification-runs/{run_id}")
+    @app.get(
+        "/api/v1/classification-runs/{run_id}",
+        responses={
+            200: {"model": Envelope, "description": "Detalle de la ejecución con candidatos y factores"},
+            404: {"model": ErrorEnvelope, "description": "Ejecución no encontrada"},
+        },
+    )
     def classification_run_detail(run_id: int, session: DbSession):
         run = session.get(ClassificationRun, run_id)
         if run is None:
@@ -725,6 +973,34 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             .where(ClassificationCandidate.classification_result_id.in_(result_ids))
             .order_by(ClassificationCandidate.classification_result_id, ClassificationCandidate.rank)
         ).all() if result_ids else []
+        candidate_ids = [candidate.id for candidate in candidates]
+        factors = session.scalars(
+            select(CandidateFactor)
+            .where(CandidateFactor.candidate_id.in_(candidate_ids))
+            .order_by(CandidateFactor.candidate_id, CandidateFactor.sequence)
+        ).all() if candidate_ids else []
+        factor_ids = [factor.id for factor in factors]
+        factor_evidence_links = session.scalars(
+            select(EvidenceLink)
+            .where(EvidenceLink.candidate_factor_id.in_(factor_ids))
+            .order_by(EvidenceLink.candidate_factor_id, EvidenceLink.id)
+        ).all() if factor_ids else []
+        factor_links: dict[int, list[dict[str, Any]]] = {}
+        for link in factor_evidence_links:
+            assert link.candidate_factor_id is not None
+            factor_links.setdefault(link.candidate_factor_id, []).append({
+                "id": link.id,
+                "source_type": link.source_type,
+                "field_path": link.field_path,
+                "observation_id": link.observation_id,
+                "reference": link.source_reference_json,
+                "detail_url": f"/api/v1/evidence/{link.id}",
+            })
+        factors_by_candidate: dict[int, list[dict[str, Any]]] = {}
+        for factor in factors:
+            factors_by_candidate.setdefault(factor.candidate_id, []).append(
+                serialize_candidate_factor(factor, factor_links.get(factor.id, []))
+            )
         candidates_by_result: dict[int, list[dict[str, Any]]] = {}
         for candidate in candidates:
             candidates_by_result.setdefault(candidate.classification_result_id, []).append({
@@ -735,6 +1011,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "description": candidate.description,
                 "support_level": candidate.support_level,
                 "details": candidate.details_json,
+                "detail_url": f"/api/v1/classification-candidates/{candidate.id}",
+                "factors": factors_by_candidate.get(candidate.id, []),
             })
         selections = session.scalars(
             select(ClassificationSelection)
@@ -752,6 +1030,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "workstation_name": selection.workstation_name,
                 "created_at": selection.created_at.isoformat(),
             })
+        current_selection_by_result: dict[int, dict[str, Any] | None] = {}
+        for r_id in result_ids:
+            r_sels = selections_by_result.get(r_id, [])
+            superseded_ids = {s["supersedes_selection_id"] for s in r_sels if s["supersedes_selection_id"] is not None}
+            active_sels = [s for s in r_sels if s["id"] not in superseded_ids]
+            current_selection_by_result[r_id] = active_sels[-1] if active_sels else (r_sels[-1] if r_sels else None)
         steps = session.scalars(
             select(DecisionStep)
             .where(DecisionStep.classification_result_id.in_(result_ids))
@@ -803,10 +1087,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "outcome": result.outcome,
                 "details": result.details_json,
                 "candidates": candidates_by_result.get(result.id, []),
+                "current_selection": current_selection_by_result.get(result.id),
                 "selections": selections_by_result.get(result.id, []),
                 "steps": steps_by_result.get(result.id, []),
             } for result in results],
         })
 
     return app
-

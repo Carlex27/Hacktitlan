@@ -63,7 +63,7 @@ class Document(TimestampMixin, Base):
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
     stored_file_id: Mapped[int] = mapped_column(
-        ForeignKey("stored_files.id", ondelete="RESTRICT"), nullable=False, unique=True, index=True
+        ForeignKey("stored_files.id", ondelete="RESTRICT"), nullable=False, index=True
     )
     processing_status: Mapped[str] = mapped_column(
         String(30), nullable=False, default=ProcessingStatus.QUEUED.value, index=True
