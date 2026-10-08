@@ -8,9 +8,9 @@
 
 ## 1. Resumen Ejecutivo
 
-En este hito se completó la arquitectura determinista de clasificación arancelaria para el universo completo del Capítulo 72 de la LIGIE. Se construyó una matriz formal de cobertura para cada partida, subpartida, fracción y NICO del catálogo versionado (614 elementos en total), categorizando cada rama sin excepciones.
+En este hito se construyó una matriz formal para cada partida, fracción y NICO del catálogo versionado (614 elementos). La matriz distingue cobertura ejecutable, ramas bloqueadas, anomalías, ramas aún no implementadas y elementos fuera de alcance.
 
-Se expandió el motor de clasificación `Chapter72ClassificationEngine` para resolver de forma exhaustiva las 9 partidas de laminados planos (`7208`, `7209`, `7210`, `7211`, `7212`, `7219`, `7220`, `7225`, `7226`), respetando estrictamente las notas de capítulo de la LIGIE (Nota 1(e) para acero inoxidable, Nota 1(f) para demás aceros aleados, Nota 1(k) para productos chapeados).
+Se expandió el motor de clasificación `Chapter72ClassificationEngine` para cubrir las 9 partidas de laminados planos (`7208`, `7209`, `7210`, `7211`, `7212`, `7219`, `7220`, `7225`, `7226`), respetando las notas de capítulo de la LIGIE (Nota 1(e) para acero inoxidable, Nota 1(f) para demás aceros aleados, Nota 1(k) para productos chapeados).
 
 Asimismo, se implementó el aislamiento estricto ante anomalías de la fuente oficial (fracción `7219.35.02`), el soporte de candidatos y factores explicativos para las nuevas partidas, la inmutabilidad de reglas aprobadas y retiradas, y la reproducibilidad determinista a partir de instantáneas históricas.
 
@@ -22,11 +22,12 @@ El archivo `backend/app/classification_engine/coverage.py` formaliza la matriz e
 
 | Estado de Rama (`BranchStatus`) | Total | Descripción y Alcance |
 | :--- | :---: | :--- |
-| `implemented` | **299** | Ramas deterministas completamente implementadas con base en composición química y dimensiones físicas disponibles en certificados de molino estándar. |
-| `blocked_by_missing_fact` | **9** | Ramas que requieren hechos externos no determinables exclusivamente a partir del certificado de molino estándar (pérdidas magnéticas W/kg a 50/60 Hz, destino industrial específico como cuerpos de envases de hojalata, o ensayos de embutición profunda para paneles automotrices). |
+| `implemented` | **285** | Ramas respaldadas por una fracción alcanzable desde el motor. |
+| `blocked_by_missing_fact` | **17** | Fracciones y NICOs descendientes que requieren hechos externos no determinables exclusivamente a partir del certificado de molino estándar (pérdidas magnéticas W/kg a 50/60 Hz, destino industrial específico como cuerpos de envases de hojalata, o ensayos de embutición profunda para paneles automotrices). |
 | `ambiguous_source` | **2** | Código de fracción y NICO `7219.35.02` con anomalía documentada en la fuente oficial proporcionada (`SIN VIGENCIA`). |
+| `not_implemented` | **6** | Fracciones o NICOs sin ruta ejecutable; incluyen `7208.90.99`, `7209.90.99` y `7210.41.99`. |
 | `out_of_scope` | **304** | Partidas del Capítulo 72 correspondientes a productos no planos (desperdicios `7204`, lingotes `7206-7207`, alambrón `7213`, barras `7214-7215`, perfiles `7216`, alambre `7217`, barras de inoxidable `7221-7223`, barras de demás aleados `7227-7229`). |
-| **Total General** | **614** | **100.0% de los elementos del catálogo están mapeados y auditados (0 ramas omitidas).** |
+| **Total General** | **614** | **100% está mapeado; 6 elementos permanecen explícitamente pendientes de implementación.** |
 
 ### Partidas de Laminados Planos en Alcance (9 Partidas):
 1. **7208**: Productos laminados planos de hierro o acero sin alear, de anchura $\ge 600\text{ mm}$, laminados en caliente, sin chapar ni revestir.
@@ -73,7 +74,7 @@ Todos estos atributos fueron incorporados en `ClassificationService._facts()` (e
 - Nunca se "rellena" artificialmente la lista a 3 candidatos por similitud cuando la legislación sólo admite 1 o 2 opciones válidas; en tal caso, el resultado permanece justamente en `needs_review` exigiendo revisión del especialista.
 
 ### 3.5. Inmutabilidad y Versionado de Conjuntos de Reglas (`versioning.py`)
-- Se implementó la función `validate_rule_set_immutability(status, field_changed)` que impide mutaciones en conjuntos con estado `approved` o `retired`, arrojando `RuleSetImmutabilityError`. Cualquier cambio de reglas exige crear una nueva versión.
+- `validate_rule_set_immutability(status, field_changed)` está conectada a un evento ORM y la migración `0006_rule_set_immutability` instala además un trigger PostgreSQL. Las escrituras desde la aplicación y las escrituras SQL directas quedan protegidas.
 - Se implementó `compare_rule_sets(current_manifest, target_manifest)` para auditar diferencias (reglas añadidas, eliminadas, modificadas y cambio de hash de catálogo) antes de cualquier reclasificación histórica.
 - Se aseguró en `ClassificationService._rule_set()` que un conjunto con estado `retired` no pueda iniciar nuevas clasificaciones, arrojando el error `rule_set_retired`.
 
@@ -102,7 +103,8 @@ Se creó la suite integral de pruebas unitarias `backend/tests/unit/test_chapter
    - Límite de fluencia en `354.9 MPa` (NICO `99`) vs `355.0 MPa` (NICO `01` de alta resistencia) vs `355.1 MPa` (NICO `01`).
 
 4. **Reproducibilidad histórica:**
-   - Prueba `test_historical_snapshot_reclassification_reproducibility` verifica que los datos reconstruidos a partir de un snapshot de base de datos producen resultados 100% idénticos en el motor de clasificación.
+   - `POST /api/v1/certificates/{id}/reclassify` acepta `source_run_id`, reconstruye hechos y evidencia desde `input_snapshot_json`, reutiliza el conjunto de reglas original y enlaza la nueva ejecución mediante `parent_run_id`.
+   - Cada snapshot registra `engine_sha256`. Si el motor exacto ya no está disponible, la operación devuelve `historical_engine_unavailable` en vez de producir un resultado silenciosamente distinto.
 
 ---
 
@@ -112,32 +114,12 @@ La suite completa de pruebas del backend se ejecutó exitosamente:
 
 ```bash
 uv run pytest
-======================= 168 passed, 1 warning in 7.62s ========================
+======================= 199 passed, 1 warning in 8.74s ========================
 ```
 
-Desglose de pruebas ejecutadas:
-- `backend/tests/golden/test_generic_extraction_corpus.py`: 5 pasadas.
-- `backend/tests/golden/test_mill_certificates_corpus.py`: 4 pasadas.
-- `backend/tests/integration/test_classification_candidate_selection.py`: 3 pasadas.
-- `backend/tests/integration/test_document_processing_flow.py`: 2 pasadas.
-- `backend/tests/integration/test_document_quality_and_review.py`: 4 pasadas.
-- `backend/tests/integration/test_postgresql_contract.py`: 3 pasadas.
-- `backend/tests/unit/test_backend_foundations.py`: 23 pasadas.
-- `backend/tests/unit/test_certificate_extraction_service.py`: 3 pasadas.
-- `backend/tests/unit/test_chapter72_coverage.py`: 36 pasadas (34 de frontera y cobertura + 2 de inmutabilidad y snapshot).
-- `backend/tests/unit/test_chemistry_normalization.py`: 5 pasadas.
-- `backend/tests/unit/test_classification_engine.py`: 20 pasadas.
-- `backend/tests/unit/test_document_detection.py`: 4 pasadas.
-- `backend/tests/unit/test_document_quality.py`: 9 pasadas.
-- `backend/tests/unit/test_format_profiles.py`: 6 pasadas.
-- `backend/tests/unit/test_generic_extractor.py`: 4 pasadas.
-- `backend/tests/unit/test_mill_certificate.py`: 10 pasadas.
-- `backend/tests/unit/test_ocr_geometry.py`: 8 pasadas.
-- `backend/tests/unit/test_ocr_models.py`: 8 pasadas.
-- `backend/tests/unit/test_ocr_runtime.py`: 9 pasadas.
-- `backend/tests/unit/test_pdf_reader.py`: 2 pasadas.
+El total se toma de la ejecución completa, sin mantener un desglose manual que pueda quedar desactualizado.
 
-**Total: 168 pruebas unitarias e integrales aprobadas, 0 fallos.**
+**Total: 199 pruebas unitarias e integrales aprobadas, 0 fallos.**
 
 ---
 
@@ -146,5 +128,5 @@ Desglose de pruebas ejecutadas:
 1. **Separación de responsabilidades:** La lógica de clasificación física y química, validación arancelaria y detección de anomalías vive exclusivamente en el backend (`backend/app/classification_engine/`).
 2. **Preservación de evidencia:** No se infieren valores ausentes; permanecen como `None` y generan requerimientos explícitos de revisión documental.
 3. **Modelado explícito de estados:** Se modelan formalmente `implemented`, `blocked_by_missing_fact`, `ambiguous_source` y `out_of_scope`.
-4. **Listas dinámicas:** Se admiten números arbitrarios de candidatos y factores explicativos sin valores codificados en duro.
+4. **Listas dinámicas:** Los factores son dinámicos y el flujo conserva hasta tres candidatos conforme al contrato de revisión.
 5. **Aduanal Safety Notice:** Se preserva en toda salida y reporte la leyenda obligatoria `DEMOSTRACIÓN — SIN VALIDEZ ADUANERA`.

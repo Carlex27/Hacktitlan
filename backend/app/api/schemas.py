@@ -54,6 +54,7 @@ class ArchiveRequest(ActorReason):
 
 class ReclassificationRequest(ActorReason):
     rule_set_id: int | None = Field(default=None, ge=1)
+    source_run_id: int | None = Field(default=None, ge=1)
 
 
 class CandidateSelectionRequest(ActorReason):
@@ -230,7 +231,6 @@ class ReprocessEnvelope(BaseModel):
     data: ReprocessRead
     meta: dict[str, Any] = Field(default_factory=dict)
     error: ErrorDetail | None = None
-
 
 
 

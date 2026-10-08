@@ -14,6 +14,21 @@ FLAT_ROLLED_HEADINGS = {
     "7208", "7209", "7210", "7211", "7212", "7219", "7220", "7225", "7226"
 }
 
+# Fractions returned by an executable branch in engine.py. Coverage must never
+# infer implementation merely from the heading prefix.
+EXECUTABLE_FRACTIONS = frozenset("""
+72081003 72082502 72082601 72082701 72083601 72083701 72083801 72083901
+72084002 72085104 72085201 72085301 72085401 72091504 72091601 72091701
+72091801 72092501 72092601 72092701 72092801 72101101 72101204 72102001
+72103002 72104101 72104999 72105003 72106101 72106999 72107002 72109099
+72111301 72111491 72111999 72112303 72112999 72119099 72121003 72122003
+72123003 72124004 72125001 72126004 72191101 72191202 72191301 72191401
+72192101 72192201 72192301 72192401 72193101 72193202 72193301 72193502
+72199099 72201101 72201201 72202003 72209099 72251101 72251999 72253091
+72254091 72255091 72259101 72259201 72259999 72261101 72261999 72262001
+72269107 72269206 72269999
+""".split())
+
 # Source anomaly documented in data/ligie/chapter-72/source-provided/SOURCE.md:
 # Page 38 (under 7219.34) and Page 39 (under 7219.35) both list 7219.35.02 with different descriptions.
 AMBIGUOUS_SOURCE_CODES = {"72193502"}
@@ -34,6 +49,7 @@ class BranchStatus(StrEnum):
     IMPLEMENTED = "implemented"
     BLOCKED_BY_MISSING_FACT = "blocked_by_missing_fact"
     AMBIGUOUS_SOURCE = "ambiguous_source"
+    NOT_IMPLEMENTED = "not_implemented"
     OUT_OF_SCOPE = "out_of_scope"
 
 
@@ -81,14 +97,24 @@ class Chapter72CoverageMatrix:
                     "la fracción 7219.35.02 aparece duplicada con distintas descripciones."
                 )
                 required_facts = ("official_dof_resolution",)
-            elif cleaned in BLOCKED_MISSING_FACT_CODES:
+            elif cleaned in BLOCKED_MISSING_FACT_CODES or any(
+                len(blocked) == 8 and cleaned.startswith(blocked)
+                for blocked in BLOCKED_MISSING_FACT_CODES
+            ):
                 status = BranchStatus.BLOCKED_BY_MISSING_FACT
                 notes = "Requiere hechos externos al certificado de molino (ensayos de pérdida magnética o uso industrial final)."
                 required_facts = self._determine_missing_facts(cleaned)
-            else:
+            elif (
+                item_type == "heading"
+                or cleaned[:8] in EXECUTABLE_FRACTIONS
+            ):
                 status = BranchStatus.IMPLEMENTED
                 notes = "Regla determinista implementada sobre propiedades físicas y composición química."
                 required_facts = self._determine_required_facts(cleaned)
+            else:
+                status = BranchStatus.NOT_IMPLEMENTED
+                notes = "No existe una ruta ejecutable para esta rama arancelaria."
+                required_facts = ("implemented_tariff_branch",)
 
             entry = CoverageEntry(
                 code=code_raw,
@@ -159,12 +185,5 @@ class Chapter72CoverageMatrix:
         }
 
 
-# Singleton instance
-_DEFAULT_MATRIX: Chapter72CoverageMatrix | None = None
-
-
 def get_coverage_matrix() -> Chapter72CoverageMatrix:
-    global _DEFAULT_MATRIX
-    if _DEFAULT_MATRIX is None:
-        _DEFAULT_MATRIX = Chapter72CoverageMatrix()
-    return _DEFAULT_MATRIX
+    return Chapter72CoverageMatrix()

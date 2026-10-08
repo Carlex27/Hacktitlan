@@ -10,6 +10,7 @@ from typing import Any, Annotated, Literal
 from uuid import uuid4
 
 from fastapi import Depends, FastAPI, File, Query, Request, UploadFile, status
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.exceptions import RequestValidationError
 from fastapi.encoders import jsonable_encoder
@@ -148,6 +149,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings
     app.state.sessions = sessions
     app.state.storage = storage
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     @app.middleware("http")
     async def correlation_id(request: Request, call_next):
@@ -877,6 +886,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "person_name": payload.person_name,
                 "reason": payload.reason,
                 "rule_set_id": payload.rule_set_id,
+                "source_run_id": payload.source_run_id,
             },
         )
         session.add(job)
@@ -1067,4 +1077,3 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         })
 
     return app
-

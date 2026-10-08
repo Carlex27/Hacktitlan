@@ -5,6 +5,7 @@ import os
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, inspect, text
+from sqlalchemy.exc import DBAPIError
 
 from backend.app.api.app import create_app
 from backend.app.config import Settings
@@ -47,7 +48,7 @@ def test_migrated_postgresql_contract(test_database_url: str):
     finally:
         engine.dispose()
 
-    assert migration == "0004_candidate_factors"
+    assert migration == "0006_rule_set_immutability"
     assert {
         "manufacturers", "stored_files", "documents", "mill_certificates",
         "heats", "products", "observations", "chemical_compositions", "jobs",
@@ -57,6 +58,29 @@ def test_migrated_postgresql_contract(test_database_url: str):
         "evidence_links",
         "approval_events", "exports", "backup_runs",
     } <= tables
+
+
+def test_approved_rule_sets_are_immutable_in_postgresql(test_database_url: str):
+    engine = create_engine(test_database_url)
+    connection = engine.connect()
+    transaction = connection.begin()
+    try:
+        rule_set_id = connection.scalar(text("""
+            INSERT INTO rule_sets (name, version, status, source_hash, manifest_json)
+            VALUES ('immutability-test', '1', 'approved', :source_hash, '{}'::json)
+            RETURNING id
+        """), {"source_hash": "0" * 64})
+        savepoint = connection.begin_nested()
+        with pytest.raises(DBAPIError, match="immutable"):
+            connection.execute(
+                text("UPDATE rule_sets SET manifest_json = CAST(:manifest AS json) WHERE id = :id"),
+                {"id": rule_set_id, "manifest": '{"changed":true}'},
+            )
+        savepoint.rollback()
+    finally:
+        transaction.rollback()
+        connection.close()
+        engine.dispose()
 
 
 def test_ready_endpoint_checks_real_postgresql(test_database_url: str, tmp_path):

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 from typing import Any, Literal
 
 from sqlalchemy import func, select
@@ -219,21 +220,23 @@ class DocumentQualityService:
             select(MillCertificate, Document, Manufacturer)
             .join(Document, MillCertificate.document_id == Document.id)
             .outerjoin(Manufacturer, MillCertificate.manufacturer_id == Manufacturer.id)
-            .where(
-                (Document.processing_status == ProcessingStatus.NEEDS_REVIEW.value)
-                | (MillCertificate.approval_status == ApprovalStatus.NEEDS_REVIEW.value)
-            )
+            .where(MillCertificate.approval_status != ApprovalStatus.APPROVED.value)
             .order_by(MillCertificate.id.desc())
-            .limit(limit)
         )
         if status_filter:
             query = query.where(MillCertificate.approval_status == status_filter)
 
+        # shortcut: recalculates non-approved acts; persist indexed quality status before Hito 7 volume tests.
         rows = session.execute(query).all()
         results: list[dict[str, Any]] = []
 
         for cert, doc, mfr in rows:
             report = self.evaluate_certificate(session, cert.id)
+            if report.blocking_count == 0 and (
+                doc.processing_status != ProcessingStatus.NEEDS_REVIEW.value
+                and cert.approval_status != ApprovalStatus.NEEDS_REVIEW.value
+            ):
+                continue
             results.append({
                 "certificate_id": cert.id,
                 "document_id": doc.id,
@@ -256,6 +259,8 @@ class DocumentQualityService:
                     for issue in report.issues[:5]
                 ],
             })
+            if len(results) >= limit:
+                break
 
         return results
 
@@ -277,7 +282,11 @@ class DocumentQualityService:
                 "La persona y el motivo son obligatorios para reprocesar",
             )
 
-        certificate = session.get(MillCertificate, certificate_id)
+        certificate = session.scalar(
+            select(MillCertificate)
+            .where(MillCertificate.id == certificate_id)
+            .with_for_update()
+        )
         if certificate is None:
             raise NotFoundError("Acta", certificate_id)
 
@@ -286,13 +295,37 @@ class DocumentQualityService:
             raise NotFoundError("Documento", certificate.document_id)
 
         if from_stage == "extraction":
-            # Re-enqueue document extraction from stored file
+            metadata = dict(document.metadata_json or {})
+            metadata.pop("quality_report", None)
+            revision_document = Document(
+                stored_file_id=document.stored_file_id,
+                processing_status=ProcessingStatus.QUEUED.value,
+                page_count=document.page_count,
+                language=document.language,
+                metadata_json=metadata,
+            )
+            session.add(revision_document)
+            session.flush()
+            revision = MillCertificate(
+                document_id=revision_document.id,
+                manufacturer_id=certificate.manufacturer_id,
+                certificate_no=certificate.certificate_no,
+                certificate_date=certificate.certificate_date,
+                revision_number=certificate.revision_number + 1,
+                previous_revision_id=certificate.id,
+                approval_status=ApprovalStatus.NEEDS_REVIEW.value,
+                standard=certificate.standard,
+                product_name=certificate.product_name,
+                demo_notice=certificate.demo_notice,
+            )
+            session.add(revision)
+            session.flush()
             job = Job(
-                document_id=document.id,
+                document_id=revision_document.id,
                 kind=JobKind.EXTRACT_DOCUMENT.value,
                 status=ProcessingStatus.QUEUED.value,
                 payload_json={
-                    "certificate_id": certificate.id,
+                    "certificate_id": revision.id,
                     "reprocess_stage": "extraction",
                     "person_name": person_name,
                     "reason": reason,
@@ -301,9 +334,8 @@ class DocumentQualityService:
             )
             session.add(job)
             session.flush()
-            document.processing_status = ProcessingStatus.QUEUED.value
             return {
-                "certificate_id": certificate.id,
+                "certificate_id": revision.id,
                 "job_id": job.id,
                 "stage": "extraction",
                 "status": "queued",
@@ -319,9 +351,29 @@ class DocumentQualityService:
                 certificate.approval_status = ApprovalStatus.NEEDS_REVIEW.value
                 document.processing_status = ProcessingStatus.NEEDS_REVIEW.value
 
+            now = datetime.now(timezone.utc)
+            audit_job = Job(
+                document_id=document.id,
+                kind=JobKind.NORMALIZE_DOCUMENT.value,
+                status=ProcessingStatus.SUCCEEDED.value,
+                progress=100,
+                started_at=now,
+                finished_at=now,
+                payload_json={
+                    "certificate_id": certificate.id,
+                    "person_name": person_name,
+                    "reason": reason,
+                    "workstation_name": self.settings.workstation_name,
+                    "reprocess_stage": "normalization",
+                },
+                result_json={"quality_report": report.as_dict()},
+            )
+            session.add(audit_job)
+            session.flush()
+
             return {
                 "certificate_id": certificate.id,
-                "job_id": None,
+                "job_id": audit_job.id,
                 "stage": "normalization",
                 "status": "evaluated",
                 "quality_report": report.as_dict(),

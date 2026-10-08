@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import replace
 from decimal import Decimal
+from hashlib import sha256
+from pathlib import Path
 from typing import Iterable
 
 from backend.app.classification_engine.catalog import SourceProvidedCatalog
@@ -46,6 +48,7 @@ class Chapter72ClassificationEngine:
 
     def __init__(self, catalog: SourceProvidedCatalog | None = None) -> None:
         self.catalog = catalog or SourceProvidedCatalog()
+        self.source_sha256 = sha256(Path(__file__).read_bytes()).hexdigest()
 
     def classify(self, facts: ProductFacts) -> ClassificationDecision:
         steps: list[Decision] = []
@@ -435,7 +438,10 @@ class Chapter72ClassificationEngine:
                     return fraction, "02", set(), ()
                 if facts.porcelain_exposed_parts is False and carbon is not None and facts.yield_strength_mpa is not None:
                     return fraction, "99", set(), ()
-                return fraction, None, {"porcelain_exposed_parts"}, ("01", "02", "03", "99")
+                missing = {"porcelain_exposed_parts"}
+                if facts.deep_drawing_class is None:
+                    missing.add("deep_drawing_class")
+                return fraction, None, missing, ("01", "02", "03", "99")
             if thickness > Decimal("1"):
                 return self._high_strength_nico("72091601", facts)
             if thickness >= Decimal("0.5"):
@@ -469,7 +475,11 @@ class Chapter72ClassificationEngine:
         if metal in {"sn", "tin", "estaño", "estano", "hojalata"}:
             if facts.thickness_mm is not None and facts.thickness_mm >= Decimal("0.5"):
                 return "72101101", "00", set(), ()
-            return "72101204", "99", set(), ()
+            if facts.secondary_reduction_ratio is None or facts.can_body_end_use is None:
+                return "72101204", None, {
+                    "secondary_reduction_ratio", "can_body_end_use"
+                }, ("01", "02", "99")
+            return "72101204", None, {"official_nico_qualifier"}, ("01", "02", "03", "99")
 
         # Lead / terne (7210.20)
         if metal in {"pb", "lead", "plomo", "terne"}:
@@ -560,7 +570,9 @@ class Chapter72ClassificationEngine:
         process = (facts.coating_process or "").casefold()
 
         if facts.clad is True:
-            return "72126004", "00", set(), ()
+            if facts.cladding_weight_percentage is None:
+                return "72126004", None, {"cladding_weight_percentage"}, ("72126004",)
+            return "72126004", None, {"cladding_material"}, ("72126004",)
         if metal in {"sn", "tin", "estaño", "estano", "hojalata"}:
             return "72121003", "00", set(), ()
         if metal in {"zn", "zinc", "cinc"} and process in {"electrolytic", "electrogalvanized"}:
@@ -657,9 +669,15 @@ class Chapter72ClassificationEngine:
     ) -> tuple[str | None, str | None, set[str], tuple[str, ...]]:
         # Silicon electrical steel (7225.11 / 7225.19)
         if facts.magnetic_silicon is True or facts.grain_oriented is True:
+            missing = {
+                name for name, value in (
+                    ("magnetic_loss_w_per_kg", facts.magnetic_loss_w_per_kg),
+                    ("magnetic_induction_tesla", facts.magnetic_induction_tesla),
+                ) if value is None
+            }
             if facts.grain_oriented is True:
-                return "72251101", "00", set(), ()
-            return "72251999", "00", set(), ()
+                return "72251101", (None if missing else "00"), missing, ("72251101",)
+            return "72251999", (None if missing else "00"), missing, ("72251999",)
 
         # Coated other alloy (7225.91 / 7225.92 / 7225.99)
         if facts.coated is True:
@@ -681,7 +699,10 @@ class Chapter72ClassificationEngine:
 
         # Cold-rolled other alloy (7225.50)
         if facts.rolling == "cold" and facts.coated is False:
-            return "72255091", None, {"nico_qualifier"}, ("72255091",)
+            missing = {"nico_qualifier"}
+            if facts.deep_drawing_class is None:
+                missing.add("deep_drawing_class")
+            return "72255091", None, missing, ("72255091",)
 
         return None, None, {"implemented_tariff_branch"}, ("7225",)
 
@@ -690,9 +711,11 @@ class Chapter72ClassificationEngine:
         facts: ProductFacts,
     ) -> tuple[str | None, str | None, set[str], tuple[str, ...]]:
         if facts.grain_oriented is True:
-            return "72261101", "00", set(), ()
+            missing = Chapter72ClassificationEngine._magnetic_missing(facts)
+            return "72261101", (None if missing else "00"), missing, ("72261101",)
         if facts.magnetic_silicon is True:
-            return "72261999", "00", set(), ()
+            missing = Chapter72ClassificationEngine._magnetic_missing(facts)
+            return "72261999", (None if missing else "00"), missing, ("72261999",)
         if facts.high_speed_steel is True:
             return "72262001", "00", set(), ()
         if facts.rolling == "hot":
@@ -700,6 +723,15 @@ class Chapter72ClassificationEngine:
         if facts.rolling == "cold":
             return "72269206", "99", set(), ()
         return "72269999", "00", set(), ()
+
+    @staticmethod
+    def _magnetic_missing(facts: ProductFacts) -> set[str]:
+        return {
+            name for name, value in (
+                ("magnetic_loss_w_per_kg", facts.magnetic_loss_w_per_kg),
+                ("magnetic_induction_tesla", facts.magnetic_induction_tesla),
+            ) if value is None
+        }
 
     @staticmethod
     def _non_alloy_hot_wide(

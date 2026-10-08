@@ -43,6 +43,7 @@ class ClassificationService:
         person_name: str,
         reason: str,
         rule_set_id: int | None = None,
+        source_run_id: int | None = None,
     ) -> ClassificationRun:
         person_name = person_name.strip()
         reason = reason.strip()
@@ -65,7 +66,28 @@ class ClassificationService:
                 "El acta todavía no contiene productos clasificables",
                 status_code=409,
             )
-        rule_set = self._rule_set(session, rule_set_id)
+        source_run = None
+        if source_run_id is not None:
+            source_run = session.get(ClassificationRun, source_run_id)
+            if source_run is None or source_run.certificate_id != certificate_id:
+                raise NotFoundError("Ejecución de clasificación", source_run_id)
+            if rule_set_id is not None and rule_set_id != source_run.rule_set_id:
+                raise ApplicationError(
+                    "historical_rule_set_mismatch",
+                    "La reproducción histórica debe usar el conjunto de reglas original",
+                    status_code=409,
+                )
+            rule_set = session.get(RuleSet, source_run.rule_set_id)
+            if rule_set is None:
+                raise NotFoundError("Conjunto de reglas", source_run.rule_set_id)
+            if source_run.input_snapshot_json.get("engine_sha256") != self.engine.source_sha256:
+                raise ApplicationError(
+                    "historical_engine_unavailable",
+                    "La versión exacta del motor histórico no está disponible",
+                    status_code=409,
+                )
+        else:
+            rule_set = self._rule_set(session, rule_set_id)
         catalog_hash = rule_set.manifest_json.get("catalog_sha256")
         if not catalog_hash or catalog_hash.casefold() != self.engine.catalog.sha256.casefold():
             raise ApplicationError(
@@ -73,18 +95,34 @@ class ClassificationService:
                 "La versión de reglas no coincide con el catálogo cargado",
                 status_code=409,
             )
-        parent = session.scalar(
+        parent = source_run or session.scalar(
             select(ClassificationRun)
             .where(ClassificationRun.certificate_id == certificate_id)
             .order_by(ClassificationRun.id.desc())
             .limit(1)
         )
-        product_facts = [self._facts(session, product) for product in products]
-        product_evidence = {
-            product.id: self._evidence(session, product) for product in products
-        }
+        if source_run is None:
+            product_facts = [self._facts(session, product) for product in products]
+            product_evidence = {
+                product.id: self._evidence(session, product) for product in products
+            }
+        else:
+            snapshots = source_run.input_snapshot_json.get("products", [])
+            by_id = {str(item.get("product_id")): item for item in snapshots}
+            if set(by_id) != {str(product.id) for product in products}:
+                raise ApplicationError(
+                    "historical_snapshot_mismatch",
+                    "La instantánea histórica no coincide con los productos del acta",
+                    status_code=409,
+                )
+            product_facts = [self._facts_from_snapshot(by_id[str(product.id)]) for product in products]
+            product_evidence = {
+                product.id: list(by_id[str(product.id)].get("evidence") or [])
+                for product in products
+            }
         snapshot = {
             "certificate_id": certificate_id,
+            "engine_sha256": self.engine.source_sha256,
             "person_name": person_name,
             "reason": reason,
             "workstation_name": self.settings.workstation_name,
@@ -113,7 +151,6 @@ class ClassificationService:
             certificate.approval_status = ApprovalStatus.NEEDS_REVIEW.value
 
         for product, facts in zip(products, product_facts, strict=True):
-            decision = self.engine.classify(facts)
             evidence = product_evidence[product.id]
             prod_issues = [
                 issue.as_dict()
@@ -125,21 +162,45 @@ class ClassificationService:
                 )
             ]
             has_blocking = any(i["severity"] == "blocking" for i in prod_issues)
-            outcome = "needs_review" if has_blocking else decision.outcome.value
+            if has_blocking:
+                session.add(
+                    ClassificationResult(
+                        classification_run_id=run.id,
+                        product_id=product.id,
+                        product_type=facts.form,
+                        fraction=None,
+                        nico=None,
+                        description=None,
+                        outcome="needs_review",
+                        details_json={
+                            "missing_fields": [],
+                            "candidates": [],
+                            "valid_candidate_count": 0,
+                            "selection_required": False,
+                            "quality_issues": prod_issues,
+                            "quality_score": quality_report.quality_score,
+                            "document_quality_status": quality_report.status,
+                            "discarded_candidates": [],
+                        },
+                    )
+                )
+                continue
+
+            decision = self.engine.classify(facts)
 
             result = ClassificationResult(
                 classification_run_id=run.id,
                 product_id=product.id,
                 product_type=decision.product_type,
-                fraction=decision.fraction if not has_blocking else None,
-                nico=decision.nico if not has_blocking else None,
-                description=decision.description if not has_blocking else None,
-                outcome=outcome,
+                fraction=decision.fraction,
+                nico=decision.nico,
+                description=decision.description,
+                outcome=decision.outcome.value,
                 details_json={
                     "missing_fields": list(decision.missing_fields),
-                    "candidates": list(decision.candidates) if not has_blocking else [],
-                    "valid_candidate_count": len(decision.ranked_candidates) if not has_blocking else 0,
-                    "selection_required": len(decision.ranked_candidates) == 3 and not has_blocking,
+                    "candidates": list(decision.candidates),
+                    "valid_candidate_count": len(decision.ranked_candidates),
+                    "selection_required": len(decision.ranked_candidates) == 3,
                     "quality_issues": prod_issues,
                     "quality_score": quality_report.quality_score,
                     "document_quality_status": quality_report.status,
@@ -151,13 +212,12 @@ class ClassificationService:
                             "explanation": candidate.explanation,
                         }
                         for candidate in decision.discarded_candidates
-                    ] if not has_blocking else [],
+                    ],
                 },
             )
             session.add(result)
             session.flush()
-            if not has_blocking:
-                for candidate in decision.ranked_candidates:
+            for candidate in decision.ranked_candidates:
                     candidate_row = ClassificationCandidate(
                         classification_result_id=result.id,
                         rank=candidate.rank,
@@ -438,6 +498,24 @@ class ClassificationService:
             temper=current_values.get(
                 "temper", properties.get("temper")
             ),
+            magnetic_loss_w_per_kg=ClassificationService._decimal(current_values.get(
+                "magnetic_loss_w_per_kg", properties.get("magnetic_loss_w_per_kg")
+            )),
+            magnetic_induction_tesla=ClassificationService._decimal(current_values.get(
+                "magnetic_induction_tesla", properties.get("magnetic_induction_tesla")
+            )),
+            secondary_reduction_ratio=ClassificationService._decimal(current_values.get(
+                "secondary_reduction_ratio", properties.get("secondary_reduction_ratio")
+            )),
+            can_body_end_use=current_values.get(
+                "can_body_end_use", properties.get("can_body_end_use")
+            ),
+            deep_drawing_class=current_values.get(
+                "deep_drawing_class", properties.get("deep_drawing_class")
+            ),
+            cladding_weight_percentage=ClassificationService._decimal(current_values.get(
+                "cladding_weight_percentage", properties.get("cladding_weight_percentage")
+            )),
         )
 
     @staticmethod
@@ -477,7 +555,36 @@ class ClassificationService:
             "rolled_four_faces": facts.rolled_four_faces,
             "clad": facts.clad,
             "temper": facts.temper,
+            "magnetic_loss_w_per_kg": ClassificationService._decimal_text(facts.magnetic_loss_w_per_kg),
+            "magnetic_induction_tesla": ClassificationService._decimal_text(facts.magnetic_induction_tesla),
+            "secondary_reduction_ratio": ClassificationService._decimal_text(facts.secondary_reduction_ratio),
+            "can_body_end_use": facts.can_body_end_use,
+            "deep_drawing_class": facts.deep_drawing_class,
+            "cladding_weight_percentage": ClassificationService._decimal_text(facts.cladding_weight_percentage),
         }
+
+    @staticmethod
+    def _decimal_text(value: Decimal | None) -> str | None:
+        return str(value) if value is not None else None
+
+    @staticmethod
+    def _facts_from_snapshot(snapshot: dict[str, Any]) -> ProductFacts:
+        decimal_fields = {
+            "width_mm", "thickness_mm", "yield_strength_mpa",
+            "magnetic_loss_w_per_kg", "magnetic_induction_tesla",
+            "secondary_reduction_ratio", "cladding_weight_percentage",
+        }
+        values = {
+            field: ClassificationService._decimal(snapshot.get(field))
+            if field in decimal_fields else snapshot.get(field)
+            for field in ProductFacts.__dataclass_fields__
+            if field != "composition_pct"
+        }
+        values["composition_pct"] = {
+            key: ClassificationService._decimal(value)
+            for key, value in (snapshot.get("composition_pct") or {}).items()
+        }
+        return ProductFacts(**values)
 
     @staticmethod
     def _evidence(session: Session, product: Product) -> list[dict[str, Any]]:

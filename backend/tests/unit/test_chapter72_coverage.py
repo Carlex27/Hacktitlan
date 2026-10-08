@@ -76,9 +76,10 @@ def test_coverage_matrix_complete_mapping():
 
     # Verify status breakdown
     status_counts = summary["overall_by_status"]
-    assert status_counts[BranchStatus.IMPLEMENTED.value] == 299
-    assert status_counts[BranchStatus.BLOCKED_BY_MISSING_FACT.value] == 9
+    assert status_counts[BranchStatus.IMPLEMENTED.value] == 285
+    assert status_counts[BranchStatus.BLOCKED_BY_MISSING_FACT.value] == 17
     assert status_counts[BranchStatus.AMBIGUOUS_SOURCE.value] == 2
+    assert status_counts[BranchStatus.NOT_IMPLEMENTED.value] == 6
     assert status_counts[BranchStatus.OUT_OF_SCOPE.value] == 304
 
     # All 9 flat-rolled headings are in scope
@@ -104,6 +105,15 @@ def test_coverage_matrix_all_entries_have_valid_status_and_facts():
             assert "Requiere hechos externos" in (entry.notes or "")
         elif entry.status == BranchStatus.AMBIGUOUS_SOURCE:
             assert entry.compact_code == "72193502"
+        elif entry.status == BranchStatus.NOT_IMPLEMENTED:
+            assert entry.required_facts == ("implemented_tariff_branch",)
+
+
+def test_coverage_reports_unreachable_catalog_fractions():
+    matrix = get_coverage_matrix()
+    assert get_coverage_matrix() is not matrix
+    for code in ("72089099", "72099099", "72104199"):
+        assert matrix.get(code).status is BranchStatus.NOT_IMPLEMENTED
 
 
 # ---------------------------------------------------------------------------
@@ -140,6 +150,21 @@ def test_stainless_cr_and_carbon_thresholds(cr_val, c_val, expected_outcome_type
     else:
         # 10.4999% Cr is below stainless threshold 10.5% but above alloy Cr threshold 0.3%
         assert result.product_type == "flat_rolled_other_alloy"
+
+
+@pytest.mark.parametrize(
+    ("boron", "expected_type"),
+    [
+        ("0.00079", "flat_rolled_non_alloy"),
+        ("0.00080", "flat_rolled_other_alloy"),
+        ("0.00081", "flat_rolled_other_alloy"),
+    ],
+)
+def test_boron_threshold_is_inclusive(boron, expected_type):
+    result = Chapter72ClassificationEngine().classify(
+        make_facts(composition_pct=non_alloy_chemistry(B=boron))
+    )
+    assert result.product_type == expected_type
 
 
 @pytest.mark.parametrize(
@@ -206,6 +231,40 @@ def test_cold_rolled_thickness_boundaries(thickness_mm, expected_fraction):
         rolling="cold",
     )
     result = engine.classify(facts)
+    assert result.fraction == expected_fraction
+
+
+@pytest.mark.parametrize(
+    ("thickness", "expected_nico"),
+    [("0.349", "01"), ("0.350", "01"), ("0.351", "02")],
+)
+def test_galvanized_035mm_boundary(thickness, expected_nico):
+    result = Chapter72ClassificationEngine().classify(make_facts(
+        coated=True, coating_metal="zinc", thickness_mm=Decimal(thickness)
+    ))
+    assert (result.fraction, result.nico) == ("72104999", expected_nico)
+
+
+@pytest.mark.parametrize(
+    ("thickness", "expected_fraction"),
+    [("4.749", "72111999"), ("4.750", "72111491"), ("4.751", "72111491")],
+)
+def test_narrow_hot_475mm_boundary(thickness, expected_fraction):
+    result = Chapter72ClassificationEngine().classify(make_facts(
+        width_mm=Decimal("400"), rolling="hot", thickness_mm=Decimal(thickness)
+    ))
+    assert result.fraction == expected_fraction
+
+
+@pytest.mark.parametrize(
+    ("thickness", "expected_fraction"),
+    [("9.999", "72191202"), ("10.000", "72191202"), ("10.001", "72191101")],
+)
+def test_stainless_hot_10mm_boundary(thickness, expected_fraction):
+    result = Chapter72ClassificationEngine().classify(make_facts(
+        rolling="hot", thickness_mm=Decimal(thickness),
+        composition_pct=stainless_chemistry(),
+    ))
     assert result.fraction == expected_fraction
 
 
@@ -451,6 +510,21 @@ def test_ambiguous_source_code_7219_35_02_generates_ambiguous_outcome():
     assert "7219.35.02" in ambiguous_step.explanation
 
 
+def test_external_facts_are_reported_by_executable_branches():
+    engine = Chapter72ClassificationEngine()
+    magnetic = engine.classify(make_facts(
+        composition_pct=non_alloy_chemistry(Ti="0.06"), grain_oriented=True
+    ))
+    tinplate = engine.classify(make_facts(
+        coated=True, coating_metal="tin", thickness_mm=Decimal("0.3")
+    ))
+    clad = engine.classify(make_facts(width_mm=Decimal("400"), coated=True, clad=True))
+
+    assert {"magnetic_loss_w_per_kg", "magnetic_induction_tesla"} <= set(magnetic.missing_fields)
+    assert {"secondary_reduction_ratio", "can_body_end_use"} <= set(tinplate.missing_fields)
+    assert "cladding_weight_percentage" in clad.missing_fields
+
+
 # ---------------------------------------------------------------------------
 # 5. Missing Facts Never Converted to Zero or False
 # ---------------------------------------------------------------------------
@@ -561,37 +635,7 @@ def test_historical_snapshot_reclassification_reproducibility():
     snapshot = ClassificationService._snapshot(original_facts)
 
     # 3. Reconstruct facts from historical snapshot (as done when reviewing past classifications)
-    reconstructed_facts = ProductFacts(
-        product_id=snapshot["product_id"],
-        form=snapshot["form"],
-        coiled=snapshot["coiled"],
-        rolling=snapshot["rolling"],
-        width_mm=Decimal(snapshot["width_mm"]) if snapshot["width_mm"] is not None else None,
-        thickness_mm=Decimal(snapshot["thickness_mm"]) if snapshot["thickness_mm"] is not None else None,
-        composition_pct={
-            k: Decimal(v) for k, v in snapshot["composition_pct"].items() if v is not None
-        },
-        coated=snapshot["coated"],
-        coating_metal=snapshot["coating_metal"],
-        coating_process=snapshot["coating_process"],
-        coating_both_sides=snapshot["coating_both_sides"],
-        yield_strength_mpa=(
-            Decimal(snapshot["yield_strength_mpa"])
-            if snapshot["yield_strength_mpa"] is not None else None
-        ),
-        pickled=snapshot["pickled"],
-        pattern_in_relief=snapshot["pattern_in_relief"],
-        porcelain_exposed_parts=snapshot["porcelain_exposed_parts"],
-        pipeline_steel=snapshot["pipeline_steel"],
-        high_speed_steel=snapshot["high_speed_steel"],
-        tool_steel=snapshot["tool_steel"],
-        grain_oriented=snapshot["grain_oriented"],
-        magnetic_silicon=snapshot["magnetic_silicon"],
-        stainless_series=snapshot["stainless_series"],
-        rolled_four_faces=snapshot["rolled_four_faces"],
-        clad=snapshot["clad"],
-        temper=snapshot["temper"],
-    )
+    reconstructed_facts = ClassificationService._facts_from_snapshot(snapshot)
 
     # 4. Reclassify using the same engine
     reclassified_decision = engine.classify(reconstructed_facts)
@@ -604,4 +648,3 @@ def test_historical_snapshot_reclassification_reproducibility():
     assert reclassified_decision.missing_fields == original_decision.missing_fields
     assert len(reclassified_decision.ranked_candidates) == len(original_decision.ranked_candidates)
     assert len(reclassified_decision.steps) == len(original_decision.steps)
-

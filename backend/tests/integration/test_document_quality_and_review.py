@@ -9,16 +9,19 @@ from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, select, text
+from sqlalchemy import create_engine, func, select, text
 from sqlalchemy.orm import Session
 
 from backend.app.api.app import create_app
 from backend.app.application.classification_service import ClassificationService
 from backend.app.application.review_service import ReviewService
+from backend.app.application.worker import Worker
+from backend.app.classification_engine import Chapter72ClassificationEngine
 from backend.app.config import Settings
 from backend.app.domain.enums import ApprovalStatus, ProcessingStatus
 from backend.app.infrastructure.database.models import (
     ChemicalComposition,
+    ClassificationResult,
     Correction,
     Document,
     Heat,
@@ -30,6 +33,8 @@ from backend.app.infrastructure.database.models import (
     RuleSet,
     StoredFile,
 )
+from backend.app.infrastructure.database.session import create_session_factory
+from backend.app.infrastructure.files.storage import FileStorage
 
 
 @pytest.fixture()
@@ -230,15 +235,23 @@ def test_document_reviews_queue(review_settings: Settings):
             approval_status=ApprovalStatus.DRAFT.value,
             doc_status=ProcessingStatus.SUCCEEDED.value,
         )
+        _, cert_hidden, _, _ = create_sample_certificate(
+            session,
+            thickness_confidence=0.45,
+            approval_status=ApprovalStatus.DRAFT.value,
+            doc_status=ProcessingStatus.SUCCEEDED.value,
+        )
         session.commit()
         review_id = cert_review.id
         clean_id = cert_clean.id
+        hidden_id = cert_hidden.id
 
     res = client.get("/api/v1/document-reviews")
     assert res.status_code == 200
     items = res.json()["data"]
     cert_ids = [item["certificate_id"] for item in items]
     assert review_id in cert_ids
+    assert hidden_id in cert_ids
     assert clean_id not in cert_ids
 
     review_item = next(item for item in items if item["certificate_id"] == review_id)
@@ -270,6 +283,13 @@ def test_reprocess_stages(review_settings: Settings):
     assert norm_data["stage"] == "normalization"
     assert norm_data["status"] == "evaluated"
     assert norm_data["quality_report"]["status"] == "clean"
+    assert norm_data["job_id"] is not None
+    with app.state.sessions() as session:
+        audit_job = session.get(Job, norm_data["job_id"])
+        assert audit_job is not None
+        assert audit_job.kind == "normalize_document"
+        assert audit_job.payload_json["person_name"] == "Auditor Calidad"
+        assert audit_job.payload_json["reason"] == "Re-validar reglas tras actualización"
 
     # 2. Reprocess from extraction (enqueues job)
     res_ext = client.post(
@@ -391,7 +411,7 @@ def test_quality_gating_and_manual_correction_flow(review_settings: Settings):
         assert new_obs is not None
         assert new_obs.confidence == 1.0
         assert new_obs.is_current is True
-        assert new_obs.supersedes_id == obs_id
+    assert new_obs.supersedes_id == obs_id
 
     # 4. Reprocess from normalization: report now evaluates to clean
     res_reprocess = client.post(
@@ -406,6 +426,7 @@ def test_quality_gating_and_manual_correction_flow(review_settings: Settings):
     updated_report = res_reprocess.json()["data"]["quality_report"]
     assert updated_report["status"] == "clean"
     assert updated_report["blocking_count"] == 0
+    assert updated_report["provenance_summary"]["manual_capture"] == 1
 
     # 5. Reclassification now proceeds normally through the classification engine!
     with app.state.sessions() as session:
@@ -427,3 +448,104 @@ def test_quality_gating_and_manual_correction_flow(review_settings: Settings):
     assert "7208" in res2_item["details"]["candidates"]
 
 
+def test_quality_gate_does_not_call_classification_engine(review_settings: Settings):
+    class FailingEngine(Chapter72ClassificationEngine):
+        def classify(self, facts):
+            raise AssertionError("El motor no debe ejecutarse con incidencias bloqueantes")
+
+    app = create_app(review_settings)
+    with app.state.sessions() as session:
+        _, certificate, _, _ = create_sample_certificate(
+            session, thickness_confidence=0.45
+        )
+        session.commit()
+        service = ClassificationService(review_settings, engine=FailingEngine())
+        run = service.classify_certificate(
+            session,
+            certificate_id=certificate.id,
+            person_name="Auditor",
+            reason="Validar compuerta",
+        )
+        session.flush()
+        result = session.scalar(
+            select(ClassificationResult).where(
+                ClassificationResult.classification_run_id == run.id
+            )
+        )
+        assert result is not None
+        assert result.outcome == "needs_review"
+
+
+def test_extraction_reprocess_creates_and_populates_new_revision(review_settings: Settings):
+    class StaticExtractor:
+        def analyze_pdf(self, _path, **_kwargs):
+            return {
+                "status": "needs_review",
+                "adapter": "test-reprocess",
+                "document": {"page_count": 1, "ingestion": {}},
+                "detection": {"kind": "mill_certificate", "confidence": 1.0, "signals": []},
+                "certificate": {
+                    "document": {"certificate_no": "REPROCESSED"},
+                    "standard": "ASTM A36",
+                    "products": [{
+                        "product_id": "NEW-1",
+                        "heat_no": "NEW-HEAT",
+                        "form": "flat_rolled",
+                        "coiled": True,
+                        "thickness_mm": 4.5,
+                        "width_mm": 1200,
+                        "composition_pct": {"C": 0.2},
+                        "observations": {},
+                        "evidence": [],
+                    }],
+                },
+            }
+
+        def release(self):
+            return None
+
+    app = create_app(review_settings)
+    client = TestClient(app)
+    with app.state.sessions() as session:
+        _, certificate, _, _ = create_sample_certificate(session)
+        stored = session.get(StoredFile, certificate.document.stored_file_id)
+        assert stored is not None
+        original_id = certificate.id
+        original_product_count = session.scalar(
+            select(func.count(Product.id)).where(Product.certificate_id == original_id)
+        )
+        session.commit()
+    source = review_settings.storage_root / stored.relative_path
+    source.parent.mkdir(parents=True, exist_ok=True)
+    source.write_bytes(b"%PDF-1.4 test")
+
+    response = client.post(
+        f"/api/v1/certificates/{original_id}/reprocess",
+        json={
+            "from_stage": "extraction",
+            "person_name": "Ingeniero OCR",
+            "reason": "Nueva extracción",
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert data["certificate_id"] != original_id
+
+    sessions = create_session_factory(review_settings)
+    storage = FileStorage(review_settings.storage_root, review_settings.max_pdf_bytes)
+    assert Worker(
+        review_settings, sessions, storage, extractor=StaticExtractor()
+    ).run_once()
+
+    with sessions() as session:
+        revision = session.get(MillCertificate, data["certificate_id"])
+        assert revision is not None
+        assert revision.previous_revision_id == original_id
+        assert revision.revision_number == 2
+        new_products = session.scalars(
+            select(Product).where(Product.certificate_id == revision.id)
+        ).all()
+        assert [product.product_identifier for product in new_products] == ["NEW-1"]
+        assert session.scalar(
+            select(func.count(Product.id)).where(Product.certificate_id == original_id)
+        ) == original_product_count

@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date
 from typing import Any
 
-from sqlalchemy import BigInteger, Boolean, CheckConstraint, Date, ForeignKey, Identity, Index, Integer, JSON, String, Text, UniqueConstraint
+from sqlalchemy import BigInteger, Boolean, CheckConstraint, Date, ForeignKey, Identity, Index, Integer, JSON, String, Text, UniqueConstraint, event, inspect, select
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.app.domain.enums import ApprovalStatus, RuleSetStatus
@@ -28,6 +28,19 @@ class RuleSet(TimestampMixin, Base):
         UniqueConstraint("name", "version", name="uq_rule_set_name_version"),
         CheckConstraint("status IN ('draft','approved','retired')", name="valid_status"),
     )
+
+
+@event.listens_for(RuleSet, "before_update")
+def prevent_immutable_rule_set_update(mapper, connection, target: RuleSet) -> None:
+    from backend.app.classification_engine.versioning import validate_rule_set_immutability
+
+    old_status = connection.execute(
+        select(RuleSet.status).where(RuleSet.id == target.id)
+    ).scalar_one()
+    state = inspect(target)
+    for field in ("name", "version", "source_hash", "valid_from", "valid_to", "manifest_json"):
+        if state.attrs[field].history.has_changes():
+            validate_rule_set_immutability(old_status, field)
 
 
 class ClassificationRun(TimestampMixin, Base):
@@ -296,4 +309,3 @@ class ApprovalEvent(TimestampMixin, Base):
             name="valid_to_status",
         ),
     )
-

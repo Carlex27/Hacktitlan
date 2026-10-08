@@ -69,7 +69,7 @@ class ReviewService:
             confidence=1.0,
             page_number=previous.page_number,
             bbox_json=previous.bbox_json,
-            source_text=previous.source_text,
+            source_text="correccion_manual",
             inherited=False,
             supersedes_id=previous.id,
             is_current=True,
@@ -473,5 +473,4 @@ class ReviewService:
                         inherited=False,
                     )
                 )
-
 

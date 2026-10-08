@@ -47,6 +47,12 @@ class ProductFacts:
     rolled_four_faces: bool | None = None
     clad: bool | None = None
     temper: str | None = None
+    magnetic_loss_w_per_kg: Decimal | None = None
+    magnetic_induction_tesla: Decimal | None = None
+    secondary_reduction_ratio: Decimal | None = None
+    can_body_end_use: bool | None = None
+    deep_drawing_class: str | None = None
+    cladding_weight_percentage: Decimal | None = None
 
 
 @dataclass(frozen=True)
@@ -105,4 +111,3 @@ class ClassificationDecision:
     ranked_candidates: tuple[ClassificationCandidate, ...]
     discarded_candidates: tuple[DiscardedCandidate, ...]
     steps: tuple[Decision, ...]
-

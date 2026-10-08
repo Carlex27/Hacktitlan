@@ -342,7 +342,16 @@ def validate_document_quality(
                             normalized_value=l_dec,
                         ))
                 except Exception:
-                    pass
+                    issues.append(QualityIssue(
+                        code="invalid_dimension_format",
+                        category=QualityCategory.CONTRADICTION,
+                        severity=QualitySeverity.BLOCKING,
+                        scope="product",
+                        entity_identifier=prod_id,
+                        field_path="length_m",
+                        message=f"La longitud del producto {prod_id} no tiene un valor numérico válido.",
+                        raw_value=length,
+                    ))
 
         # Weight sanity check
         weight = prod.get("weight_kg")
@@ -362,7 +371,16 @@ def validate_document_quality(
                         normalized_value=wt_dec,
                     ))
             except Exception:
-                pass
+                issues.append(QualityIssue(
+                    code="invalid_dimension_format",
+                    category=QualityCategory.CONTRADICTION,
+                    severity=QualitySeverity.BLOCKING,
+                    scope="product",
+                    entity_identifier=prod_id,
+                    field_path="weight_kg",
+                    message=f"El peso del producto {prod_id} no tiene un valor numérico válido.",
+                    raw_value=weight,
+                ))
 
     # 4. Chemical composition sanity: bounds, impossible sums, scopes
     total_percentages_by_scope: dict[tuple[str, int | None], Decimal] = {}

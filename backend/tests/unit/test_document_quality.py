@@ -313,3 +313,29 @@ def test_low_confidence_separation():
     assert low_conf[0].confidence == 0.55
     assert low_conf[0].severity == QualitySeverity.BLOCKING  # thickness is critical
     assert report.provenance_summary["ocr_text"] == 1
+
+
+def test_invalid_length_and_weight_formats_are_blocking():
+    report = validate_document_quality(
+        certificate_id=1,
+        document_metadata={"certificate_no": "C1"},
+        products=[{
+            "id": 1,
+            "product_identifier": "P1",
+            "heat_id": 10,
+            "coiled": False,
+            "thickness_mm": 3,
+            "width_mm": 1000,
+            "length_m": "ERROR",
+            "weight_kg": "N/A",
+        }],
+        heats=[{"id": 10, "heat_no": "H1"}],
+        observations=[],
+        compositions=[{"heat_id": 10, "element": "C", "percentage": Decimal("0.15")}],
+    )
+
+    invalid_fields = {
+        issue.field_path for issue in report.issues if issue.code == "invalid_dimension_format"
+    }
+    assert invalid_fields == {"length_m", "weight_kg"}
+    assert report.status == "needs_review"

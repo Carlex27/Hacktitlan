@@ -298,6 +298,7 @@ class Worker:
                     person_name=str(payload["person_name"]),
                     reason=str(payload["reason"]),
                     rule_set_id=payload.get("rule_set_id"),
+                    source_run_id=payload.get("source_run_id"),
                 )
                 session.flush()
                 outcomes = session.scalars(

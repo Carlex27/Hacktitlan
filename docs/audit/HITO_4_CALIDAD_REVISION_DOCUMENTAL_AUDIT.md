@@ -71,8 +71,8 @@ Se integró una compuerta estricta en el servicio de clasificación (`Classifica
 
 ### 2.6. Reprocesamiento Multi-Etapa y Cola de Revisión
 - Se implementó `DocumentQualityService.reprocess_certificate`:
-  - `extraction`: Encola un nuevo trabajo de extracción (`JobKind.EXTRACT_DOCUMENT`) a partir del archivo original almacenado en disco (`StoredFile`), sin requerir volver a subir el PDF.
-  - `normalization`: Re-evalúa inmediatamente la calidad documental y el contrato vigente. Si todas las incidencias fueron resueltas, actualiza el estado del acta y del documento a `succeeded` / `draft`; de lo contrario, los mantiene en `needs_review`.
+  - `extraction`: Crea una nueva revisión enlazada al acta anterior y encola su extracción desde el `StoredFile`; la revisión previa permanece intacta.
+  - `normalization`: Re-evalúa la calidad, actualiza estados y registra persona, motivo, estación y resultado mediante un trabajo `normalize_document` terminado.
   - `classification`: Encola un nuevo trabajo de reclasificación (`JobKind.RECLASSIFY`) generando una nueva ejecución vinculada (`ClassificationRun`) con instantánea inmutable.
   - Se exige de forma obligatoria `person_name` y `reason` en la solicitud (`ReprocessRequest`).
 
@@ -101,9 +101,9 @@ Se integró una compuerta estricta en el servicio de clasificación (`Classifica
      - `GET /api/v1/certificates/{certificate_id}/quality-report`
      - `POST /api/v1/certificates/{certificate_id}/reprocess`
 7. **`backend/tests/unit/test_document_quality.py`** *(Nuevo)*:
-   - Suite de 9 pruebas unitarias cubriendo familias, campos faltantes, contradicciones físicas, duplicados, orfandad y umbrales de confianza.
+   - Suite de 10 pruebas unitarias cubriendo familias, campos faltantes, formatos inválidos, contradicciones físicas, duplicados, orfandad y umbrales de confianza.
 8. **`backend/tests/integration/test_document_quality_and_review.py`** *(Nuevo)*:
-   - Suite de 4 pruebas de integración sobre PostgreSQL 18 cubriendo endpoints de calidad, cola de revisión, etapas de reprocesamiento y flujo completo de compuerta y corrección.
+   - Suite de 6 pruebas de integración sobre PostgreSQL 18 cubriendo endpoints, cola derivada de calidad, compuerta previa al motor, auditoría y ejecución real de una nueva revisión.
 9. **`docs/BACKEND_COMPLETION_PLAN.md`** y **`docs/BACKEND_IMPLEMENTATION_STATUS.md`** *(Modificados)*:
    - Actualización de estado y documentación del Hito 4.
 
@@ -116,7 +116,7 @@ Se integró una compuerta estricta en el servicio de clasificación (`Classifica
 uv run pytest backend/tests/unit/test_document_quality.py
 ```
 **Resultado:**
-- 9 passed en 0.05 s:
+- 10 pruebas, incluida validación de longitud y peso no numéricos.
   - `test_detect_product_family`: Detección precisa de bobina vs plancha vs general.
   - `test_validate_document_quality_clean`: Acta perfecta produce score 1.0, estado `clean` y 0 incidencias.
   - `test_mandatory_fields_missing`: Ausencia de número de acta, espesor o ancho detectada como bloqueante.
@@ -132,7 +132,7 @@ uv run pytest backend/tests/unit/test_document_quality.py
 uv run pytest backend/tests/integration/test_document_quality_and_review.py
 ```
 **Resultado:**
-- 4 passed en 2.41 s:
+- 6 pruebas, incluida ejecución del worker para reprocesamiento de extracción.
   - `test_quality_report_endpoint_clean_and_not_found`: Endpoint `/quality-report` entrega esquema envelope completo y responde 404 en actas inexistentes.
   - `test_document_reviews_queue`: Endpoint `/document-reviews` lista documentos con incidencias y omite actas limpias aprobadas.
   - `test_reprocess_stages`: Verificación de reprocesamiento en etapas `normalization`, `extraction` y `classification`, junto con validación de esquemas erróneos (422).
@@ -149,7 +149,7 @@ uv run pytest backend/tests/integration/test_document_quality_and_review.py
 uv run pytest
 ```
 **Resultado:**
-- **168 pruebas aprobadas (100.0 % pass)** en 7.65 s.
+- **184 pruebas aprobadas (100 % pass)** tras las correcciones de auditoría.
 - **Validación OpenAPI:** 29 rutas registradas y verificadas contra el contrato FastAPI.
 
 ---
