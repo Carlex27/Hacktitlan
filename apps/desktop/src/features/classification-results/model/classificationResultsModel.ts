@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import type {
   ClassificationOutcomeDto,
   ClassificationResultDto,
@@ -79,3 +81,10 @@ export function findActiveResult(
   }
   return results[0] ?? null;
 }
+
+/** Slot para una acción junto a un código arancelario mostrado. */
+export type TariffActionRenderer = (
+  fraction: string | null,
+  nico: string | null,
+  displayCode: string,
+) => ReactNode;

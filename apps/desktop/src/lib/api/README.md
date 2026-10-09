@@ -3,7 +3,7 @@
 Único punto de acceso del frontend al backend. Todo se importa desde
 `@/lib/api`; las features nunca llaman a `fetch` directamente.
 
-- `client.ts`: `createApiClient` (`get`, `post`, `postForm`, `url`), encabezado
+- `client.ts`: `createApiClient` (`get`, `post`, `postForm`, `getBlob`, `url`), encabezado
   `X-Request-ID` y cancelación con `AbortSignal`.
 - `envelope.ts` / `errors.ts`: validación del sobre `{ data, meta, error }` y
   `ApiError` por tipo (`network`, `server`, `invalid_response`, `aborted`).
@@ -26,6 +26,7 @@
 | | `selectClassificationCandidate` | `POST /classification-results/{id}/select` |
 | | `approveClassificationRun`, `rejectClassificationRun` | `POST /classification-runs/{id}/approve`, `/reject` |
 | Evidencia | `getEvidence` | `GET /evidence/{id}` |
+| Referencia LIGIE | `getLigieEntries` | `GET /rule-sources/ligie-72/entries/{code}` (página del NICO); PDF en `meta.file_url` |
 | Exportación | `createExport`, `getExport` | `POST /exports`, `GET /exports/{id}` |
 
 Las rutas relativas que devuelve el backend (`file_url`, `detail_url`) se

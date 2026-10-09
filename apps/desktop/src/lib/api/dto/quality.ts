@@ -47,6 +47,11 @@ export interface DocumentReviewIssueSummaryDto {
 
 /** Elemento de `GET /api/v1/document-reviews`. */
 export interface DocumentReviewQueueItemDto {
+  /** Revisión del acta; reprocesar desde extracción crea la siguiente. */
+  revision_number: number;
+  /** Trabajo de extracción en cola o en curso; mientras exista no se puede reprocesar. */
+  active_job_id: number | null;
+  can_reprocess: boolean;
   certificate_id: number;
   document_id: number;
   certificate_no: string | null;
@@ -62,7 +67,10 @@ export interface DocumentReviewQueueItemDto {
 
 export type ReprocessStageDto = "extraction" | "normalization" | "classification";
 
-/** Cuerpo de `POST /api/v1/certificates/{id}/reprocess`. */
+/**
+ * Cuerpo de `POST /api/v1/certificates/{id}/reprocess`. Si ya hay una
+ * extracción activa responde 409 `reprocess_in_progress` con `details.job_id`.
+ */
 export interface ReprocessRequestDto extends ActorReasonDto {
   from_stage: ReprocessStageDto;
 }

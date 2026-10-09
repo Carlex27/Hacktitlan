@@ -4,7 +4,7 @@ import { LoadErrorAlert } from "@/components/feedback";
 import type { ClassificationRunDto } from "@/lib/api";
 import { es } from "@/lib/i18n";
 
-import { extractReviewIndicators, findActiveResult } from "../model";
+import { extractReviewIndicators, findActiveResult, type TariffActionRenderer } from "../model";
 import { CandidateList } from "./CandidateList";
 import { ClassificationEngineCard } from "./ClassificationEngineCard";
 import { DecisionChecklist } from "./DecisionChecklist";
@@ -18,6 +18,8 @@ export interface ClassificationValidationTabProps {
   error?: unknown;
   onViewEvidence: (linkId: number) => void;
   onReloadRun: () => void;
+  /** Acción opcional junto a cada código (p. ej. abrir su referencia en la LIGIE). */
+  renderTariffAction?: TariffActionRenderer;
 }
 
 export function ClassificationValidationTab({
@@ -26,6 +28,7 @@ export function ClassificationValidationTab({
   error = null,
   onViewEvidence,
   onReloadRun,
+  renderTariffAction,
 }: ClassificationValidationTabProps) {
   const [selectedResultId, setSelectedResultId] = useState<number | null>(null);
 
@@ -56,6 +59,7 @@ export function ClassificationValidationTab({
         result={activeResult}
         isLoading={Boolean(isLoading)}
         onViewEvidence={onViewEvidence}
+        {...(renderTariffAction ? { renderTariffAction } : {})}
       />
 
       {activeResult && (
@@ -73,6 +77,7 @@ export function ClassificationValidationTab({
             candidates={activeResult.candidates}
             selectedCandidateId={currentSelection?.candidate_id ?? null}
             onCandidateSelected={onReloadRun}
+            {...(renderTariffAction ? { renderTariffAction } : {})}
           />
         </section>
       )}

@@ -4,4 +4,4 @@ export {
   formatTariffCode,
   outcomeToProcessingStatus,
 } from "./classificationResultsModel";
-export type { ReviewIndicator } from "./classificationResultsModel";
+export type { ReviewIndicator, TariffActionRenderer } from "./classificationResultsModel";

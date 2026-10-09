@@ -11,6 +11,8 @@ export { getJob, uploadDocument } from "./documents";
 export { getEvidence } from "./evidence";
 export { getHealthLive, getHealthReady } from "./health";
 export { createExport, getExport } from "./exports";
+export { getLigieEntries } from "./ligie";
+export type { LigieEntriesResponse } from "./ligie";
 export { getOcrModels, getOcrStatus, runOcrSmokeCheck } from "./ocr";
 export {
   getCertificateQualityReport,

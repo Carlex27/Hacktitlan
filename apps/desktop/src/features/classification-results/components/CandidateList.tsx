@@ -13,13 +13,15 @@ import { es } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 import { useCandidateSelection } from "../hooks/useCandidateSelection";
-import { formatTariffCode } from "../model";
+import { formatTariffCode, type TariffActionRenderer } from "../model";
 
 export interface CandidateListProps {
   resultId: number;
   candidates: readonly ClassificationCandidateDto[];
   selectedCandidateId: number | null;
   onCandidateSelected?: (candidateId: number) => void;
+  /** Acción opcional junto a cada código (p. ej. abrir su referencia en la LIGIE). */
+  renderTariffAction?: TariffActionRenderer;
 }
 
 export function CandidateList({
@@ -27,6 +29,7 @@ export function CandidateList({
   candidates,
   selectedCandidateId,
   onCandidateSelected,
+  renderTariffAction,
 }: CandidateListProps) {
   const { selectCandidate, isSubmitting, error, clearError } = useCandidateSelection();
   const [activeCandidateId, setActiveCandidateId] = useState<number | null>(
@@ -125,6 +128,7 @@ export function CandidateList({
                     <span className="text-[10px] text-slate-400 font-mono">
                       {es.classification.rank(cand.rank)}
                     </span>
+                    {renderTariffAction?.(cand.fraction, cand.nico, code)}
                   </div>
                   {cand.description && (
                     <p className="text-[10.5px] text-slate-600 mt-0.5 line-clamp-2">

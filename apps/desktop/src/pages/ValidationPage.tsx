@@ -11,7 +11,13 @@ import {
   useEvidence,
 } from "@/features/classification-results";
 import { PdfViewer } from "@/features/document-viewer";
-import { useApiClient } from "@/lib/api";
+import {
+  SourceDocumentTabs,
+  TariffReferenceButton,
+  TariffReferenceViewer,
+  useTariffReference,
+  type SourceDocumentTab,
+} from "@/features/tariff-reference";
 import { es } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
@@ -21,7 +27,6 @@ export interface ValidationPageProps {
 }
 
 export function ValidationPage({ certificateId, documentId }: ValidationPageProps) {
-  const api = useApiClient();
   const [activeTab, setActiveTab] = useState<"extracted" | "validation" | "analysis" | "history">("extracted");
   const [pdfPage, setPdfPage] = useState(1);
 
@@ -38,14 +43,31 @@ export function ValidationPage({ certificateId, documentId }: ValidationPageProp
     reload: reloadRun,
   } = useClassificationRun(certificateId);
   const evidence = useEvidence();
+  const tariffReference = useTariffReference();
+  const [viewerTab, setViewerTab] = useState<SourceDocumentTab>("acta");
+
+  const openTariffReference = (code: string, label: string) => {
+    tariffReference.open(code, label);
+    setViewerTab("ligie");
+  };
+  const goToActaPage = (page: number) => {
+    setPdfPage(page);
+    setViewerTab("acta");
+  };
 
   const docId = documentId ?? certificate?.document_id ?? null;
-  const fileUrl = docId ? api.url(`/api/v1/documents/${docId}/file`) : null;
+  const filePath = docId ? `/api/v1/documents/${docId}/file` : null;
 
   return (
     <div className="flex-1 flex overflow-hidden min-h-0 w-full">
       <section className="w-[48%] bg-viewer-bg flex flex-col border-r border-slate-300 shrink-0 min-h-0" aria-label={es.viewer.title}>
-        <PdfViewer fileUrl={fileUrl} page={pdfPage} fileName={certificate?.certificate_no ? `Acta_${certificate.certificate_no}.pdf` : null} />
+        <SourceDocumentTabs
+          activeTab={viewerTab}
+          onTabChange={setViewerTab}
+          referenceState={tariffReference.state}
+          actaViewer={<PdfViewer filePath={filePath} page={pdfPage} fileName={certificate?.certificate_no ? `Acta_${certificate.certificate_no}.pdf` : null} />}
+          ligieViewer={<TariffReferenceViewer state={tariffReference.state} onRetry={tariffReference.retry} onSelectEntry={tariffReference.selectEntry} />}
+        />
       </section>
 
       <main className="flex-1 bg-white flex flex-col min-w-0 overflow-hidden min-h-0">
@@ -65,9 +87,12 @@ export function ValidationPage({ certificateId, documentId }: ValidationPageProp
         </header>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/60 min-h-0">
-          <EvidenceArea state={evidence.state} onRetry={evidence.retry} onClose={evidence.close} onGoToPage={setPdfPage} />
+          <EvidenceArea state={evidence.state} onRetry={evidence.retry} onClose={evidence.close} onGoToPage={goToActaPage} />
           {activeTab === "extracted" && <CertificateReviewTab certificate={certificate} isLoading={certLoading} error={certError} onRetry={reloadCertificate} />}
-          {activeTab === "validation" && <ClassificationValidationTab run={run} isLoading={runLoading} error={runError} onViewEvidence={evidence.open} onReloadRun={reloadRun} />}
+          {activeTab === "validation" && <ClassificationValidationTab run={run} isLoading={runLoading} error={runError} onViewEvidence={evidence.open} onReloadRun={reloadRun}
+            renderTariffAction={(fraction, nico, displayCode) => (
+              <TariffReferenceButton fraction={fraction} nico={nico} displayCode={displayCode} onOpen={openTariffReference} />
+            )} />}
           {activeTab === "analysis" && (
             <div className="bg-white p-6 rounded-lg border border-slate-200 shadow-sm text-center text-slate-500 text-xs">
               {es.tabs.comingSoonDescription}

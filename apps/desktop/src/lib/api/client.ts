@@ -20,6 +20,8 @@ export interface ApiClient {
   get<T>(path: string, options?: RequestOptions): Promise<ApiEnvelope<T>>;
   post<T>(path: string, body: unknown, options?: RequestOptions): Promise<ApiEnvelope<T>>;
   postForm<T>(path: string, form: FormData, options?: RequestOptions): Promise<ApiEnvelope<T>>;
+  /** Descarga un archivo (p. ej. un PDF). Los errores llegan como `ApiError`. */
+  getBlob(path: string, options?: RequestOptions): Promise<Blob>;
 }
 
 function defaultRequestId(): string {
@@ -31,7 +33,7 @@ export function createApiClient({
   fetch: fetchImpl = (input, init) => globalThis.fetch(input, init),
   createRequestId = defaultRequestId,
 }: ApiClientOptions): ApiClient {
-  async function request<T>(path: string, init: RequestInit): Promise<ApiEnvelope<T>> {
+  async function send(path: string, init: RequestInit): Promise<{ response: Response; requestId: string }> {
     const requestId = createRequestId();
     const headers = new Headers(init.headers);
     headers.set("X-Request-ID", requestId);
@@ -50,8 +52,10 @@ export function createApiClient({
         requestId,
       });
     }
+    return { response, requestId: response.headers.get("X-Request-ID") ?? requestId };
+  }
 
-    const responseId = response.headers.get("X-Request-ID") ?? requestId;
+  async function readEnvelope<T>(response: Response, requestId: string): Promise<ApiEnvelope<T>> {
     let body: unknown;
     try {
       body = await response.json();
@@ -60,10 +64,30 @@ export function createApiClient({
         kind: "invalid_response",
         message: "La respuesta del servidor no es JSON válido.",
         status: response.status,
-        requestId: responseId,
+        requestId,
       });
     }
-    return parseEnvelope<T>(body, response.status, responseId);
+    return parseEnvelope<T>(body, response.status, requestId);
+  }
+
+  async function request<T>(path: string, init: RequestInit): Promise<ApiEnvelope<T>> {
+    const { response, requestId } = await send(path, init);
+    return readEnvelope<T>(response, requestId);
+  }
+
+  async function getBlob(path: string, options?: RequestOptions): Promise<Blob> {
+    const { response, requestId } = await send(path, { method: "GET", signal: options?.signal ?? null });
+    if (!response.ok) {
+      // Los errores del API llegan en el sobre JSON; se reportan igual que el resto.
+      await readEnvelope<unknown>(response, requestId);
+      throw new ApiError({
+        kind: "invalid_response",
+        message: "El servidor no devolvió el archivo.",
+        status: response.status,
+        requestId,
+      });
+    }
+    return response.blob();
   }
 
   return {
@@ -79,5 +103,6 @@ export function createApiClient({
       }),
     postForm: (path, form, options) =>
       request(path, { method: "POST", body: form, signal: options?.signal ?? null }),
+    getBlob,
   };
 }

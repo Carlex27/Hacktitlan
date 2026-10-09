@@ -64,3 +64,9 @@ export type {
   ReprocessResultDto,
   ReprocessStageDto,
 } from "./quality";
+export type {
+  LigieEntriesMetaDto,
+  LigieEntryDto,
+  LigieEntryKindDto,
+  LigieFileStatusDto,
+} from "./ligie";

@@ -1,21 +1,27 @@
 import { ExternalLink, FileText, RefreshCw } from "lucide-react";
-import { useState } from "react";
 
+import { LoadErrorAlert } from "@/components/feedback";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { Spinner } from "@/components/ui/spinner";
+import { useApiClient } from "@/lib/api";
 import { es } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
+import { usePdfObjectUrl } from "../hooks/usePdfObjectUrl";
+
 export interface PdfViewerProps {
-  fileUrl: string | null;
+  /** Ruta del PDF en el API (p. ej. `/api/v1/documents/10/file`); `null` sin documento. */
+  filePath: string | null;
   page?: number;
   fileName?: string | null;
   className?: string;
 }
 
-export function PdfViewer({ fileUrl, page = 1, fileName, className }: PdfViewerProps) {
-  const [reloadKey, setReloadKey] = useState(0);
+export function PdfViewer({ filePath, page = 1, fileName, className }: PdfViewerProps) {
+  const api = useApiClient();
+  const { state, reload } = usePdfObjectUrl(filePath);
 
-  if (!fileUrl) {
+  if (filePath === null) {
     return (
       <div
         className={cn(
@@ -36,7 +42,7 @@ export function PdfViewer({ fileUrl, page = 1, fileName, className }: PdfViewerP
     );
   }
 
-  const iframeSrc = `${fileUrl}#page=${page}`;
+  const title = fileName ?? es.viewer.title;
 
   return (
     <div className={cn("flex flex-col w-full h-full bg-viewer-bg min-h-0", className)}>
@@ -46,11 +52,8 @@ export function PdfViewer({ fileUrl, page = 1, fileName, className }: PdfViewerP
           <span className="bg-red-500 text-white rounded text-[10px] font-bold px-1.5 py-0.5 leading-tight shrink-0 select-none">
             {es.viewer.pdfBadge}
           </span>
-          <span
-            className="text-xs font-medium text-slate-200 truncate"
-            title={fileName ?? es.viewer.title}
-          >
-            {fileName ?? es.viewer.title}
+          <span className="text-xs font-medium text-slate-200 truncate" title={title}>
+            {title}
           </span>
         </div>
       </div>
@@ -64,18 +67,20 @@ export function PdfViewer({ fileUrl, page = 1, fileName, className }: PdfViewerP
         <div className="flex items-center gap-1.5">
           <button
             type="button"
-            onClick={() => setReloadKey((k) => k + 1)}
+            onClick={reload}
             className="hover:text-white p-1 hover:bg-slate-700/50 rounded transition-colors select-none"
             title={es.viewer.reload}
+            aria-label={es.viewer.reload}
           >
             <RefreshCw aria-hidden="true" className="w-3.5 h-3.5" />
           </button>
           <a
-            href={fileUrl}
+            href={api.url(filePath)}
             target="_blank"
             rel="noopener noreferrer"
             className="hover:text-white p-1 hover:bg-slate-700/50 rounded transition-colors select-none"
             title={es.viewer.openNewTab}
+            aria-label={es.viewer.openNewTab}
           >
             <ExternalLink aria-hidden="true" className="w-3.5 h-3.5" />
           </a>
@@ -84,12 +89,24 @@ export function PdfViewer({ fileUrl, page = 1, fileName, className }: PdfViewerP
 
       {/* Document Area */}
       <div className="flex-1 bg-viewer-canvas p-2 flex items-center justify-center overflow-hidden min-h-0">
-        <iframe
-          key={reloadKey}
-          src={iframeSrc}
-          title={fileName ?? es.viewer.title}
-          className="w-full h-full border border-slate-400/30 rounded bg-white"
-        />
+        {state.status === "ready" && (
+          <iframe
+            src={`${state.objectUrl}#page=${page}`}
+            title={title}
+            className="w-full h-full border border-slate-400/30 rounded bg-white"
+          />
+        )}
+        {(state.status === "loading" || state.status === "idle") && (
+          <div role="status" className="flex items-center gap-2 text-xs text-slate-200">
+            <Spinner aria-hidden="true" />
+            {es.viewer.loading}
+          </div>
+        )}
+        {state.status === "error" && (
+          <div className="w-full max-w-md">
+            <LoadErrorAlert title={es.viewer.loadError} error={state.error} onRetry={reload} />
+          </div>
+        )}
       </div>
     </div>
   );
