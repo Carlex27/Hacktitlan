@@ -48,6 +48,8 @@ export function createApiClient({
     const requestId = createRequestId();
     const headers = new Headers(init.headers);
     headers.set("X-Request-ID", requestId);
+    // ngrok gratuito responde con una página HTML de advertencia sin este encabezado.
+    headers.set("ngrok-skip-browser-warning", "true");
 
     let response: Response;
     try {

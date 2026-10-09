@@ -7,11 +7,21 @@ export const classificationGuideTexts = {
   scopeTitle: "Alcance del motor",
   flowHint: "Explora los seis pasos. Abre cada uno para consultar su explicación completa.",
   sectionLinks: [
+    { id: "app-help", label: "Cómo usar la app" },
     { id: "classification-flow", label: "Recorrido de la sugerencia" },
     { id: "classification-reading", label: "Interpretar los resultados" },
     { id: "classification-example", label: "Ejemplo de un dato faltante" },
     { id: "classification-review", label: "Selección y dictamen" },
     { id: "classification-trace", label: "Consultar la evidencia" },
+  ],
+  helpTitle: "Ayuda: cómo usar la app",
+  helpHint: "¿Es tu primera vez? Abre cada sección del menú lateral para saber qué hace y cómo se usa.",
+  helpAreas: [
+    { title: "Carga y revisión", preview: "Sube actas de molino en PDF o Excel y sigue su procesamiento.", body: "Arrastra archivos PDF o XLSX al recuadro de importación o presiona Examinar. En Archivos enviados verás el estado de cada uno: enviando, en cola de extracción, extrayendo y extracción completa. Si aparece Requiere revisión, Necesita OCR o Falló, el acta necesita atención; Archivo ya registrado previamente indica un duplicado. Cuando termine, presiona Revisar para abrir el acta. Limpiar terminados quita de la lista los archivos ya procesados. En Revisión documental aparecen las actas con incidencias de calidad; desde ahí puedes volver a analizarlas o reprocesar el PDF indicando la persona responsable y el motivo." },
+    { title: "Revisar un acta abierta", preview: "Coladas, rollos, documento original, validación y exportación.", body: "Al abrir un acta verás sus coladas; selecciona una para consultar sus rollos, composición química y propiedades mecánicas. Ver documento original muestra el PDF junto a los datos para compararlos. En Validación revisas las sugerencias de fracción y NICO de cada rollo con sus condiciones y evidencia; Ver en LIGIE abre la página de la fuente. Elige una sugerencia con Elegir fracción o captura la clasificación de forma manual con su justificación. Cuando todos los rollos y coladas estén cubiertos, Confirmar acta cierra la revisión. Generar Excel exporta el acta completa, aunque siga pendiente de aprobación." },
+    { title: "Historial de actas", preview: "Busca actas guardadas y continúa su revisión.", body: "Muestra todas las actas cargadas. Usa los filtros por documento, rollo y clasificación, y fecha del acta y revisión para encontrar un acta o el documento que contiene una colada o un rollo; presiona Aplicar filtros o Limpiar filtros. Abrir acta te lleva a su revisión para continuar donde te quedaste. Si un documento no debe aparecer, puedes descartarlo del historial indicando el motivo; sus datos y el original se conservan y puedes restaurarlo después." },
+    { title: "Biblioteca de formatos", preview: "Enseña a la app a leer el diseño de un nuevo proveedor.", body: "Úsala cuando un fabricante tiene un formato de acta que la extracción no reconoce bien. Crea un borrador con el nombre del formato, elige un PDF de ejemplo y presiona Preparar páginas. Arrastra sobre la página para marcar zonas y asígnalas a un campo (número de acta, colada, espesor, ancho…) o a una tabla de rollos, química o ensayos mecánicos. Añade encabezados estables, como títulos y nombres de columnas, para que el formato se reconozca automáticamente. Guardar y probar muestra lo que se extrajo para confirmarlo contra el PDF. Para activar una versión necesitas dos encabezados estables y pruebas confirmadas sin incidencias en tres PDFs distintos; activar no modifica actas anteriores y puedes retirarla del reconocimiento cuando ya no sirva." },
+    { title: "Cómo se clasifica", preview: "Cómo llega el motor a una fracción y un NICO.", body: "Esta misma página. Debajo de esta ayuda se explica paso a paso cómo el motor evalúa los datos del acta, cómo interpretar sus resultados y cómo se pasa de una sugerencia a una selección y un dictamen confirmados." },
   ],
   flowTitle: "El recorrido de una sugerencia",
   steps: [

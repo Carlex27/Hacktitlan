@@ -24,7 +24,12 @@ export function ClassificationGuide() {
       </details>
     </aside>
     <article className="min-w-0 space-y-10 text-base leading-7 lg:col-start-1 lg:row-start-1">
-    <section aria-labelledby="classification-flow">
+    <section aria-labelledby="app-help">
+      <h3 id="app-help" tabIndex={-1} className="scroll-mt-8 text-xl leading-7 font-semibold focus-visible:outline-2 focus-visible:outline-primary">{text.helpTitle}</h3>
+      <p className="mt-2 mb-3 text-sm leading-6 text-muted-foreground">{text.helpHint}</p>
+      <ol>{text.helpAreas.map((area, index) => <GuideStep key={area.title} number={index + 1} {...area} />)}</ol>
+    </section>
+    <section aria-labelledby="classification-flow" className="border-t border-border pt-8">
       <h3 id="classification-flow" tabIndex={-1} className="scroll-mt-8 text-xl leading-7 font-semibold focus-visible:outline-2 focus-visible:outline-primary">{text.flowTitle}</h3>
       <p className="mt-2 mb-3 text-sm leading-6 text-muted-foreground">{text.flowHint}</p>
       <ol>{text.steps.map((step, index) => <GuideStep key={step.title} number={index + 1} {...step} />)}</ol>

@@ -15,7 +15,16 @@ describe("Guía de clasificación", () => {
     expect(button).toHaveAttribute("aria-current", "page");
     const main = screen.getByRole("main");
     expect(within(main).getByRole("heading", { name: es.classificationGuide.title })).toBeVisible();
-    expect(within(main).getAllByRole("listitem")).toHaveLength(6);
+    expect(within(main).getAllByRole("listitem")).toHaveLength(es.classificationGuide.helpAreas.length + 6);
+    expect(within(main).getByRole("heading", { name: es.classificationGuide.helpTitle })).toBeVisible();
+    for (const area of es.classificationGuide.helpAreas) {
+      expect(within(main).getByText(area.title, { selector: "summary span span" })).toBeVisible();
+    }
+    const helpArea = within(main).getByText(es.classificationGuide.helpAreas[0].title, { selector: "summary span span" }).closest("summary");
+    if (!helpArea) throw new Error("Falta el control de la primera sección de ayuda");
+    expect(within(main).getByText(es.classificationGuide.helpAreas[0].body)).not.toBeVisible();
+    await user.click(helpArea);
+    expect(within(main).getByText(es.classificationGuide.helpAreas[0].body)).toBeVisible();
     expect(within(main).getByText(es.classificationGuide.example)).toBeVisible();
     const step = within(main).getByText(es.classificationGuide.steps[0].title).closest("summary");
     expect(step).not.toBeNull();
