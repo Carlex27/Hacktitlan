@@ -9,6 +9,8 @@ from backend.app.domain.document import DocumentLayout
 
 def _label(text: str) -> tuple[str, str] | None:
     clean = normalize_term(text)
+    if re.search(r'\bstandard\s+technique\b', clean):
+        return None
     if re.search(r"\bcustomer\s+(?:no|number|id)\b", clean):
         return None
     matches = [(key, alias) for key, aliases in METADATA_LABELS.items() for alias in aliases
@@ -25,7 +27,7 @@ def extract_metadata(document: DocumentLayout) -> dict:
 
     def add(key, value, page, bbox, source, label=None):
         value = value.strip().lstrip(":： ")
-        if not value or _label(value) or normalize_term(value) in {"refer notes", "see notes", "ver notas"}:
+        if not value or _label(value) or normalize_term(value) in {"refer notes", "see notes", "ver notas", "检验", "inspection", "insp"}:
             return
         candidates[key].append({"value": value, "page_number": page,
                                 "bbox": bbox, "source_text": source, "label": label})

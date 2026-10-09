@@ -5,21 +5,12 @@ revisión y conserva su historial. Elegir una sugerencia no bloquea la captura m
 puede sustituirse por códigos propios con justificación. El cierre completo del acta
 bloquea ambas formas de edición y la retirada de la selección.
 
-## Verificación local por campo
+## Datos extraídos principales
 
-En Extraído, dentro del detalle del rollo, Datos extraídos principales conserva
-los valores original y normalizado y añade Verificación local. Los estados se
-expresan con texto: coincide, discrepancia, no verificable y error. La discrepancia
-usa el token warning existente. La propuesta muestra valor literal, valor calculado
-por el backend, celda/bloque, encabezado y acceso a la página del PDF. No se promete
-resaltado individual de celdas ni comprobación visual del OCR. La coincidencia no
-equivale a aprobación humana.
-
-Revisar propuesta abre un formulario en el mismo campo con persona y motivo;
-aceptar usa la corrección auditada existente. Carga, error asociado y confirmación
-de guardado son explícitos. Tras guardar, se indica recalcular las sugerencias antes
-del dictamen. Se reutilizan los componentes, Geist y tokens actuales. Esta es una
-adaptación al flujo existente, sin introducir tokens estimados de Finesse.
+Por petición del usuario, la tabla en el detalle de colada/rollo conserva sólo
+Campo, Valor original y Valor normalizado. Se retiran Verificación local, sus
+acciones y el aviso de comparación asociado. Los datos de verificación y las
+correcciones guardadas permanecen en el backend.
 
 ## Dirección
 

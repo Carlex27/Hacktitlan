@@ -221,7 +221,7 @@ class PaddleStructureReader:
                 page_index = len(results)
                 if pdf is not None:
                     page = pdf.pages[page_index]
-                    resolution = min(300, self.settings.ocr_max_page_dimension * 72 / max(page.width, page.height))
+                    resolution = 300
                     cell_image = np.array(page.to_image(resolution=resolution).original.convert("RGB"))[:, :, ::-1]
                     result["page_index"] = page_index
                     angle = result["doc_preprocessor_res"].get("angle", 0)

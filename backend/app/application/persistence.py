@@ -113,6 +113,7 @@ class CertificatePersistenceService:
                 heat = Heat(
                     certificate_id=certificate.id,
                     heat_no=heat_no,
+                    grade=product_data.get("grade"),
                     standard=product_data.get("standard") or certificate.standard,
                     properties_json={},
                 )

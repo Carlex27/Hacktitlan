@@ -28,7 +28,7 @@ describe("Datos extraídos principales", () => {
     expect(rows.map((row) => row.label)).toEqual(["Ancho"]);
     expect(rows[0]?.raw_value).toBe(991);
   });
-  it("renders original and normalized values without a source column", () => {
+  it("renders only field, original and normalized values", () => {
     render(<ExtractedObservations observations={[
       { ...observation(1, "width_mm", "991.0"), unit: "mm", source_text: "WIDTH 991", page_number: 1 },
       observation(2, "evidence", { page: 1 }), observation(3, "rolling", "cold"),
@@ -37,12 +37,12 @@ describe("Datos extraídos principales", () => {
     expect(screen.getByText("Ancho")).toBeInTheDocument();
     expect(screen.getByText("991.0 mm")).toBeInTheDocument();
     expect(screen.getAllByRole("columnheader", { hidden: true }).map((header) => header.textContent))
-      .toEqual(["Campo", "Valor original", "Valor normalizado", "Verificación local"]);
+      .toEqual(["Campo", "Valor original", "Valor normalizado"]);
     expect(screen.queryByText("WIDTH 991 · Página 1")).toBeNull();
     expect(screen.getAllByText("Laminado en frío")).toHaveLength(2);
     expect(screen.queryByText("evidence")).toBeNull();
     expect(screen.queryByText(/Composición química/)).toBeNull();
-    expect(screen.getAllByText("Sin verificación local")).toHaveLength(2);
+    expect(screen.queryByText("Sin verificación local")).toBeNull();
   });
   it("shows an explicit empty state when only internal data exists", () => {
     render(<ExtractedObservations observations={[observation(1, "evidence")]} />);

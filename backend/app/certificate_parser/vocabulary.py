@@ -27,7 +27,7 @@ METADATA_LABELS: dict[str, tuple[str, ...]] = {
     ),
     "standard": (
         "standard", "specification", "spec", "grade", "norma", "especificacion",
-        "grado", "calidad", "标准", "牌号", "执行标准",
+        "grado", "calidad", "标准", "牌号", "执行标准", "規格名稱", "规格名称",
     ),
     "issue_date": (
         "issue date", "date of issue", "fecha de emision", "fecha del acta", "签发日期",
@@ -85,7 +85,7 @@ ELEMENT_SYMBOLS: dict[str, str] = {
     # Aluminium
     "als": "Al_soluble", "soluble al": "Al_soluble", "solubleal": "Al_soluble", "酸溶铝": "Al_soluble",
     "alt": "Al_total", "total al": "Al_total", "totalal": "Al_total", "全铝": "Al_total",
-    "al": "Al_total", "aluminium": "Al_total", "aluminum": "Al_total", "aluminio": "Al_total", "铝": "Al_total",
+    "al": "Al_total", "a1": "Al_total", "aluminium": "Al_total", "aluminum": "Al_total", "aluminio": "Al_total", "铝": "Al_total",
     # Titanium
     "ti": "Ti", "titanium": "Ti", "titanio": "Ti", "钛": "Ti",
     # Copper

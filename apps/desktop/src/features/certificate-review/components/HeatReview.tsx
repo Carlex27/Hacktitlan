@@ -23,13 +23,11 @@ export interface HeatReviewProps {
   classificationLoading: boolean;
   classificationError: unknown;
   onRetryClassification(): void;
-  onGoToPage?: (page: number) => void;
-  onCorrected?: () => void;
   onShowExtracted?: () => void;
 }
 
 export function HeatReview({ certificate, isLoading, error, onRetry, selectedHeatId, onSelectHeat, detailed = false,
-  classificationResults, classificationLoading, classificationError, onRetryClassification, onShowExtracted, onGoToPage, onCorrected }: HeatReviewProps) {
+  classificationResults, classificationLoading, classificationError, onRetryClassification, onShowExtracted }: HeatReviewProps) {
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   if (error) return <LoadErrorAlert title={es.certificateReview.loadError} error={error} onRetry={onRetry} />;
   const activeHeatId = selectedHeatId === undefined ? certificate?.heats[0]?.id : selectedHeatId;
@@ -49,7 +47,7 @@ export function HeatReview({ certificate, isLoading, error, onRetry, selectedHea
           <ProductDetails product={product} heat={roll.heats[0]} />
           <ChemicalCompositionGrid compositions={roll.chemical_compositions} />
           <MechanicalPropertiesGrid observations={roll.observations} />
-          <ExtractedObservations observations={roll.observations} products={roll.products} onGoToPage={onGoToPage} onCorrected={onCorrected} />
+          <ExtractedObservations observations={roll.observations} products={roll.products} />
         </>;
       } : undefined} />
   </section>;

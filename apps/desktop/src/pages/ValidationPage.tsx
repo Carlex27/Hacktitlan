@@ -33,7 +33,6 @@ export function ValidationPage({ certificateId, documentId, onBack, onDeleted }:
   const [selectedHeatId, setSelectedHeatId] = useState<number | null | undefined>(undefined);
   const [pdfPage, setPdfPage] = useState(1);
   const [viewerOpen, setViewerOpen] = useState(false);
-  const [correctedCertificateId, setCorrectedCertificateId] = useState<number | null>(null);
   const reviewMain = useRef<HTMLElement>(null);
   const reviewContent = useRef<HTMLDivElement>(null);
 
@@ -104,12 +103,10 @@ export function ValidationPage({ certificateId, documentId, onBack, onDeleted }:
         <div className="shrink-0 lg:flex-1 flex flex-col lg:flex-row lg:min-h-0 lg:overflow-hidden">
         <div ref={reviewContent} className="lg:flex-1 lg:overflow-y-auto overscroll-y-contain p-4 sm:p-6 space-y-6 bg-muted/30 lg:min-h-0 min-w-0">
           <EvidenceArea state={evidence.state} onRetry={evidence.retry} onClose={evidence.close} onGoToPage={goToActaPage} onOpenSource={openTariffReference} />
-          {certificateId !== null && correctedCertificateId === certificateId && <p role="status">{es.verification.saved}</p>}
           {(activeTab === "rolls" || activeTab === "extracted") && <HeatReview certificate={certificate} isLoading={certLoading}
             error={certError} onRetry={reloadCertificate} selectedHeatId={selectedHeatId} onSelectHeat={setSelectedHeatId}
             onShowExtracted={() => setActiveTab("extracted")} detailed={activeTab === "extracted"} classificationResults={run?.results ?? []} classificationLoading={runLoading}
-            classificationError={runError} onRetryClassification={reloadRun} onGoToPage={goToActaPage}
-            onCorrected={() => { setCorrectedCertificateId(certificateId); reloadCertificate(); }} />}
+            classificationError={runError} onRetryClassification={reloadRun} />}
           {activeTab === "validation" && <ClassificationValidationTab products={certificate?.products ?? []} run={run} isLoading={runLoading} error={runError} onViewEvidence={evidence.open} onReloadRun={reloadRun}
             renderTariffAction={(reference, displayCode) => (
               <TariffReferenceButton reference={reference} displayCode={displayCode} onOpen={openTariffReference} />

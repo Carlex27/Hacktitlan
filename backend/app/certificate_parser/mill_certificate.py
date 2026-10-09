@@ -8,6 +8,7 @@ engine can produce and returns the canonical product observations.
 from __future__ import annotations
 
 from decimal import Decimal
+import re
 from typing import Any
 
 from backend.app.normalization.chemistry import normalize_scaled_percentage
@@ -242,6 +243,7 @@ def normalize_certificate(raw: dict[str, Any]) -> dict[str, Any]:
                 "chemistry_analysis_type": row.get("chemistry_analysis_type")
                 or raw.get("chemistry_analysis_type"),
                 "standard": raw.get("standard"),
+                "grade": raw.get("grade") or (match[1] if (match := re.fullmatch(r"SAE\s+(\d{4})", str(raw.get("standard") or ""), re.I)) else None),
                 "edge_condition": raw.get("edge_condition"),
                 "observations": {
                     **field_observations,

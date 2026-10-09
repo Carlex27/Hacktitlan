@@ -130,8 +130,13 @@ def recover_rows(page: PageLayout) -> tuple[list[dict], dict[str, int]]:
                         values = identifiers
                 if column.category in {'dimension', 'mechanical', 'chemistry'}:
                     values = [b for b in values if b.text.strip() in DITTO_TOKENS or re.fullmatch(r'[\d.,]+|COIL|C|ROLLO|[\d.,]+[xX×*][\d.,]+[xX×*]C', b.text.strip(), re.I)
+                              or (column.category == 'chemistry' and re.fullmatch(r'\d+=', b.text.strip()))
                               or (key in {'thickness_mm', 'width_mm', 'length_m'} and dimension_value(b.text, column.block.text) is not None)]
-                values.sort(key=lambda b: (abs(center(b)[1] - y), abs(center(b)[0] - x)))
+                values.sort(key=lambda b: (b.text.strip() not in DITTO_TOKENS,
+                                          -(b.confidence or 0) if key == 'heat_no' else 0,
+                                          b.bbox.bottom - b.bbox.top < (high - low) * .5 if column.category == 'chemistry' else False,
+                                          b.bbox.x1 - b.bbox.x0 if column.category == 'chemistry' else 0,
+                                          abs(center(b)[1] - y), abs(center(b)[0] - x)))
             if not values:
                 continue
             value = values[0]
@@ -146,6 +151,8 @@ def recover_rows(page: PageLayout) -> tuple[list[dict], dict[str, int]]:
                 # An unlabelled chemical scale is evidence for review, never an assumed percent.
                 continue
             text = value.text.strip()
+            if column.category == 'chemistry' and re.fullmatch(r'\d+=', text):
+                text = text[:-1]
             if key == 'product_id':
                 text = identifier
             elif key == 'label_no':

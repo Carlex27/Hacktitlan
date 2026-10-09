@@ -67,15 +67,15 @@ def test_real_metadata_snapshot_finds_notes_and_does_not_mix_shipping_with_issue
     assert metadata["product_name"] == "HOT ROLLED SHEET-COIL (MILL EDGE)"
 
 
-def test_molino3_ocr_disagreement_proposes_33_without_overwriting_39():
+def test_molino3_prefers_original_33_and_retains_conflicting_39():
     class Reader:
         def read(self, _path, **_kwargs):
             return read_snapshot(3)
     result = CertificateExtractionService(Reader()).analyze_pdf("snapshot.pdf")
     carbon = result["certificate"]["products"][2]["observations"]["composition_pct"]["C"]
-    assert carbon["raw_value"] == "39" and carbon["normalized_value"] == .39
-    assert carbon["verification"]["raw_value"] == "33"
-    assert carbon["verification"]["normalized_value"] == .33
+    assert carbon["raw_value"] == "33" and carbon["normalized_value"] == .33
+    assert carbon["verification"]["raw_value"] == "39"
+    assert carbon["verification"]["normalized_value"] == .39
     assert carbon["verification"]["header_text"] == "C 10^-2"
     assert carbon["verification"]["error_code"] == "conflicting_ocr_readings"
     assert result["status"] == "needs_review"
@@ -89,6 +89,7 @@ def test_ocr_comparison_does_not_pick_an_unjustified_correction(mode):
     layout = read_snapshot(3)
     certificate = GenericCertificateExtractor().extract(layout).certificate
     carbon = certificate["products"][2]["observations"]["composition_pct"]["C"]
+    carbon.update(raw_value="39", normalized_value=.39)
     block = next(b for b in layout.pages[0].blocks if b.text == "33" and b.bbox.x0 > 500)
     if mode == "inherited":
         carbon["inherited"] = True
