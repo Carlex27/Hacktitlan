@@ -1,20 +1,26 @@
-import { useState } from "react";
+import { useCertificateImport } from "@/features/certificate-import";
 
-import { CertificateDropzone } from "../features/certificate-import";
+import { DocumentsPage } from "./DocumentsPage";
 
-export function ImportCertificatePage() {
-  const [selectedFiles, setSelectedFiles] = useState<readonly File[]>([]);
+export interface ImportCertificatePageProps {
+  selectedDocumentId?: number | null;
+  onReview?: (certificateId: number, documentId?: number | null) => void;
+}
+
+/** Página de importación de certificados (vista inicial de documentos). */
+export function ImportCertificatePage({
+  selectedDocumentId = null,
+  onReview = () => {},
+}: ImportCertificatePageProps) {
+  const { items, addFiles, clearFinished } = useCertificateImport();
 
   return (
-    <section aria-labelledby="import-title">
-      <h2 id="import-title">Importar actas de molino</h2>
-      <p>Los certificados se procesan localmente.</p>
-      <CertificateDropzone onFilesSelected={setSelectedFiles} />
-      <p aria-live="polite">
-        {selectedFiles.length === 0
-          ? "No hay archivos seleccionados."
-          : `${selectedFiles.length} archivo(s) seleccionado(s).`}
-      </p>
-    </section>
+    <DocumentsPage
+      items={items}
+      selectedDocumentId={selectedDocumentId}
+      onAddFiles={addFiles}
+      onClearFinished={clearFinished}
+      onReview={onReview}
+    />
   );
 }
