@@ -14,6 +14,18 @@ import {
 } from "@/features/certificate-import/model/importItem";
 import { importReducer } from "@/features/certificate-import/model/importReducer";
 import { partitionPdfFiles } from "@/features/certificate-import/model/partitionPdfFiles";
+import { nextPollInterval } from "@/features/certificate-import/model/pollInterval";
+
+it("reduce el sondeo sin avances hasta 6 segundos y lo reinicia al avanzar", () => {
+  const current = job();
+  expect(nextPollInterval(null, current, 1500, 1500)).toBe(1500);
+  expect(nextPollInterval(current, current, 1500, 1500)).toBe(3000);
+  expect(nextPollInterval(current, current, 3000, 1500)).toBe(6000);
+  expect(nextPollInterval(current, current, 6000, 1500)).toBe(6000);
+  expect(nextPollInterval(current, job({ progress: 50 }), 6000, 1500)).toBe(1500);
+  expect(nextPollInterval(current, job({ status: "queued", progress: null }), 6000, 1500)).toBe(1500);
+  expect(nextPollInterval(job({ progress: null }), job({ progress: null }), 1500, 1500)).toBe(3000);
+});
 
 function job(overrides: Partial<JobDto> = {}): JobDto {
   return {

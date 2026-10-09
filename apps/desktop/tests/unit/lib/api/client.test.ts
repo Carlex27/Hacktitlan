@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { ApiError, createApiClient, parseEnvelope, resolveApiBaseUrl } from "@/lib/api";
 
@@ -62,6 +62,68 @@ describe("parseEnvelope", () => {
 });
 
 describe("createApiClient", () => {
+  it("reutiliza respuestas sólo con TTL explícito, las aísla y permite forzar recarga", async () => {
+    const fetch = vi.fn(async () => envelope({ id: 1 }));
+    const client = createApiClient({ baseUrl: "http://api", fetch });
+    const first = await client.get<{ id: number }>("/detail", { cacheTtlMs: 5000 });
+    first.data.id = 99;
+    expect((await client.get<{ id: number }>("/detail", { cacheTtlMs: 5000 })).data.id).toBe(1);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    await client.get("/detail", { cacheTtlMs: 0 });
+    await client.get("/jobs/1");
+    await client.get("/jobs/1");
+    expect(fetch).toHaveBeenCalledTimes(4);
+  });
+
+  it("expira la caché y respeta la cancelación incluso en un acierto", async () => {
+    const now = vi.spyOn(Date, "now");
+    try {
+      now.mockReturnValue(1000);
+      const fetch = vi.fn(async () => envelope(1));
+      const client = createApiClient({ baseUrl: "http://api", fetch });
+      await client.get("/detail", { cacheTtlMs: 5000 });
+      const controller = new AbortController();
+      controller.abort();
+      await expect(client.get("/detail", { cacheTtlMs: 5000, signal: controller.signal })).rejects.toMatchObject({ kind: "aborted" });
+      now.mockReturnValue(6000);
+      await client.get("/detail", { cacheTtlMs: 5000 });
+      expect(fetch).toHaveBeenCalledTimes(2);
+    } finally {
+      now.mockRestore();
+    }
+  });
+
+  it.each(["post", "patch", "delete", "postForm"] as const)("invalida las lecturas después de %s", async (method) => {
+    const fetch = vi.fn(async () => envelope(1));
+    const client = createApiClient({ baseUrl: "http://api", fetch });
+    await client.get("/detail", { cacheTtlMs: 5000 });
+    if (method === "delete") await client.delete("/write");
+    else if (method === "postForm") await client.postForm("/write", new FormData());
+    else await client[method]("/write", {});
+    await client.get("/detail", { cacheTtlMs: 5000 });
+    expect(fetch).toHaveBeenCalledTimes(3);
+  });
+
+  it("no conserva errores ni lecturas iniciadas antes de una escritura", async () => {
+    let finish: (response: Response) => void = () => {};
+    const fetch = vi.fn(async (_url: string, init?: RequestInit) => {
+      if (init?.method !== "GET") return envelope(2);
+      return new Promise<Response>((resolve) => { finish = resolve; });
+    });
+    const client = createApiClient({ baseUrl: "http://api", fetch });
+    const pending = client.get("/detail", { cacheTtlMs: 5000 });
+    await client.post("/write", {});
+    finish(envelope(1));
+    await pending;
+    const retry = client.get("/detail", { cacheTtlMs: 5000 });
+    finish(errorEnvelope("unavailable", "Error", 503));
+    await expect(retry).rejects.toMatchObject({ kind: "server" });
+    const recovered = client.get("/detail", { cacheTtlMs: 5000 });
+    finish(envelope(2));
+    await expect(recovered).resolves.toMatchObject({ data: 2 });
+    expect(fetch).toHaveBeenCalledTimes(4);
+  });
+
   it("envía X-Request-ID y combina la URL base", async () => {
     let seenUrl = "";
     let seenId: string | null = null;

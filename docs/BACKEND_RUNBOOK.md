@@ -53,7 +53,7 @@ pendientes de clasificación y las selecciones retiradas conservan su auditoría
 El flujo utiliza las operaciones de exportación documentadas en `/openapi.json`
 y `/docs`. La API encola el trabajo; debe estar ejecutándose un worker. Reiniciar
 la API y los workers tras actualizar para cargar los esquemas y el formato nuevo.
-El Excel incluye resumen, actas, coladas, rollos, composición, clasificación,
+El Excel incluye resumen, actas, batches, coladas, composición, clasificación,
 evidencia y auditoría, con filtros, encabezados congelados y estados con texto y
 color. Exporta los datos disponibles y conserva ausentes como celdas vacías.
 

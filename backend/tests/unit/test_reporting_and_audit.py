@@ -6,6 +6,8 @@ import json
 from decimal import Decimal
 from pathlib import Path
 from uuid import uuid4
+from zipfile import ZipFile
+from xml.etree import ElementTree
 
 import openpyxl
 import pytest
@@ -103,6 +105,27 @@ def test_excel_external_text_is_not_a_formula(tmp_path):
     assert loaded.active["A4"].data_type == "s"
     assert loaded.active["B4"].value == datetime(2026, 10, 8, 18)
     loaded.close()
+
+
+@pytest.mark.parametrize("rows", [[], [["R-001", 0]], [["R-001", 0], ["R-002", None]]])
+def test_excel_filters_belong_only_to_tables(tmp_path, rows):
+    workbook = openpyxl.Workbook()
+    ExcelExportService._write_sheet(workbook.active, ["Serie", "Valor"], rows, "RollosTable", "Aviso")
+    path = tmp_path / "filters.xlsx"
+    workbook.save(path)
+    ns = {"m": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
+    with ZipFile(path) as archive:
+        sheet = ElementTree.fromstring(archive.read("xl/worksheets/sheet1.xml"))
+        assert sheet.find("m:autoFilter", ns) is None
+        book = ElementTree.fromstring(archive.read("xl/workbook.xml"))
+        assert all(name.get("name") != "_xlnm._FilterDatabase"
+                   for name in book.findall("m:definedNames/m:definedName", ns))
+        tables = [name for name in archive.namelist() if name.startswith("xl/tables/")]
+        assert len(tables) == (1 if rows else 0)
+        if rows:
+            table = ElementTree.fromstring(archive.read(tables[0]))
+            assert table.get("ref") == f"A3:B{3 + len(rows)}"
+            assert table.find("m:autoFilter", ns).get("ref") == table.get("ref")
 
 
 def test_export_request_validation():
@@ -651,7 +674,7 @@ def test_excel_export_service_generates_eight_sheets_and_auditable_content(db_se
 
     wb = openpyxl.load_workbook(out_path)
     expected_sheets = [
-        "Resumen", "Actas", "Coladas", "Rollos", "Composición",
+        "Resumen", "Actas", "Batches", "Coladas", "Composición",
         "Clasificación", "Evidencia", "Auditoría",
     ]
     assert wb.sheetnames == expected_sheets
@@ -690,7 +713,7 @@ def test_excel_export_service_generates_eight_sheets_and_auditable_content(db_se
     assert ws_clas.freeze_panes == "E4"
     assert len(ws_clas.conditional_formatting) > 0
     assert wb["Actas"]["M4"].value == "Aprobado"
-    assert wb["Rollos"]["O4"].value is None
+    assert wb["Coladas"]["O4"].value is None
     assert "chapter72.thickness.gte_3mm" in str(row4["factores_clave"])
 
     # Check internal hyperlink in Clasificación pointing to Evidencia

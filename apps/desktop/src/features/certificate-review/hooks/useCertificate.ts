@@ -41,7 +41,7 @@ export function useCertificate(certificateId: number | null): UseCertificateResu
     const controller = new AbortController();
     let isCurrent = true;
 
-    getCertificate(api, certificateId, { signal: controller.signal })
+    getCertificate(api, certificateId, { signal: controller.signal, ...(version > 0 ? { cacheTtlMs: 0 } : {}) })
       .then((cert) => {
         if (!isCurrent) return;
         setState({

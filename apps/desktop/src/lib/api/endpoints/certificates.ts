@@ -40,6 +40,6 @@ export async function getCertificate(
   options?: RequestOptions,
 ): Promise<CertificateDetailDto> {
   return (
-    await api.get<CertificateDetailDto>(`/api/v1/certificates/${certificateId}`, options)
+    await api.get<CertificateDetailDto>(`/api/v1/certificates/${certificateId}`, { cacheTtlMs: 5000, ...options })
   ).data;
 }

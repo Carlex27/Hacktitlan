@@ -137,7 +137,7 @@
   - Consultas avanzadas y filtros multidimensionales en `DocumentService.list_certificates` y `GET /api/v1/certificates`: presets de período (`today`/`day`, `week`, `month`) con helper puro `resolve_period_dates`, rango explícito (`date_from`, `date_to`), número de certificado, fabricante, colada (`heat_no`), producto (`product_identifier`), fracción arancelaria (`fraction`), NICO (`nico`), estado documental (`approval_status`) y estado de procesamiento (`processing_status`).
   - Paginación keyset `(sort_date, id)` sin desplazamiento por inserciones. No crea una instantánea ni garantiza estabilidad ante cambios de la fecha de ordenación; se prueban inserciones anteriores y posteriores al cursor.
   - Detalle histórico de ejecuciones en `GET /api/v1/classification-runs/{run_id}` exponiendo tanto `current_selection` (la selección activa vigente) como `selections` (la línea de tiempo cronológica completa de selecciones históricas y reemplazos).
-  - Libro Excel auditable de 8 hojas (`ExcelExportService`) generado íntegramente por el backend (`Resumen`, `Actas`, `Coladas`, `Rollos`, `Composición`, `Clasificación`, `Evidencia`, `Auditoría`):
+  - Libro Excel auditable de 8 hojas (`ExcelExportService`) generado íntegramente por el backend (`Resumen`, `Actas`, `Batches`, `Coladas`, `Composición`, `Clasificación`, `Evidencia`, `Auditoría`):
     - Hoja `Clasificación`: candidato elegido (`fraccion-nico`), alternativas 2 y 3, persona que seleccionó, motivo, fecha, factores clave y enlace interno clicable (`#'Evidencia'!A{row}`).
     - Hoja `Evidencia`: observaciones de extracción de cada producto mapeadas a sus códigos de regla/factor asociados desde `EvidenceLink`.
     - Hoja `Auditoría`: línea de tiempo consolidada de selecciones, aprobaciones y correcciones manuales con estado de vigencia explícito (`Vigente` vs `Reemplazada`).
@@ -411,3 +411,5 @@ del acta excluye fechas desconocidas. Semántica documentada en OpenAPI y runboo
 pruebas sobre PostgreSQL cubren combinaciones, fechas y paginación.
 
 Exportación por acta: UI con generación asíncrona y enlace de descarga. Se tipan las respuestas existentes en OpenAPI, se amplían proveedor/metadatos, dimensiones/pesos, códigos y aprobación; se corrige la vigencia de selecciones retiradas y se muestran rollos sin clasificación. Formato XLSX con filtros, fechas, precisión química y estados semánticos. Sin dependencias nuevas.
+
+Compatibilidad de Excel: se elimina el AutoFilter adicional de hoja que se superponía al filtro de cada tabla y provocaba reparación al abrir. Pruebas del XML comprueban filtros exclusivos de tabla y rangos completos, también con hojas vacías.

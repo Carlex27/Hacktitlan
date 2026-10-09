@@ -21,7 +21,7 @@ En este hito se implementó la capa completa de consulta, auditoría y reportes 
 2. **Paginación por cursor keyset `(sort_date, id)`:** Evita desplazamientos por inserciones. No representa una instantánea: las nuevas filas anteriores al cursor pueden aparecer en páginas posteriores; las posteriores al cursor quedan fuera de esa navegación.
 3. **Detalle histórico de selecciones:** En `GET /api/v1/classification-runs/{run_id}` se exponen simultáneamente `current_selection` (la selección vigente actual) y `selections` (la línea de tiempo completa ordenada cronológicamente de selecciones históricas y reemplazos).
 4. **Libro Excel auditable de 8 hojas (`ExcelExportService`):**
-   - Hojas obligatorias generadas: `Resumen`, `Actas`, `Coladas`, `Rollos`, `Composición`, `Clasificación`, `Evidencia`, `Auditoría`.
+   - Hojas obligatorias generadas: `Resumen`, `Actas`, `Batches`, `Coladas`, `Composición`, `Clasificación`, `Evidencia`, `Auditoría`.
    - Hipervínculos internos clicables de navegación nativa en Excel (`#'Hoja'!A1` y `#'Evidencia'!A{row}`).
    - Hoja `Clasificación`: Detalla candidato elegido, alternativas 2 y 3, persona que seleccionó, motivo, fecha de selección, resumen de factores clave y enlace directo a la evidencia del rollo.
    - Hoja `Evidencia`: Relaciona cada observación de producto con su código de regla/factor asociado de `EvidenceLink`.

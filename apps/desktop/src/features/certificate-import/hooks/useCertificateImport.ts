@@ -7,10 +7,12 @@ import {
   uploadDocument,
   useApiClient,
   type ApiClient,
+  type JobDto,
 } from "@/lib/api";
 
 import { createImportItem, isTerminalPhase, type ImportItem } from "../model/importItem";
 import { importReducer, type ImportAction } from "../model/importReducer";
+import { nextPollInterval } from "../model/pollInterval";
 
 export const JOB_POLL_INTERVAL_MS = 1500;
 
@@ -27,15 +29,19 @@ export interface CertificateImport {
 
 function delay(ms: number, signal: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(resolve, ms);
-    signal.addEventListener(
-      "abort",
-      () => {
-        clearTimeout(timer);
-        reject(new DOMException("Aborted", "AbortError"));
-      },
-      { once: true },
-    );
+    if (signal.aborted) {
+      reject(new DOMException("Aborted", "AbortError"));
+      return;
+    }
+    const timer = setTimeout(() => {
+      signal.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+    function onAbort() {
+      clearTimeout(timer);
+      reject(new DOMException("Aborted", "AbortError"));
+    }
+    signal.addEventListener("abort", onAbort, { once: true });
   });
 }
 
@@ -52,11 +58,15 @@ async function processFile(
     dispatch({ type: "uploaded", id: item.id, upload });
     if (upload.job_id === null) return;
 
+    let previous: JobDto | null = null;
+    let interval = pollIntervalMs;
     for (;;) {
       const job = await getJob(api, upload.job_id, { signal });
       dispatch({ type: "job_updated", id: item.id, job });
       if (isTerminalPhase(job.status)) return;
-      await delay(pollIntervalMs, signal);
+      interval = nextPollInterval(previous, job, interval, pollIntervalMs);
+      previous = job;
+      await delay(interval, signal);
     }
   } catch (error) {
     if (isAbortError(error)) return;

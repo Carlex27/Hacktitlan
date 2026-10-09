@@ -3,6 +3,16 @@
 Único punto de acceso del frontend al backend. Todo se importa desde
 `@/lib/api`; las features nunca llaman a `fetch` directamente.
 
+El detalle de actas reutiliza respuestas correctas durante cinco segundos, en
+memoria y por instancia del cliente (máximo 50 entradas). `cacheTtlMs: 0` fuerza
+una consulta nueva; la recarga explícita del detalle utiliza esta opción.
+Cualquier POST, PATCH, DELETE o carga invalida la caché al comenzar y terminar,
+incluso si falla; las lecturas previas a una escritura no repueblan la caché.
+Los cambios de otros clientes pueden tardar hasta cinco segundos en verse al
+consultar nuevamente. Listados, trabajos y exportaciones no usan esta caché.
+Las importaciones sondean cada 1.5 segundos y, sin cambios de estado o progreso,
+espacian las consultas a 3 y 6 segundos; un avance reinicia el intervalo.
+
 - `client.ts`: `createApiClient` (`get`, `post`, `postForm`, `getBlob`, `url`), encabezado
   `X-Request-ID` y cancelación con `AbortSignal`.
 - `envelope.ts` / `errors.ts`: validación del sobre `{ data, meta, error }` y

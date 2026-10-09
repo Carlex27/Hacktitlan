@@ -39,7 +39,7 @@ class ExcelExportService:
     approval_labels = {"draft": "Borrador", "needs_review": "Pendiente de aprobación",
                        "approved": "Aprobado", "rejected": "Rechazado"}
     sheet_names = [
-        "Resumen", "Actas", "Coladas", "Rollos", "Composición",
+        "Resumen", "Actas", "Batches", "Coladas", "Composición",
         "Clasificación", "Evidencia", "Auditoría",
     ]
 
@@ -223,8 +223,8 @@ class ExcelExportService:
             ["Generado UTC", datetime.now(timezone.utc)],
             ["Tipo de Reporte", "Oficial (sólo expedientes aprobados)" if official else "Consulta (estados actuales)"],
             ["Actas incluidas", len(certificates)],
-            ["Coladas incluidas", len(heats)],
-            ["Rollos incluidos", len(products)],
+            ["Batches incluidos", len(heats)],
+            ["Coladas incluidas", len(products)],
             ["Clasificaciones incluidas", len(results)],
             ["Selecciones registradas", len(selections)],
             ["Ejecuciones de clasificación", ", ".join(str(run.id) for run in runs) or "Ninguna"],
@@ -255,13 +255,13 @@ class ExcelExportService:
             "ActasTable", notice)
 
         # 3. Coladas Sheet
-        self._write_sheet(workbook["Coladas"],
+        self._write_sheet(workbook["Batches"],
             ["heat_id", "certificate_id", "colada", "norma", "grado", "propiedades"],
             [[h.id, h.certificate_id, h.heat_no, h.standard, h.grade, str(h.properties_json)] for h in heats],
             "ColadasTable", notice)
 
         # 4. Rollos Sheet
-        self._write_sheet(workbook["Rollos"],
+        self._write_sheet(workbook["Coladas"],
             ["product_id", "certificate_id", "heat_id", "identificador", "etiqueta", "tipo", "forma", "enrollado", "laminado", "ancho_mm", "espesor_mm", "peso_kg", "longitud_m", "peso_neto_kg", "peso_bruto_kg", "propiedades"],
             [[p.id, p.certificate_id, p.heat_id, p.product_identifier, p.label_no, p.product_type, p.form,
               p.coiled, p.rolling, p.width_mm, p.thickness_mm, p.weight_kg,
@@ -483,8 +483,8 @@ class ExcelExportService:
             cell.font = Font(name="Arial", size=10, color="FFFFFF", bold=True)
             cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
         sheet.row_dimensions[3].height = 36
-        sheet.freeze_panes = "E4" if sheet.title in {"Rollos", "Clasificación"} else "A4"
-        sheet.auto_filter.ref = f"A3:{sheet.cell(3, len(headers)).coordinate}"
+        sheet.freeze_panes = "E4" if sheet.title in {"Coladas", "Clasificación"} else "A4"
+        # Excel tables own their filters; a second worksheet filter overlaps and triggers repair.
         if sheet.max_row >= 4:
             table = Table(displayName=table_name, ref=f"A3:{sheet.cell(sheet.max_row, len(headers)).coordinate}")
             table.tableStyleInfo = TableStyleInfo(name="TableStyleMedium2", showRowStripes=True)
@@ -522,16 +522,16 @@ class ExcelExportService:
         workbook = load_workbook(path, read_only=True, data_only=False)
         try:
             expected_sheets = {
-                "Resumen", "Actas", "Coladas", "Rollos", "Composición",
+                "Resumen", "Actas", "Batches", "Coladas", "Composición",
                 "Clasificación", "Evidencia", "Auditoría",
             }
             if set(workbook.sheetnames) != expected_sheets:
                 raise RuntimeError(f"El libro no contiene exactamente las 8 hojas requeridas: {workbook.sheetnames}")
             if len(list(workbook["Actas"].iter_rows(min_row=4, values_only=True))) != certificates:
                 raise RuntimeError("El conteo de actas exportadas no coincide")
-            if len(list(workbook["Coladas"].iter_rows(min_row=4, values_only=True))) != heats:
+            if len(list(workbook["Batches"].iter_rows(min_row=4, values_only=True))) != heats:
                 raise RuntimeError("El conteo de coladas exportadas no coincide")
-            if len(list(workbook["Rollos"].iter_rows(min_row=4, values_only=True))) != products:
+            if len(list(workbook["Coladas"].iter_rows(min_row=4, values_only=True))) != products:
                 raise RuntimeError("El conteo de rollos exportados no coincide")
         finally:
             workbook.close()

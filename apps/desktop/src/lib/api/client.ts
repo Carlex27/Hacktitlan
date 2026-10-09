@@ -11,6 +11,7 @@ export interface ApiClientOptions {
 
 export interface RequestOptions {
   signal?: AbortSignal | undefined;
+  cacheTtlMs?: number;
 }
 
 export interface ApiClient {
@@ -35,6 +36,14 @@ export function createApiClient({
   fetch: fetchImpl = (input, init) => globalThis.fetch(input, init),
   createRequestId = defaultRequestId,
 }: ApiClientOptions): ApiClient {
+  const cache = new Map<string, { expires: number; value: ApiEnvelope<unknown> }>();
+  let generation = 0;
+
+  function invalidateCache(): void {
+    generation += 1;
+    cache.clear();
+  }
+
   async function send(path: string, init: RequestInit): Promise<{ response: Response; requestId: string }> {
     const requestId = createRequestId();
     const headers = new Headers(init.headers);
@@ -73,8 +82,35 @@ export function createApiClient({
   }
 
   async function request<T>(path: string, init: RequestInit): Promise<ApiEnvelope<T>> {
-    const { response, requestId } = await send(path, init);
-    return readEnvelope<T>(response, requestId);
+    const mutation = init.method !== "GET";
+    if (mutation) invalidateCache();
+    try {
+      const { response, requestId } = await send(path, init);
+      return await readEnvelope<T>(response, requestId);
+    } finally {
+      if (mutation) invalidateCache();
+    }
+  }
+
+  async function get<T>(path: string, options?: RequestOptions): Promise<ApiEnvelope<T>> {
+    if (options?.signal?.aborted) {
+      throw new ApiError({ kind: "aborted", message: "Solicitud cancelada.", requestId: createRequestId() });
+    }
+    const ttl = options?.cacheTtlMs ?? 0;
+    const cached = cache.get(path);
+    if (ttl > 0 && cached && cached.expires > Date.now()) {
+      return structuredClone(cached.value) as ApiEnvelope<T>;
+    }
+    cache.delete(path);
+    const startedGeneration = generation;
+    const result = await request<T>(path, { method: "GET", signal: options?.signal ?? null });
+    if (ttl > 0 && startedGeneration === generation && !options?.signal?.aborted) {
+      // shortcut: hasta 50 respuestas por cliente, revisar el límite si crece la navegación.
+      const oldest = cache.keys().next().value;
+      if (cache.size >= 50 && oldest !== undefined) cache.delete(oldest);
+      cache.set(path, { expires: Date.now() + ttl, value: structuredClone(result) });
+    }
+    return result;
   }
 
   async function getBlob(path: string, options?: RequestOptions): Promise<Blob> {
@@ -95,7 +131,7 @@ export function createApiClient({
   return {
     baseUrl,
     url: (path) => `${baseUrl}${path}`,
-    get: (path, options) => request(path, { method: "GET", signal: options?.signal ?? null }),
+    get,
     delete: (path, options) => request(path, { method: "DELETE", signal: options?.signal ?? null }),
     post: (path, body, options) =>
       request(path, {
