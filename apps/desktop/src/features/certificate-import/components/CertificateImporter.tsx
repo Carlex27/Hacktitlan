@@ -9,7 +9,7 @@ export function CertificateImporter({ apiBaseUrl }: { apiBaseUrl: string }) {
     <section aria-labelledby="import-title" aria-busy={loading}>
       <h2 id="import-title">{importTexts.title}</h2>
       <p>{importTexts.description}</p>
-      <CertificateDropzone disabled={loading} errorId={error ? "import-error" : undefined} onFilesSelected={selectFiles} />
+      <CertificateDropzone disabled={loading} {...(error ? { errorId: "import-error" } : {})} onFilesSelected={selectFiles} />
       <p aria-live="polite">
         {files.length ? importTexts.selected(files.length) : importTexts.empty}
       </p>

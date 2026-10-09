@@ -82,9 +82,6 @@ function AppContent() {
         )}
       </ConnectionGate>
 
-      <ImportCertificatePage apiBaseUrl={apiBaseUrl} />
-      <DocumentReviewList apiBaseUrl={apiBaseUrl} />
-    </AppShell>
     </AppShell>
   );
 }

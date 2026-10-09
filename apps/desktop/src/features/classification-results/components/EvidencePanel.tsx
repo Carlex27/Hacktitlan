@@ -5,20 +5,27 @@ import { Button } from "@/components/ui/button";
 import type { EvidenceDetailDto } from "@/lib/api";
 import { es } from "@/lib/i18n";
 
+import { readSourceReference, type SourceReference } from "../model";
+
 export interface EvidencePanelProps {
   evidence: EvidenceDetailDto | null;
   onClose: () => void;
   onGoToPage?: (page: number) => void;
+  /** Abre la fuente normativa citada por una evidencia `rule_source`. */
+  onOpenSource?: (reference: SourceReference, label: string) => void;
 }
 
-export function EvidencePanel({ evidence, onClose, onGoToPage }: EvidencePanelProps) {
+export function EvidencePanel({ evidence, onClose, onGoToPage, onOpenSource }: EvidencePanelProps) {
   if (!evidence) return null;
 
   const isObservation = evidence.source_type === "observation";
   const obs = isObservation ? evidence.observation : null;
   const focus = isObservation ? evidence.focus : null;
   const fieldPath = isObservation ? evidence.field_path : null;
-  const reference = !isObservation ? (evidence.reference as Record<string, unknown>) : null;
+  const reference = !isObservation ? evidence.reference : null;
+  const source = reference ? readSourceReference(reference) : null;
+  // Sin PDF fuente se muestra al menos el código de la regla citada.
+  const referenceRuleCode = typeof reference?.rule_code === "string" ? reference.rule_code : null;
 
   return (
     <div
@@ -83,9 +90,20 @@ export function EvidencePanel({ evidence, onClose, onGoToPage }: EvidencePanelPr
             <span className="text-[10.5px] font-semibold text-slate-500 block mb-0.5">
               {es.evidence.ruleSource}
             </span>
-            <p className="p-2 bg-slate-50 border border-slate-200 rounded text-[11px] text-slate-800">
-              {String(reference.rule_code ?? reference.title ?? es.evidence.ruleSource)}
+            <p className="p-2 bg-slate-50 border border-slate-200 rounded text-[11px] text-slate-800 break-words">
+              {source?.sourceText ?? referenceRuleCode ?? es.evidence.ruleSource}
             </p>
+            {source && onOpenSource && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-1.5 h-7 text-xs"
+                onClick={() => onOpenSource(source, source.catalogCode ?? source.ruleCode ?? es.evidence.ruleSource)}
+              >
+                {source.page !== null ? es.tariffReference.showSourcePage(source.page) : es.tariffReference.showSource}
+              </Button>
+            )}
           </div>
         )}
 

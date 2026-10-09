@@ -13,13 +13,15 @@ import { es } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 import { useCandidateSelection } from "../hooks/useCandidateSelection";
-import { formatTariffCode } from "../model";
+import { findCandidateSourceReference, formatTariffCode, type TariffActionRenderer } from "../model";
 
 export interface CandidateListProps {
   resultId: number;
   candidates: readonly ClassificationCandidateDto[];
   selectedCandidateId: number | null;
   onCandidateSelected?: (candidateId: number) => void;
+  /** Acción opcional junto a cada código (p. ej. abrir su referencia en la LIGIE). */
+  renderTariffAction?: TariffActionRenderer;
 }
 
 export function CandidateList({
@@ -27,6 +29,7 @@ export function CandidateList({
   candidates,
   selectedCandidateId,
   onCandidateSelected,
+  renderTariffAction,
 }: CandidateListProps) {
   const { selectCandidate, isSubmitting, error, clearError } = useCandidateSelection();
   const [activeCandidateId, setActiveCandidateId] = useState<number | null>(
@@ -117,14 +120,15 @@ export function CandidateList({
                   className="mt-0.5 text-blue-600 focus:ring-blue-500"
                 />
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono font-bold text-slate-900 text-xs">{code}</span>
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span className="font-mono font-bold text-slate-900 text-xs break-all">{code}</span>
                     <Badge variant={cand.support_level === "fully_supported" ? "default" : "outline"} className="text-[9.5px]">
                       {es.classification.supportLevel[cand.support_level] ?? cand.support_level}
                     </Badge>
                     <span className="text-[10px] text-slate-400 font-mono">
                       {es.classification.rank(cand.rank)}
                     </span>
+                    {renderTariffAction?.(findCandidateSourceReference(cand), code)}
                   </div>
                   {cand.description && (
                     <p className="text-[10.5px] text-slate-600 mt-0.5 line-clamp-2">

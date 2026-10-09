@@ -11,5 +11,5 @@ export interface DocumentJob {
 }
 
 export function getDocumentJob(baseUrl: string, id: number, signal?: AbortSignal): Promise<DocumentJob> {
-  return request(baseUrl, `/jobs/${id}`, { signal });
+  return request(baseUrl, `/jobs/${id}`, { signal: signal ?? null });
 }

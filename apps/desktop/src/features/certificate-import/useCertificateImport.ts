@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-import { getDocumentJob, uploadDocument } from "../../lib/api";
+import { getDocumentJob, uploadDocumentLegacy as uploadDocument } from "../../lib/api";
 import type { DocumentJob, DocumentUpload } from "../../lib/api";
 
 type ImportStatus = "loading" | "empty" | "success" | "needs_review" | "error";
@@ -34,8 +34,10 @@ export function useCertificateImport(apiBaseUrl: string) {
     const controller = new AbortController();
     const timer = setTimeout(async () => {
       const updates = await Promise.all(active.map(async (item) => {
+        const jobId = item.receipt.job_id;
+        if (jobId === null) return item;
         try {
-          const job = await getDocumentJob(apiBaseUrl, item.receipt.job_id!, controller.signal);
+          const job = await getDocumentJob(apiBaseUrl, jobId, controller.signal);
           return { ...item, job };
         } catch (failure) {
           return { ...item, trackingError: failure instanceof Error ? failure.message : String(failure) };

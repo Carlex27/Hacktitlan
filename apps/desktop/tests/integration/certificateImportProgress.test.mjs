@@ -9,7 +9,7 @@ const read = async (path) => stripTypeScriptTypes(await readFile(new URL(path, r
 const requests = moduleUrl(await read("lib/api/documentReviews.ts"));
 const jobs = moduleUrl((await read("lib/api/jobs.ts")).replace('"./documentReviews"', JSON.stringify(requests)));
 const uploads = moduleUrl((await read("lib/api/documentUpload.ts")).replace('"./documentReviews"', JSON.stringify(requests)));
-const api = moduleUrl(`export { getDocumentJob } from ${JSON.stringify(jobs)}; export { uploadDocument } from ${JSON.stringify(uploads)};`);
+const api = moduleUrl(`export { getDocumentJob } from ${JSON.stringify(jobs)}; export { uploadDocument as uploadDocumentLegacy } from ${JSON.stringify(uploads)};`);
 // Execute the actual hook, effects and API without adding a React toolchain to this scaffold.
 const react = moduleUrl(`export const useState = (...args) => globalThis.importHooks.useState(...args);
 export const useRef = (...args) => globalThis.importHooks.useRef(...args);

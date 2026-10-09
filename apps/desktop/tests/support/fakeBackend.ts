@@ -65,10 +65,23 @@ export function createFakeBackend(routes: Record<string, RouteHandler> = {}): Fa
   };
 }
 
+/** PDF mínimo como lo envía el backend (con `attachment`, como en producción). */
+export function pdfResponse(name = "acta.pdf"): Response {
+  return new Response(new Blob(["%PDF-1.7"], { type: "application/pdf" }), {
+    headers: {
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename="${name}"`,
+    },
+  });
+}
+
 export const healthyRoutes: Record<string, RouteHandler> = {
   "GET /api/v1/health/live": () => envelope({ status: "ok" }),
   "GET /api/v1/health/ready": () =>
     envelope({ status: "ready", database: "available", storage: "available" }),
+  "GET /api/v1/document-reviews": () => envelope([]),
+  // Documento 10: el que devuelven las cargas simuladas de las pruebas.
+  "GET /api/v1/documents/10/file": () => pdfResponse(),
 };
 
 export function pdfFile(name = "molino-1.pdf"): File {

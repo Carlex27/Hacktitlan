@@ -3,7 +3,7 @@
 Único punto de acceso del frontend al backend. Todo se importa desde
 `@/lib/api`; las features nunca llaman a `fetch` directamente.
 
-- `client.ts`: `createApiClient` (`get`, `post`, `postForm`, `url`), encabezado
+- `client.ts`: `createApiClient` (`get`, `post`, `postForm`, `getBlob`, `url`), encabezado
   `X-Request-ID` y cancelación con `AbortSignal`.
 - `envelope.ts` / `errors.ts`: validación del sobre `{ data, meta, error }` y
   `ApiError` por tipo (`network`, `server`, `invalid_response`, `aborted`).
@@ -26,6 +26,7 @@
 | | `selectClassificationCandidate` | `POST /classification-results/{id}/select` |
 | | `approveClassificationRun`, `rejectClassificationRun` | `POST /classification-runs/{id}/approve`, `/reject` |
 | Evidencia | `getEvidence` | `GET /evidence/{id}` |
+| Fuente normativa | `PdfViewer` (vía `getBlob`) | `GET /rule-sources/{source_hash}/file`; la página viene en la evidencia `rule_source` (`reference.file_url`, `reference.page_number`) |
 | Exportación | `createExport`, `getExport` | `POST /exports`, `GET /exports/{id}` |
 
 Las rutas relativas que devuelve el backend (`file_url`, `detail_url`) se
@@ -34,3 +35,8 @@ convierten en URL absolutas con `api.url(ruta)`.
 Al agregar un endpoint: DTO en `dto/<dominio>.ts`, función en
 `endpoints/<dominio>.ts`, exportarlos en sus `index.ts` y probar ruta, método y
 cuerpo en `tests/unit/lib/api/endpoints.test.ts`.
+
+`uploadDocument` usa el cliente `ApiClient`. La variante anterior que recibe
+una URL base se conserva como `uploadDocumentLegacy` para el importador anterior.
+El módulo `documentReviews.ts` permanece porque esos adaptadores todavía importan
+su función `request`; eliminarlo rompe la importación y el seguimiento de trabajos.

@@ -43,6 +43,19 @@ Si cambia el host, actualice también:
 Sin servidor la app queda bloqueada y muestra qué componente falla (backend
 inalcanzable o PostgreSQL/almacenamiento no listos), con opción de reintentar.
 
+## Funciones y dependencias del backend
+
+- **Visor de PDF:** descarga el archivo con el cliente del API (`getBlob`) y lo
+  muestra como archivo local, así funciona aunque el backend lo envíe como
+  descarga (`attachment`) y los errores del servidor se muestran en el visor.
+- **Revisión documental** (pantalla Documentos): cola `/document-reviews` y
+  reprocesamiento desde extracción (`/certificates/{id}/reprocess`; 409 si ya
+  hay una extracción en curso).
+- **Referencia LIGIE** (Validación → «Ver en LIGIE» o «Ver en la fuente» en una
+  evidencia de regla): usa la referencia que el backend adjunta a la evidencia
+  `rule_source` (`reference.file_url`, `reference.page_number`) y abre el PDF de
+  `GET /api/v1/rule-sources/{source_hash}/file` en esa página. No requiere rutas extra.
+
 ## Estructura
 
 - `src/app`: composición raíz y proveedores (cliente API inyectable).

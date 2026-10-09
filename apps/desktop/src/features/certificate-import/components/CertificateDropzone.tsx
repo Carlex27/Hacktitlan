@@ -14,7 +14,7 @@ export interface CertificateDropzoneProps {
 
 export function CertificateDropzone({
   disabled = false,
-  errorId,
+  errorId: externalErrorId,
   onFilesSelected,
 }: CertificateDropzoneProps) {
   const inputId = useId();
@@ -81,8 +81,8 @@ export function CertificateDropzone({
           accept=".pdf,.xlsx,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
           multiple
           disabled={disabled}
-          aria-describedby={hasError ? `${hintId} ${errorId}` : hintId}
-          aria-invalid={hasError || undefined}
+          aria-describedby={[hintId, hasError ? errorId : undefined, externalErrorId].filter(Boolean).join(" ")}
+          aria-invalid={hasError || !!externalErrorId || undefined}
           onChange={(event) => {
             handleFiles(Array.from(event.currentTarget.files ?? []));
             event.currentTarget.value = "";
@@ -97,4 +97,3 @@ export function CertificateDropzone({
     </div>
   );
 }
-import { importTexts } from "../texts";

@@ -1,6 +1,6 @@
 import { CertificateDropzone, ImportQueue, type ImportItem } from "@/features/certificate-import";
+import { DocumentReviewQueue } from "@/features/document-review";
 import { PdfViewer } from "@/features/document-viewer";
-import { useApiClient } from "@/lib/api";
 import { es } from "@/lib/i18n";
 
 export interface DocumentsPageProps {
@@ -18,10 +18,7 @@ export function DocumentsPage({
   onClearFinished,
   onReview,
 }: DocumentsPageProps) {
-  const api = useApiClient();
-  const fileUrl = selectedDocumentId
-    ? api.url(`/api/v1/documents/${selectedDocumentId}/file`)
-    : null;
+  const filePath = selectedDocumentId ? `/api/v1/documents/${selectedDocumentId}/file` : null;
 
   return (
     <div className="flex-1 flex overflow-hidden min-h-0 w-full">
@@ -30,11 +27,13 @@ export function DocumentsPage({
         className="w-[48%] bg-viewer-bg flex flex-col border-r border-slate-300 shrink-0 min-h-0"
         aria-label={es.viewer.title}
       >
-        <PdfViewer fileUrl={fileUrl} />
+        <PdfViewer filePath={filePath} />
       </section>
 
-      {/* Right Column: Ingestion & Import Queue */}
-      <main className="flex-1 bg-white flex flex-col min-w-0 overflow-y-auto p-6 gap-6">
+      {/* Right Column: Ingestion & Import Queue.
+          `*:shrink-0`: las tarjetas (overflow-hidden) no deben comprimirse para caber;
+          la columna crece y se recorre con scroll. */}
+      <main className="flex-1 bg-white flex flex-col min-w-0 min-h-0 overflow-y-auto p-6 gap-6 *:shrink-0">
         <header className="flex flex-col gap-1">
           <h2 className="text-lg font-bold text-slate-900">
             {es.certificateImport.title}
@@ -51,6 +50,8 @@ export function DocumentsPage({
           onClearFinished={onClearFinished}
           onReview={onReview}
         />
+
+        <DocumentReviewQueue onReview={onReview} />
       </main>
     </div>
   );

@@ -102,6 +102,9 @@ describe("endpoints del backend (commit Merge PR #1)", () => {
 
   it("lista la cola de revisión con y sin filtros", async () => {
     const item: DocumentReviewQueueItemDto = {
+      revision_number: 1,
+      active_job_id: null,
+      can_reprocess: true,
       certificate_id: 42,
       document_id: 10,
       certificate_no: null,
