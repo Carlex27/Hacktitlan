@@ -156,14 +156,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.sessions = sessions
     app.state.storage = storage
 
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-
     @app.middleware("http")
     async def correlation_id(request: Request, call_next):
         request_id = request.headers.get("X-Request-ID") or uuid4().hex
@@ -181,6 +173,19 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             },
         )
         return response
+
+    # Registrado después del middleware de correlación para que sea el más externo
+    # y también agregue encabezados CORS a respuestas de error.
+    # Lista explícita (HACKTITLAN_CORS_ORIGINS): el API no tiene autenticación, así
+    # que "*" permitiría a cualquier página web abierta en la red aprobar, rechazar
+    # o subir documentos. Para otro cliente, agregue su origen a la variable.
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_origins,
+        allow_methods=["GET", "POST"],
+        allow_headers=["Content-Type", "X-Request-ID"],
+        expose_headers=["X-Request-ID", "Content-Disposition"],
+    )
 
     @app.exception_handler(ApplicationError)
     async def application_error(_request: Request, exc: ApplicationError):
@@ -551,7 +556,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if stored is None:
             raise NotFoundError("Archivo", document.stored_file_id)
         path = request.app.state.storage.resolve(stored.relative_path)
-        return FileResponse(path, media_type=stored.media_type, filename=stored.original_name)
+        # `inline` permite mostrar el PDF en el visor de la app; el nombre se conserva
+        # para "Guardar como".
+        return FileResponse(
+            path,
+            media_type=stored.media_type,
+            filename=stored.original_name,
+            content_disposition_type="inline",
+        )
 
     @app.get(
         "/api/v1/rule-sources/{source_hash}/file",
