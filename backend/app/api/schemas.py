@@ -236,6 +236,38 @@ class CandidateSelectionRequest(ActorReason):
         return self
 
 
+class ExportCreatedRead(BaseModel):
+    export_id: int
+    job_id: int
+
+
+class ExportCreatedEnvelope(BaseModel):
+    data: ExportCreatedRead
+    meta: dict[str, Any] = Field(default_factory=dict)
+    error: None = None
+
+
+class ExportStatusRead(BaseModel):
+    id: int
+    format: str
+    status: Literal["queued", "running", "succeeded", "failed"]
+    scope: dict[str, Any]
+    filters: dict[str, Any]
+    person_name: str
+    workstation_name: str
+    sha256: str | None
+    stored_file_id: int | None
+    error_message: str | None
+    created_at: str
+    download_url: str | None
+
+
+class ExportStatusEnvelope(BaseModel):
+    data: ExportStatusRead
+    meta: dict[str, Any] = Field(default_factory=dict)
+    error: None = None
+
+
 class DeselectionRead(BaseModel):
     classification_result_id: int
     outcome: Literal["needs_review", "classified", "out_of_scope"]

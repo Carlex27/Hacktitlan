@@ -66,19 +66,13 @@ describe("Carga, revisión e historial", () => {
     await waitFor(() => expect(backend.calls.filter((call) => call === "GET /api/v1/certificates")).toHaveLength(2));
   });
 
-  it("guarda un borrador auditado y conserva las selecciones existentes", async () => {
-    let run = createFakeClassificationRun();
-    let body: unknown;
+  it("conserva las selecciones guardadas sin una acción adicional de borrador", async () => {
+    const run = createFakeClassificationRun();
     const backend = createFakeBackend({ ...healthyRoutes,
       "GET /api/v1/certificates": () => envelope([createFakeCertificate()]),
       "GET /api/v1/certificates/42": () => envelope(createFakeCertificate()),
       "GET /api/v1/certificates/42/classification-runs": () => envelope([{ id: 101 }]),
       "GET /api/v1/classification-runs/101": () => envelope(run),
-      "POST /api/v1/classification-runs/101/draft": (init) => {
-        body = JSON.parse(String(init?.body));
-        run = { ...run, approval_status: "draft" };
-        return envelope({ classification_run_id: 101, approval_status: "draft" });
-      },
     });
     render(<App apiClient={backend.client} />);
     const user = userEvent.setup();
@@ -86,11 +80,10 @@ describe("Carga, revisión e historial", () => {
     await user.click(await screen.findByRole("button", { name: "Abrir acta" }));
     await user.click(screen.getByRole("button", { name: "Dictamen de clasificación" }));
     const footer = await screen.findByRole("contentinfo");
-    expect(within(footer).queryByRole("textbox")).not.toBeInTheDocument();
-    await user.click(within(footer).getByRole("button", { name: "Guardar borrador" }));
-    expect(await screen.findByText(/Borrador guardado/)).toBeInTheDocument();
-    expect(body).toEqual({ person_name: "Administrador", reason: es.approval.defaultReason });
+    expect(within(footer).queryByRole("button", { name: "Guardar borrador" })).not.toBeInTheDocument();
+    expect(within(footer).getByText(es.approval.decisionHint)).toBeVisible();
     expect(run.results[0]?.current_selection).not.toBeNull();
+    expect(backend.calls.some((call) => call.startsWith("POST"))).toBe(false);
   });
 
   it("envía el candidato seleccionado con persona y motivo fijos sin pedir campos", async () => {

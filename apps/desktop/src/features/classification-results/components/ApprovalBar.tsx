@@ -1,5 +1,5 @@
 import { Check, X } from "lucide-react";
-import { useId, useState } from "react";
+import { useId } from "react";
 
 import { LoadErrorAlert } from "@/components/feedback";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -11,6 +11,7 @@ import { es } from "@/lib/i18n";
 
 import { useRunApproval } from "../hooks/useRunApproval";
 import { approvalCoverage } from "../model";
+import { ApprovalOverview } from "./ApprovalOverview";
 
 export interface ApprovalBarProps {
   run: ClassificationRunDto | null;
@@ -21,10 +22,9 @@ export interface ApprovalBarProps {
 }
 
 export function ApprovalBar({ run, certificate, isLoading = false, loadError = null, onDecisionComplete }: ApprovalBarProps) {
-  const { approveRun, rejectRun, saveDraft, isSubmitting, error, clearError } = useRunApproval();
+  const { approveRun, rejectRun, isSubmitting, error, clearError } = useRunApproval();
   const personName = es.approval.defaultPerson;
   const reason = es.approval.defaultReason;
-  const [draftSaved, setDraftSaved] = useState(false);
   const coverageId = useId();
 
   if (!run) {
@@ -56,35 +56,24 @@ export function ApprovalBar({ run, certificate, isLoading = false, loadError = n
     }
   }
 
-  async function handleDraft() {
-    if (!run) return;
-    clearError();
-    setDraftSaved(false);
-    try {
-      await saveDraft(run.id, personName.trim(), reason.trim());
-      setDraftSaved(true);
-      onDecisionComplete?.();
-    } catch { /* El hook muestra el error. */ }
-  }
-
   const isApproved = run.approval_status === "approved";
   const isRejected = run.approval_status === "rejected";
 
   return (
-    <footer className="bg-background rounded-xl border border-border p-4 sm:p-6 flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
-        <h3 className="text-lg leading-7 font-semibold">{es.approval.barTitle}</h3>
-        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-          {run.results.length > 1 && <span>{es.approval.appliesToAllProducts(run.results.length)}</span>}
-          <span>{es.approval.statusBadge}</span>
-          <Badge className={`h-auto min-h-7 whitespace-normal px-3 py-1 ${isApproved ? "bg-success-background text-success-foreground" : !isRejected && run.approval_status === "needs_review" ? "border-warning-border bg-warning-background text-warning-foreground" : ""}`} variant={isRejected ? "destructive" : "secondary"}>{es.workspace.status[run.approval_status]}</Badge>
+    <footer className="bg-background rounded-xl border border-border p-5 sm:p-8 flex flex-col gap-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="space-y-2">
+          <h3 className="text-xl leading-7 font-semibold">{es.approval.barTitle}</h3>
+          <p className="text-sm leading-6 text-muted-foreground">{certificate?.id === run.certificate_id ? es.approval.appliesToHeats(certificate.heats.length) : es.approval.appliesToActa}</p>
         </div>
+        <Badge className={`h-auto min-h-8 whitespace-normal gap-2 px-3 py-1 ${isApproved ? "bg-success-background text-success-foreground" : !isRejected && run.approval_status === "needs_review" ? "border-warning-border bg-warning-background text-warning-foreground" : ""}`} variant={isRejected ? "destructive" : "secondary"}>
+          {isApproved && <Check aria-hidden="true" className="size-4" />}{es.workspace.status[run.approval_status]}
+        </Badge>
       </div>
-      {!isApproved && <div id={coverageId} role="status" className="rounded-lg bg-muted/40 p-4 text-sm leading-6 text-foreground">
-        {isLoading ? es.approval.coverageLoading : loadError || !coverage ? es.approval.coverageUnavailable
-          : coverage.complete ? es.approval.coverageReady : es.approval.coveragePending}
-        {!isLoading && !loadError && coverage && !coverage.complete && <details className="mt-2">
-          <summary className="min-h-11 cursor-pointer py-2 font-medium focus-visible:outline-2 focus-visible:outline-primary">{es.approval.pendingProducts}</summary>
+      <div id={coverageId} role="status" className="text-sm leading-6 text-foreground">
+        <ApprovalOverview run={run} certificate={certificate} coverage={coverage} isLoading={isLoading} loadError={loadError} />
+        {!isLoading && !loadError && coverage && !coverage.complete && !isApproved && <details className="mt-2">
+          <summary className="min-h-11 cursor-pointer py-2 font-medium focus-visible:outline-2 focus-visible:outline-primary">{es.approval.pendingHeats}</summary>
           <div className="max-h-64 overflow-y-auto break-words rounded-sm focus-visible:outline-2 focus-visible:outline-ring" tabIndex={0} aria-label={es.approval.pendingProducts}>
           {coverage.pendingHeats.length > 0 && <p>{es.approval.pendingHeats}: {coverage.pendingHeats.map((heat) => heat.heat_no ?? `#${heat.id}`).join(", ")}</p>}
           {coverage.pendingProducts.length > 0 && <p>{es.approval.pendingProducts}: {coverage.pendingProducts.map((product) => product.product_identifier ?? `#${product.id}`).join(", ")}</p>}
@@ -95,8 +84,7 @@ export function ApprovalBar({ run, certificate, isLoading = false, loadError = n
           </div>)}
           </div>
         </details>}
-      </div>}
-      {draftSaved && <p role="status" className="text-sm text-success-foreground">{es.workspace.draftSaved}</p>}
+      </div>
       {error && (
         <Alert variant="destructive" role="alert">
           <AlertTitle>{es.approval.errorTitle}</AlertTitle>
@@ -104,11 +92,10 @@ export function ApprovalBar({ run, certificate, isLoading = false, loadError = n
         </Alert>
       )}
 
-      <div className="flex flex-wrap items-center justify-end gap-3 border-t border-border pt-4">
-        {/* Status Badge & Actions */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <p className="max-w-prose text-sm leading-6 text-muted-foreground">{isApproved ? es.approval.confirmedActionsHint : es.approval.decisionHint}</p>
         <div className="flex flex-wrap items-center gap-2 self-end">
 
-          <Button className="min-h-11" type="button" variant="outline" onClick={handleDraft} disabled={isSubmitting || isApproved}>{es.workspace.draft}</Button>
           {/* Reject Button */}
           <Button
             type="button"
@@ -127,7 +114,7 @@ export function ApprovalBar({ run, certificate, isLoading = false, loadError = n
           </Button>
 
           {/* Approve Button */}
-          <Button
+          {!isApproved && <Button
             type="button"
             size="sm"
             onClick={handleApprove}
@@ -141,7 +128,7 @@ export function ApprovalBar({ run, certificate, isLoading = false, loadError = n
               <Check aria-hidden="true" className="w-3.5 h-3.5 mr-1 stroke-[2.5]" />
             )}
             <span>{es.approval.approveBtn}</span>
-          </Button>
+          </Button>}
         </div>
       </div>
     </footer>

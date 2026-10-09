@@ -105,7 +105,30 @@ def _ambiguous_chemistry(sheet, header_row: int) -> bool:
     return False
 
 
-def _product(sheet, row: int, headers: dict[str, int], chemistry_columns, ambiguous: bool) -> dict[str, Any]:
+def _kimitsu_chemistry_columns(sheet, header_row: int, headers: dict[str, int]):
+    # This supplied mill layout stores precision first and percentage second despite its headers.
+    if sheet.title != "KIMITSU(MILL CERT)" or not all(headers.get(label) == column for label, column in
+            (("MILL NO", 1), ("HEAT NO.", 3), ("THICK(MM)", 4), ("WIDTH(MM)", 5))):
+        return None
+    labels = [text(cell.value) for cell in sheet[header_row]]
+    expected = [f"溶鋼分析・{element}・{suffix}" for element in ("C", "Si", "Mn", "P", "S")
+                for suffix in ("実績値", "有効桁")]
+    if labels[6:16] != expected:
+        return None
+    columns = []
+    column = 7
+    while column < sheet.max_column:
+        first = re.fullmatch(r"溶鋼分析・\s*([A-Za-z]+)・(実績値|有効桁)", labels[column - 1])
+        second = re.fullmatch(r"溶鋼分析・\s*([A-Za-z]+)・有効桁", labels[column])
+        if first and second and first[1].upper() == second[1].upper() and first[1].upper() in ELEMENTS:
+            columns.append((column + 1, ELEMENTS[first[1].upper()]))
+            column += 2
+        else:
+            column += 1
+    return columns, []
+
+
+def _product(sheet, row: int, headers: dict[str, int], chemistry_columns, ambiguous: bool, *, inverted: bool = False) -> dict[str, Any]:
     def cell_for(*labels: str):
         column = next((headers[label] for label in labels if label in headers), None)
         return sheet.cell(row, column) if column else None
@@ -118,7 +141,7 @@ def _product(sheet, row: int, headers: dict[str, int], chemistry_columns, ambigu
     }
     observations = product["observations"]
     for key, labels in {
-        "heat_no": ("HEAT NO.", "HEAT NO", "HEAT NUMBER"),
+        "heat_no": ("HEAT NO.", "HEAT NO", "HEAT NUMBER", "CAST NO", "CAST NO."),
         "label_no": ("COIL NO", "COIL NO."),
         "source_certificate_no": ("MILL NO",),
         "standard": ("SPEC(MILL CERTIFICATE)", "ORDERING SPEC", "SPEC"),
@@ -172,6 +195,13 @@ def _product(sheet, row: int, headers: dict[str, int], chemistry_columns, ambigu
     seen: set[str] = set()
     for cell, element in chemical_cells:
         value = number(cell.value)
+        if inverted:
+            precision = number(sheet.cell(row, cell.column - 1).value)
+            if precision is None:
+                if value != 0:
+                    value = None
+            elif not precision.is_integer() or not 0 <= precision <= 10:
+                value = None
         if ambiguous or value is None or not 0 <= value <= 100 or element in seen:
             value = None
         if element in seen:
@@ -243,12 +273,18 @@ def extract_excel(path: Path, *, page_callback: Callable[[int, int], None] | Non
                     if ambiguous:
                         reasons.append(f"{sheet.title}: encabezados químicos invertidos/repetidos; química sin normalizar hasta confirmar el significado de las columnas.")
                     columns = _chemistry_columns(sheet, header_row, headers)
+                    kimitsu_columns = _kimitsu_chemistry_columns(sheet, header_row, headers)
+                    if ambiguous and kimitsu_columns:
+                        columns = kimitsu_columns
+                        ambiguous = False
+                        reasons[-1] = f"{sheet.title}: formato KIMITSU con encabezados invertidos/repetidos; porcentajes tomados de la segunda columna de cada par. Confirmar contra el certificado original antes de aprobar."
                     for row in range(header_row + 1, sheet.max_row + 1):
                         width_column = headers.get("WIDTH(MM)", headers.get("WIDTH"))
                         thickness_column = headers.get("THICK(MM)", headers.get("THICK"))
                         if sheet.cell(row, width_column).value is None and sheet.cell(row, thickness_column).value is None:
                             continue
-                        products.append(_product(sheet, row, headers, columns, ambiguous))
+                        products.append(_product(sheet, row, headers, columns, ambiguous,
+                                                 inverted=bool(kimitsu_columns)))
             if page_callback:
                 page_callback(index, len(workbook.worksheets))
     finally:

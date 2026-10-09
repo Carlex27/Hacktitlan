@@ -22,6 +22,7 @@ export interface CandidateListProps {
   candidates: readonly ClassificationCandidateDto[];
   selectedCandidateId: number | null;
   onCandidateSelected?: (candidateId: number) => void;
+  onCandidateDeselected?: () => void;
   /** Acción opcional junto a cada código (p. ej. abrir su referencia en la LIGIE). */
   renderTariffAction?: TariffActionRenderer;
 }
@@ -34,6 +35,7 @@ export function CandidateList({
   candidates,
   selectedCandidateId,
   onCandidateSelected,
+  onCandidateDeselected,
   renderTariffAction,
 }: CandidateListProps) {
   const { selectCandidate, deselect, isSubmitting, error, clearError } = useCandidateSelection();
@@ -74,7 +76,7 @@ export function CandidateList({
     try {
       await deselect(resultId, es.approval.defaultPerson, es.classification.deselectionReason);
       setActiveCandidateId(null);
-      onCandidateSelected?.(selectedCandidateId);
+      onCandidateDeselected?.();
     } catch { /* El hook muestra el error. */ }
   }
 

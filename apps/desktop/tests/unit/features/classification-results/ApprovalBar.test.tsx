@@ -24,7 +24,7 @@ describe("ApprovalBar", () => {
     const button = screen.getByRole("button", { name: /confirmar acta/i });
     expect(button).toBeDisabled();
     expect(screen.getByText(/Coladas pendientes: C-9876/)).toBeInTheDocument();
-    expect(screen.getByText(/Rollos pendientes: PL-001/)).toBeInTheDocument();
+    expect(screen.getByText(/Selecciones pendientes: PL-001/)).toBeInTheDocument();
     await user.click(button);
     expect(backend.calls).toHaveLength(0);
     rerender(<AppProviders apiClient={backend.client}><ApprovalBar run={run} certificate={certificate} /></AppProviders>);
@@ -36,7 +36,7 @@ describe("ApprovalBar", () => {
     expect(button).toBeDisabled();
     expect(screen.getByText(es.approval.coverageUnavailable)).toBeInTheDocument();
   });
-  it.each(["approve", "reject", "draft"])("envía %s con auditoría fija y sin campos de captura", async (action) => {
+  it.each(["approve", "reject"])("envía %s con auditoría fija y sin campos de captura", async (action) => {
     const user = userEvent.setup();
     let body: unknown;
     const backend = createFakeBackend({
@@ -48,7 +48,8 @@ describe("ApprovalBar", () => {
     const onDecisionComplete = vi.fn();
     render(<AppProviders apiClient={backend.client}><ApprovalBar run={createFakeClassificationRun()} certificate={createFakeCertificate()} onDecisionComplete={onDecisionComplete} /></AppProviders>);
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
-    const label = action === "approve" ? "Confirmar acta" : action === "reject" ? "Rechazar" : "Guardar borrador";
+    expect(screen.queryByRole("button", { name: "Guardar borrador" })).not.toBeInTheDocument();
+    const label = action === "approve" ? "Confirmar acta" : "Rechazar";
     await user.click(screen.getByRole("button", { name: label }));
     await waitFor(() => expect(onDecisionComplete).toHaveBeenCalled());
     expect(body).toEqual({ person_name: es.approval.defaultPerson, reason: es.approval.defaultReason });

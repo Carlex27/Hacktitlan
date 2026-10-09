@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
+from decimal import Decimal
+from math import ceil
 from pathlib import Path
 from typing import Any, Iterable
 
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.worksheet.table import Table, TableStyleInfo
+from openpyxl.formatting.rule import CellIsRule
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
@@ -33,6 +36,8 @@ from backend.app.infrastructure.database.models import (
 
 
 class ExcelExportService:
+    approval_labels = {"draft": "Borrador", "needs_review": "Pendiente de aprobación",
+                       "approved": "Aprobado", "rejected": "Rechazado"}
     sheet_names = [
         "Resumen", "Actas", "Coladas", "Rollos", "Composición",
         "Clasificación", "Evidencia", "Auditoría",
@@ -178,7 +183,10 @@ class ExcelExportService:
         active_selection_by_result: dict[int, ClassificationSelection] = {}
         for sel in selections:
             selections_by_result.setdefault(sel.classification_result_id, []).append(sel)
+        cleared_results = {r.id for r in results if (r.details_json or {}).get("selection_cleared")}
         for r_id in result_ids:
+            if r_id in cleared_results:
+                continue
             r_sels = selections_by_result.get(r_id, [])
             superseded = {s.supersedes_selection_id for s in r_sels if s.supersedes_selection_id is not None}
             active = [s for s in r_sels if s.id not in superseded]
@@ -196,6 +204,7 @@ class ExcelExportService:
         makers = {item.id: item for item in session.scalars(select(Manufacturer)).all()}
         rules = {item.id: item for item in session.scalars(select(RuleSet)).all()}
         products_by_id = {p.id: p for p in products}
+        heats_by_id = {h.id: h for h in heats}
         corrections_query = select(Correction).where(Correction.certificate_id.in_(certificate_ids))
         if restrict_heats:
             corrections_query = corrections_query.where(Correction.replacement_observation_id.in_([o.id for o in observations]))
@@ -206,19 +215,24 @@ class ExcelExportService:
         for name in self.sheet_names:
             workbook.create_sheet(name)
 
-        notice = self.settings.demo_notice if official else f"PRELIMINAR — PENDIENTE DE APROBACIÓN — {self.settings.demo_notice}"
+        notice = self.settings.demo_notice if official else f"REPORTE DE CONSULTA — VER ESTADOS DE APROBACIÓN — {self.settings.demo_notice}"
 
         # 1. Resumen Sheet
         summary_rows = [
             ["Aviso Legal", notice],
-            ["Generado UTC", datetime.now(timezone.utc).isoformat()],
-            ["Tipo de Reporte", "Oficial (sólo expedientes aprobados)" if official else "Preliminar (borrador de trabajo)"],
+            ["Generado UTC", datetime.now(timezone.utc)],
+            ["Tipo de Reporte", "Oficial (sólo expedientes aprobados)" if official else "Consulta (estados actuales)"],
             ["Actas incluidas", len(certificates)],
             ["Coladas incluidas", len(heats)],
             ["Rollos incluidos", len(products)],
             ["Clasificaciones incluidas", len(results)],
             ["Selecciones registradas", len(selections)],
             ["Ejecuciones de clasificación", ", ".join(str(run.id) for run in runs) or "Ninguna"],
+            ["Proveedor / fabricante", "; ".join(dict.fromkeys(
+                makers[c.manufacturer_id].name if c.manufacturer_id in makers else "No disponible" for c in certificates))],
+            ["Actas aprobadas", sum(c.approval_status == "approved" for c in certificates)],
+            ["Ejecuciones aprobadas", sum(run.approval_status == "approved" for run in runs)],
+            ["Lectura de estados", "Elegir fracción y NICO no implica aprobación. Sin clasificación se muestra como pendiente. Los datos ausentes permanecen vacíos; no equivalen a cero."],
         ] + [[f"Hoja {name}", f"Ir a hoja {name}"] for name in self.sheet_names if name != "Resumen"]
         self._write_sheet(workbook["Resumen"], ["Concepto", "Detalle"], summary_rows, "ResumenTable", notice)
 
@@ -233,9 +247,11 @@ class ExcelExportService:
 
         # 2. Actas Sheet
         self._write_sheet(workbook["Actas"],
-            ["certificate_id", "document_id", "número", "fabricante", "fecha_acta", "fecha_carga", "estado", "revisión"],
+            ["certificate_id", "document_id", "número", "fabricante", "fecha_acta", "fecha_carga", "estado", "revisión", "norma", "producto", "archivo_original", "metadatos_documento", "estado_aprobación"],
             [[c.id, c.document_id, c.certificate_no, makers.get(c.manufacturer_id).name if c.manufacturer_id in makers else None,
-              c.certificate_date, c.uploaded_at, c.approval_status, c.revision_number] for c in certificates],
+              c.certificate_date, c.uploaded_at, c.approval_status, c.revision_number,
+              c.standard, c.product_name, c.document.stored_file.original_name, str(c.document.metadata_json),
+              self.approval_labels.get(c.approval_status, c.approval_status)] for c in certificates],
             "ActasTable", notice)
 
         # 3. Coladas Sheet
@@ -246,16 +262,21 @@ class ExcelExportService:
 
         # 4. Rollos Sheet
         self._write_sheet(workbook["Rollos"],
-            ["product_id", "certificate_id", "heat_id", "identificador", "etiqueta", "tipo", "forma", "enrollado", "laminado", "ancho_mm", "espesor_mm", "peso_kg"],
+            ["product_id", "certificate_id", "heat_id", "identificador", "etiqueta", "tipo", "forma", "enrollado", "laminado", "ancho_mm", "espesor_mm", "peso_kg", "longitud_m", "peso_neto_kg", "peso_bruto_kg", "propiedades"],
             [[p.id, p.certificate_id, p.heat_id, p.product_identifier, p.label_no, p.product_type, p.form,
-              p.coiled, p.rolling, p.width_mm, p.thickness_mm, p.weight_kg] for p in products],
+              p.coiled, p.rolling, p.width_mm, p.thickness_mm, p.weight_kg,
+              p.length_m, p.net_weight_kg, p.gross_weight_kg, str(p.properties_json)] for p in products],
             "RollosTable", notice)
 
         # 5. Composición Sheet
         self._write_sheet(workbook["Composición"],
-            ["composition_id", "heat_id", "product_id", "elemento", "valor_original", "porcentaje", "heredado", "etiqueta_fuente"],
+            ["composition_id", "heat_id", "product_id", "elemento", "valor_original", "porcentaje", "heredado", "etiqueta_fuente", "colada", "serie_rollo"],
             [[c.id, c.heat_id, c.product_id, c.element, str(c.raw_value_json) if c.raw_value_json is not None else None,
-              c.percentage, c.inherited, c.source_label] for c in chemistry],
+              c.percentage, c.inherited, c.source_label,
+              heats_by_id[c.heat_id].heat_no if c.heat_id in heats_by_id else (
+                  heats_by_id[products_by_id[c.product_id].heat_id].heat_no
+                  if c.product_id in products_by_id and products_by_id[c.product_id].heat_id in heats_by_id else None),
+              products_by_id[c.product_id].product_identifier if c.product_id in products_by_id else None] for c in chemistry],
             "ComposicionTable", notice)
 
         # 7. Evidencia Sheet (Built before Clasificación to map product row indices)
@@ -293,14 +314,14 @@ class ExcelExportService:
                 chosen_code = f"{active_cand.fraction}-{active_cand.nico}" if active_cand else (f"{r.fraction}-{r.nico}" if r.fraction and r.nico else "Seleccionado")
                 chosen_by = active_sel.person_name
                 chosen_reason = active_sel.reason
-                chosen_date = active_sel.created_at.isoformat()
+                chosen_date = active_sel.created_at
             elif r.outcome == "classified" and r.fraction and r.nico:
                 chosen_code = f"{r.fraction}-{r.nico}"
                 chosen_by = "Motor determinista"
                 chosen_reason = ("Resolución unívoca aprobada"
                                  if run_by_id[r.classification_run_id].approval_status == "approved"
                                  else "Resolución unívoca pendiente de aprobación")
-                chosen_date = r.created_at.isoformat()
+                chosen_date = r.created_at
             else:
                 chosen_code = "Pendiente de selección"
                 chosen_by = "—"
@@ -332,15 +353,28 @@ class ExcelExportService:
                 ", ".join(r.details_json.get("missing_fields") or []) or "Ninguno",
                 run_by_id[r.classification_run_id].approval_status,
                 rules.get(run_by_id[r.classification_run_id].rule_set_id).version if run_by_id[r.classification_run_id].rule_set_id in rules else "—",
+                active_cand.fraction if active_sel and active_cand else r.fraction,
+                active_cand.nico if active_sel and active_cand else r.nico,
+                self.approval_labels.get(run_by_id[r.classification_run_id].approval_status,
+                                         run_by_id[r.classification_run_id].approval_status),
+                r.description,
+                str(r.details_json),
+                "; ".join(f"{c.fraction}-{c.nico}: {c.description}" for c in res_cands),
             ])
 
             if target_ev_row is not None:
                 evidence_link_cells.append((result_idx, target_ev_row))
 
+        classified_product_ids = {r.product_id for r in results}
+        for product in products:
+            if product.id not in classified_product_ids:
+                row = [None, None, product.id, product.product_identifier, "Sin clasificación"] + [None] * 11
+                row += [None, None, "Pendiente de clasificación", None, None, None]
+                clasificacion_rows.append(row)
         self._write_sheet(workbook["Clasificación"],
             ["result_id", "run_id", "product_id", "rollo_identificador", "candidato_elegido", "alternativa_2", "alternativa_3",
              "seleccionado_por", "motivo_selección", "fecha_selección", "factores_clave", "evidencia_enlace",
-             "resultado", "faltantes", "estado_ejecución", "reglas_versión"],
+             "resultado", "faltantes", "estado_ejecución", "reglas_versión", "fracción", "NICO", "aprobación_fracción_NICO", "descripción", "detalles", "todos_los_candidatos"],
             clasificacion_rows, "ClasificacionTable", notice)
 
         # Apply internal evidence links in Clasificación sheet
@@ -365,7 +399,7 @@ class ExcelExportService:
                 res.product_id if res else None,
                 f"Seleccionó {cand_repr} (Reemplaza selección #{sel.supersedes_selection_id})" if sel.supersedes_selection_id else f"Seleccionó {cand_repr}",
                 sel.person_name, sel.reason, sel.workstation_name, sel.created_at.isoformat(),
-                "Vigente" if is_active else "Reemplazada",
+                "Vigente" if is_active else ("Retirada" if sel.classification_result_id in cleared_results else "Reemplazada"),
             ])
 
         # Approval events timeline
@@ -404,9 +438,24 @@ class ExcelExportService:
 
     @staticmethod
     def _write_sheet(sheet, headers: list[str], rows: Iterable[list[Any]], table_name: str, notice: str) -> None:
-        sheet["A1"] = notice
-        sheet["A1"].font = Font(bold=True, color="9C0006")
-        sheet.append([])
+        sheet["A1"] = f"HACKTITLAN · {sheet.title.upper()}"
+        sheet["A1"].font = Font(name="Arial", size=16, bold=True, color="172B4D")
+        sheet["A2"] = notice
+        sheet["A2"].font = Font(name="Arial", size=10, color="73510D")
+        sheet["A2"].alignment = Alignment(wrap_text=True, vertical="center")
+        sheet.merge_cells(start_row=2, start_column=1, end_row=2, end_column=len(headers))
+        sheet.row_dimensions[1].height = 30
+        sheet.row_dimensions[2].height = 45
+        sheet.sheet_view.showGridLines = False
+        sheet.sheet_view.zoomScale = 90
+        sheet.sheet_properties.pageSetUpPr.fitToPage = True
+        sheet.sheet_properties.tabColor = "172B4D"
+        sheet.page_setup.orientation = "landscape"
+        sheet.page_setup.paperSize = sheet.PAPERSIZE_A3
+        sheet.page_setup.fitToWidth = 1
+        sheet.page_setup.fitToHeight = 0
+        sheet.print_title_rows = "1:3"
+        sheet.oddFooter.center.text = "Hacktitlan · Página &P de &N"
         sheet.append(headers)
         for row_index, row in enumerate(rows, start=4):
             clean_row = [
@@ -418,21 +467,55 @@ class ExcelExportService:
             sheet.append(clean_row)
             # External text must remain text, even when Excel recognizes a formula.
             for column_index, value in enumerate(clean_row, start=1):
+                cell = sheet.cell(row_index, column_index)
+                cell.font = Font(name="Arial", size=10, color="172B4D")
+                cell.alignment = Alignment(wrap_text=True, vertical="top")
                 if isinstance(value, str):
-                    sheet.cell(row_index, column_index).data_type = "s"
+                    cell.data_type = "s"
+                elif isinstance(value, datetime):
+                    cell.number_format = "dd/mm/yyyy hh:mm"
+                elif isinstance(value, date):
+                    cell.number_format = "dd/mm/yyyy"
+                elif isinstance(value, (float, Decimal)):
+                    cell.number_format = "0.0#####"
         for cell in sheet[3]:
-            cell.fill = PatternFill("solid", fgColor="1F4E78")
-            cell.font = Font(color="FFFFFF", bold=True)
-            cell.alignment = Alignment(horizontal="center")
-        sheet.freeze_panes = "A4"
+            cell.fill = PatternFill("solid", fgColor="172B4D")
+            cell.font = Font(name="Arial", size=10, color="FFFFFF", bold=True)
+            cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        sheet.row_dimensions[3].height = 36
+        sheet.freeze_panes = "E4" if sheet.title in {"Rollos", "Clasificación"} else "A4"
         sheet.auto_filter.ref = f"A3:{sheet.cell(3, len(headers)).coordinate}"
         if sheet.max_row >= 4:
             table = Table(displayName=table_name, ref=f"A3:{sheet.cell(sheet.max_row, len(headers)).coordinate}")
             table.tableStyleInfo = TableStyleInfo(name="TableStyleMedium2", showRowStripes=True)
             sheet.add_table(table)
         for column in sheet.columns:
-            width = min(max(len(str(cell.value or "")) for cell in column) + 2, 45)
+            width = min(max(len(str(cell.value if cell.value is not None else "")) for cell in column if cell.row >= 3) + 2, 45)
             sheet.column_dimensions[column[0].column_letter].width = max(width, 12)
+        # Keep raw structures inspectable without making the reading tables enormous.
+        for index, header in enumerate(headers, 1):
+            if header in {"metadatos_documento", "propiedades", "detalles", "todos_los_candidatos"}:
+                letter = sheet.cell(3, index).column_letter
+                sheet.column_dimensions.group(letter, letter, hidden=True)
+        if sheet.title == "Resumen":
+            sheet.column_dimensions["B"].width = 80
+        visible_columns = [i for i in range(1, len(headers) + 1)
+                           if not sheet.column_dimensions[sheet.cell(3, i).column_letter].hidden]
+        for row in sheet.iter_rows(min_row=4):
+            lines = max(ceil(len(str(row[i - 1].value or "")) / max(sheet.column_dimensions[row[i - 1].column_letter].width - 2, 1)) for i in visible_columns)
+            lines += 1 if lines > 1 else 0
+            sheet.row_dimensions[row[0].row].height = max(24, min(409, lines * 15))
+        for index, header in enumerate(headers, 1):
+            if header in {"estado", "estado_ejecución", "estado_aprobación", "aprobación_fracción_NICO"} and sheet.max_row >= 4:
+                letter = sheet.cell(3, index).column_letter
+                for label, color, text in [("approved", "DCFCE7", "166534"), ("Aprobado", "DCFCE7", "166534"),
+                                           ("draft", "FEF3C7", "92400E"), ("needs_review", "FEF3C7", "92400E"),
+                                           ("Borrador", "FEF3C7", "92400E"), ("Pendiente de aprobación", "FEF3C7", "92400E"),
+                                           ("Pendiente de clasificación", "FEF3C7", "92400E"),
+                                           ("rejected", "FEE2E2", "991B1B"), ("Rechazado", "FEE2E2", "991B1B")]:
+                    sheet.conditional_formatting.add(f"{letter}4:{letter}{sheet.max_row}",
+                        CellIsRule(operator="equal", formula=[f'"{label}"'],
+                                   fill=PatternFill("solid", fgColor=color), font=Font(color=text, bold=True)))
 
     @staticmethod
     def _validate(path: Path, certificates: int, heats: int, products: int) -> None:

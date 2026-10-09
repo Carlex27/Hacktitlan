@@ -38,6 +38,8 @@ from backend.app.api.schemas import (
     EvidenceEnvelope,
     ErrorEnvelope,
     ExportRequest,
+    ExportCreatedEnvelope,
+    ExportStatusEnvelope,
     JobEnvelope,
     ManualObservationRequest,
     ReclassificationRequest,
@@ -761,7 +763,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             export.error_message = "Cancelada por la persona solicitante"
         return ok({"job_id": job.id, "status": job.status})
 
-    @app.post("/api/v1/exports", status_code=status.HTTP_202_ACCEPTED,
+    @app.post("/api/v1/exports", status_code=status.HTTP_202_ACCEPTED, response_model=ExportCreatedEnvelope,
               responses={409: {"model": ErrorEnvelope, "description": "official_export_requires_approval: aprobación incompleta"}})
     def request_export(payload: ExportRequest, session: DbSession):
         certificate_ids = list(dict.fromkeys(payload.certificate_ids))
@@ -824,7 +826,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         session.flush()
         return ok({"export_id": export.id, "job_id": job.id}, status_code=202)
 
-    @app.get("/api/v1/exports/{export_id}")
+    @app.get("/api/v1/exports/{export_id}", response_model=ExportStatusEnvelope)
     def get_export_status(export_id: int, session: DbSession):
         export = session.get(Export, export_id)
         if export is None:

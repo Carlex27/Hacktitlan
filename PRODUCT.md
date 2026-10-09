@@ -43,3 +43,9 @@ Por decisión del usuario, la selección auditada de fracción y NICO confirma l
 
 
 La sección Cómo se clasifica explica el recorrido del motor, respaldo de sugerencias, incertidumbre y confirmación humana. Es informativa y accesible sin conexión al backend; no modifica reglas ni clasificaciones.
+
+Elegir fracción avanza al siguiente resultado de Validación tras guardar correctamente, en el orden mostrado y sin omitir rollos de la misma colada. La última selección permanece visible; fallos, captura manual y retirada de selección no avanzan.
+
+Por petición del usuario, el dictamen no muestra Guardar borrador. Las selecciones enviadas permanecen guardadas; cambiar un candidato o escribir campos sin enviar no guarda cambios. Se conservan Confirmar acta y Rechazar y el contrato de backend existente.
+
+Desde el acta se puede generar y descargar un Excel de consulta con todos los datos disponibles, coladas, rollos, química, códigos y aprobación, incluso antes de confirmar el acta. Selecciones retiradas y resultados ausentes permanecen explícitos en el reporte.

@@ -73,8 +73,9 @@ def _sources(page):
     return sources
 
 
-def _section_sources(page, section):
-    sources = _sources(page)
+def _section_sources(page, section, sources=None):
+    if sources is None:
+        sources = _sources(page)
     product = next(iter(section.values()))["product_id"]
     anchors = [block for block in page.blocks if block.text.strip() == product]
     if len(anchors) != 1:
@@ -264,10 +265,13 @@ def verify_fields(client: OllamaExtractor, document: DocumentLayout, certificate
         for product_id in dict.fromkeys(key.split(".")[0] for key in on_page):
             sections.append((page, {key: value for key, value in on_page.items() if key.split(".")[0] == product_id}))
     images = {}
+    page_sources = {}
     for page, section in sections:
         if cancel_check and cancel_check():
             raise OcrCancellationRequested("Verificación cancelada")
-        sources = _section_sources(page, section)
+        if page.page_number not in page_sources:
+            page_sources[page.page_number] = _sources(page)
+        sources = _section_sources(page, section, page_sources[page.page_number].copy())
         anchors = [b for b in page.blocks if b.text.strip() == next(iter(section.values()))["product_id"]]
         if visual_available and page.source == PageSource.OCR and len(anchors) == 1:
             anchor = anchors[0].bbox

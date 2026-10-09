@@ -11,6 +11,7 @@ import {
   useEvidence,
 } from "@/features/classification-results";
 import { PdfViewer } from "@/features/document-viewer";
+import { CertificateExportButton } from "@/features/certificate-export";
 import { FormatLibrary } from "@/features/certificate-formats";
 import {
   TariffReferenceButton,
@@ -84,7 +85,9 @@ export function ValidationPage({ certificateId, documentId, onBack, onDeleted, o
         <div className="shrink-0 border-b border-border px-4 py-3 sm:px-8">
           <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3">
           <div>{onBack && <Button className="min-h-11" variant="ghost" onClick={onBack}><ArrowLeft aria-hidden="true" />{es.workspace.back}</Button>}</div>
-          <div className="flex flex-wrap gap-2"><Button className="min-h-11" variant="outline" disabled={!docId || certificate?.source_file_name?.toLowerCase().endsWith(".xlsx")} onClick={() => setFormatOpen(true)}>{es.formats.configure}</Button>
+          <div className="flex flex-wrap gap-2">
+          {certificateId !== null && <CertificateExportButton key={certificateId} certificateId={certificateId} disabled={certLoading || !certificate} />}
+          <Button className="min-h-11" variant="outline" disabled={!docId || certificate?.source_file_name?.toLowerCase().endsWith(".xlsx")} onClick={() => setFormatOpen(true)}>{es.formats.configure}</Button>
           <Button className="min-h-11" variant="outline" onClick={() => { if (viewerOpen) setViewerOpen(false); else { setViewerTab("acta"); setViewerOpen(true); } }} disabled={!docId}>
             <FileText aria-hidden="true" />{viewerOpen ? es.workspace.closeViewer : es.workspace.original}
           </Button></div>

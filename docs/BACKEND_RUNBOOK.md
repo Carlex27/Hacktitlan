@@ -42,6 +42,21 @@ Aplicar la regla como administrador con
 
 ## Validación
 
+### Exportar un acta a Excel
+
+En el detalle del acta, Generar Excel solicita un reporte de consulta del acta
+completa; Descargar Excel aparece al terminar. No exige aprobación: el archivo
+indica los estados del acta y de la fracción/NICO de la ejecución seleccionada.
+Elegir códigos no implica aprobarlos. Los rollos sin resultados aparecen como
+pendientes de clasificación y las selecciones retiradas conservan su auditoría.
+
+El flujo utiliza las operaciones de exportación documentadas en `/openapi.json`
+y `/docs`. La API encola el trabajo; debe estar ejecutándose un worker. Reiniciar
+la API y los workers tras actualizar para cargar los esquemas y el formato nuevo.
+El Excel incluye resumen, actas, coladas, rollos, composición, clasificación,
+evidencia y auditoría, con filtros, encabezados congelados y estados con texto y
+color. Exporta los datos disponibles y conserva ausentes como celdas vacías.
+
 ### Filtros del historial
 
 `GET /api/v1/certificates` combina los filtros declarados en OpenAPI. La búsqueda
@@ -297,8 +312,13 @@ El worker procesa XLSX directamente, sin OCR. Las tablas con encabezados
 `MILL NO`, dimensiones y química se extraen por hoja y fila, incluyendo elementos
 en columnas japonesas y nombres químicos variables por registro. Los valores
 `有効桁` no se aplican como potencias a porcentajes ya decimales. El perfil
-GENERAL con encabezados químicos invertidos/repetidos conserva todas las
-celdas, pero deja la química desconocida hasta confirmar su significado.
+KIMITSU de MOLINOS GENERAL se reconoce por el nombre de hoja y sus encabezados:
+la primera columna de cada par contiene la precisión y la segunda el porcentaje,
+aunque sus etiquetas estén invertidas/repetidas. Se conserva la evidencia de la
+celda del porcentaje y una advertencia para confirmar contra el certificado.
+Los pares con precisión inválida quedan desconocidos; se conservan ceros
+explícitos con precisión ausente. Otros perfiles ambiguos dejan la química
+desconocida. `HEAT NO` y `CAST NO` identifican la colada; `COIL NO` el rollo.
 Las unidades faltantes y los ceros usados como marcadores de longitud o ensayos
 no se convierten en mediciones físicas. Las columnas FRACCION/NICO son datos
 de la fuente y nunca sustituyen los resultados del motor.

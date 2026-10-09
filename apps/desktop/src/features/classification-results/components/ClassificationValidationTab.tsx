@@ -52,7 +52,7 @@ export function ClassificationValidationTab({
     <>
       {resultId === undefined && results.length > 1 && (
         <ResultSelector
-          key={run?.id}
+          key={`${run?.id}:${Math.floor(Math.max(0, results.findIndex((result) => result.id === activeResult?.id)) / 10)}`}
           products={products}
           results={results}
           activeResultId={activeResult?.id ?? null}
@@ -85,7 +85,12 @@ export function ClassificationValidationTab({
             initialCandidateId={initialCandidateId ?? null}
             candidates={activeResult.candidates.filter((candidate) => candidate.details.manual !== true)}
             selectedCandidateId={currentSelection?.candidate_id ?? null}
-            onCandidateSelected={onReloadRun}
+            onCandidateDeselected={onReloadRun}
+            onCandidateSelected={() => {
+              const next = results[results.findIndex((result) => result.id === activeResult.id) + 1];
+              if (resultId === undefined && next) setSelectedResultId(next.id);
+              onReloadRun();
+            }}
             {...(renderTariffAction ? { renderTariffAction } : {})}
           />
         </section>

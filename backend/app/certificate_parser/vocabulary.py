@@ -172,8 +172,8 @@ def match_column_semantic(header_cell: str) -> tuple[str, str | None, int | None
     clean = normalize_term(header_cell)
     if not clean:
         return "unknown", None, None
+    compact = clean.replace(" ", "")
     def matches(alias: str) -> bool:
-        compact = clean.replace(" ", "")
         return (clean == alias or clean.startswith(alias + " ") or clean.endswith(" " + alias)
                 or compact == alias.replace(" ", ""))
     if clean in {"widt", "宽度", "寬度"}:
@@ -209,7 +209,6 @@ def match_column_semantic(header_cell: str) -> tuple[str, str | None, int | None
             return "chemistry", elem, exponent
 
     # Check if whole clean string maps to element
-    compact = clean.replace(" ", "")
     elem = ELEMENT_SYMBOLS.get(compact)
     if elem:
         return "chemistry", elem, exponent

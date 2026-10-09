@@ -28,7 +28,7 @@ En este hito se implementó la capa completa de consulta, auditoría y reportes 
    - Hoja `Auditoría`: Unifica cronológicamente los eventos de selección (`SELECCION_CANDIDATO`), aprobación (`APROBACION_ESTADO`) y corrección manual (`CORRECCION_DATO`) con indicación explícita de vigencia (`Vigente` vs `Reemplazada`).
 5. **Compuerta estricta de reportes oficiales:**
    - Un reporte oficial (`official=True`) exige aprobación al 100% de todos los certificados y ejecuciones involucradas. Si alguno está en `draft`, `needs_review` o `rejected`, la API rechaza la solicitud inmediatamente con código HTTP 409 (`official_export_requires_approval`).
-   - Un reporte no oficial (`official=False`) se marca visiblemente en la celda `A1` con la advertencia: `PRELIMINAR — PENDIENTE DE APROBACIÓN — DEMOSTRACIÓN — SIN VALIDEZ ADUANERA`.
+   - Un reporte no oficial (`official=False`) usa el aviso de consulta/demostración en `A2`, con título de hoja en `A1` y aprobación explícita por acta y fracción/NICO. Puede incluir estados aprobados y pendientes.
 6. **Auditoría de exportaciones:**
    - Registro en la base de datos de cada exportación con `filters_json`, `scope_json`, `person_name`, `workstation_name`, hash criptográfico `sha256` y `stored_file_id`.
    - Endpoint `GET /api/v1/exports/{export_id}` para consultar estado y metadatos de auditoría de la exportación.

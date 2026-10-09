@@ -2,6 +2,19 @@
 
 ## En proceso
 
+- Optimización conservadora de PDFs (9 de octubre de 2026): coincidencias de
+  etiquetas reutilizadas sólo durante cada extracción, fuentes de verificación
+  calculadas una vez por página y texto compacto calculado una vez por encabezado.
+  Lectura digital libera las cachés de cada página y calcula SHA-256 por bloques.
+  Comparación de nueve snapshots OCR: resultados completos idénticos, análisis
+  de 1.43 a 0.53 s en una medición local; excluye inferencia OCR y Ollama y no
+  constituye una medición del tiempo total de importación. Se conservan reglas,
+  formatos, evidencia, parámetros OCR y verificaciones existentes.
+  PDF digital de 50 páginas: layout y hash idénticos respecto al lector anterior.
+  El test de integración `test_molino3_conflicting_ocr_proposal_can_be_accepted_with_audit`
+  falla al buscar la lectura `39`, también ejecutando la extracción anterior;
+  se conserva esa lógica y se registra la incidencia previa.
+
 - Biblioteca de formatos, etapas 2 y 3 (9 de octubre de 2026): editor web con
   regiones, alternativa de teclado, columnas, guardado, pruebas y confirmación.
   Activación/retirada transaccionales, reconocimiento por encabezados estables,
@@ -130,7 +143,7 @@
     - Hoja `Auditoría`: línea de tiempo consolidada de selecciones, aprobaciones y correcciones manuales con estado de vigencia explícito (`Vigente` vs `Reemplazada`).
     - Navegación interna entre hojas mediante fórmulas de hipervínculo nativas (`#'Hoja'!A1`) y saneamiento automático de datetimes sin zona horaria para compatibilidad total con openpyxl/Excel.
   - Compuerta estricta para reportes oficiales: `POST /api/v1/exports` y `ExcelExportService` exigen aprobación al 100% de todos los certificados y ejecuciones involucrados; si alguno está en `draft`, `needs_review` o `rejected`, la API rechaza con código HTTP 409 (`official_export_requires_approval`).
-  - Marcado visual obligatorio de reportes preliminares en la celda A1 (`PRELIMINAR — PENDIENTE DE APROBACIÓN — DEMOSTRACIÓN — SIN VALIDEZ ADUANERA`).
+  - Título de hoja en A1 y aviso de consulta/demostración en A2; aprobación explícita por acta y fracción/NICO. Los reportes de consulta pueden incluir datos aprobados y pendientes.
   - Trazabilidad y auditoría completa de exportaciones en base de datos (`filters_json`, `scope_json`, `person_name`, `workstation_name`, hash criptográfico `sha256`, `stored_file_id`) y endpoint `GET /api/v1/exports/{export_id}`.
   - Suite dedicada ampliada a 27 casos. La revisión corrigió aprobación oficial incompleta, alcance por coladas, alternativas, evidencia, vigencia histórica, fórmulas externas y validación de filtros. La ejecución final sobre el repositorio compartido terminó con 248 pruebas aprobadas y 2 advertencias; ver auditoría para los límites de verificación.
 
@@ -396,3 +409,5 @@ espacios y comodines literales. Los filtros de colada, rollo y clasificación se
 combinan sobre el mismo producto y la última ejecución. El intervalo por fecha
 del acta excluye fechas desconocidas. Semántica documentada en OpenAPI y runbook;
 pruebas sobre PostgreSQL cubren combinaciones, fechas y paginación.
+
+Exportación por acta: UI con generación asíncrona y enlace de descarga. Se tipan las respuestas existentes en OpenAPI, se amplían proveedor/metadatos, dimensiones/pesos, códigos y aprobación; se corrige la vigencia de selecciones retiradas y se muestran rollos sin clasificación. Formato XLSX con filtros, fechas, precisión química y estados semánticos. Sin dependencias nuevas.

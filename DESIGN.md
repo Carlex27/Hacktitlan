@@ -167,3 +167,16 @@ La guía incorpora índice lateral fijo en pantalla amplia, enlaces apilados ant
 El índice de la guía acompaña la lectura con flecha, peso semibold, superficie clara y aria-current=location. Se actualiza con el desplazamiento del panel, expansión de pasos y cambio de tamaño; al final señala la última sección aunque sea corta.
 
 Los botones del selector bajo Coladas del acta identifican cada grupo con Batch: seguido del identificador original, por petición del usuario. El cambio de etiqueta no modifica heat_no ni la asociación de productos.
+
+### Dictamen de clasificación
+
+Estado junto al título, alcance debajo y explicación semántica con icono. Resumen de cobertura reutiliza approvalCoverage, sin inferir autorización de los datos faltantes. Pendientes se mantienen en desplegable. Confirmado muestra cierre de edición y retira Guardar borrador y Confirmar acta deshabilitados; conserva Rechazar y los permisos existentes. Acciones se apilan en móvil y se separan de la explicación.
+
+El dictamen presenta alcance y cobertura únicamente por coladas. Se elimina el contador de rollos; el número de coladas procede de certificate.heats y conserva las selecciones pendientes para explicar bloqueos sin cambiar la lógica de autorización.
+
+Por petición del usuario, el dictamen no muestra Guardar borrador. Las selecciones enviadas permanecen guardadas; cambiar un candidato o escribir campos sin enviar no guarda cambios. Se conservan Confirmar acta y Rechazar y el contrato de backend existente.
+
+Biblioteca de formatos usa bg-background como Carga e Historial. El panel del documento mantiene borde y superficie bg-muted/40 para separarlo de los controles y del fondo general, sin modificar el visor ni sus flujos.
+
+### Exportación del acta
+Generar Excel se integra en las acciones superiores del documento, con botón secundario de 44 px, icono de hoja de cálculo, carga anunciada y bloqueo de envíos duplicados. Al terminar aparece Descargar Excel; errores conservan el mensaje del backend. El archivo usa Arial, encabezados azul oscuro, filas alternadas, filtros y paneles congelados, fechas y números tipados y estados con texto y color. Conserva las ocho hojas y la evidencia; no sustituye el sistema visual de la UI.

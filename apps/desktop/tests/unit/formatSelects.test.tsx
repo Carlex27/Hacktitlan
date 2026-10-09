@@ -16,7 +16,7 @@ describe("Selectores del editor de formatos", () => {
     await user.keyboard("{End}{Enter}");
     expect(onChange).toHaveBeenLastCalledWith({ ...value, unit: "m" });
     await user.click(screen.getByRole("combobox", { name: "Separador decimal" }));
-    await user.click(screen.getByRole("option", { name: ",", exact: true }));
+    await user.click(screen.getByRole("option", { name: /^,$/ }));
     expect(onChange).toHaveBeenLastCalledWith({ ...value, decimal_separator: "," });
   });
   it("deshabilita también los selectores de columnas de una tabla bloqueada", () => {

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from hashlib import sha256
+from hashlib import file_digest
 from pathlib import Path
 from typing import Any
 
@@ -44,16 +44,24 @@ class PdfPlumberReader:
 
         try:
             with pdfplumber.open(input_path) as pdf:
-                pages = tuple(self._read_page(page, index) for index, page in enumerate(pdf.pages, 1))
+                layouts = []
+                for index, page in enumerate(pdf.pages, 1):
+                    try:
+                        layouts.append(self._read_page(page, index))
+                    finally:
+                        page.close()
+                pages = tuple(layouts)
                 metadata = dict(pdf.metadata or {})
         except Exception as exc:
             raise DocumentIngestionError(f"Could not read PDF {input_path.name}: {exc}") from exc
 
         if not pages:
             raise DocumentIngestionError("The PDF contains no pages")
+        with input_path.open("rb") as source:
+            digest = file_digest(source, "sha256").hexdigest()
         return DocumentLayout(
             file_name=input_path.name,
-            sha256=sha256(input_path.read_bytes()).hexdigest(),
+            sha256=digest,
             pages=pages,
             metadata=metadata,
         )
@@ -120,4 +128,3 @@ class PdfPlumberReader:
             blocks=blocks,
             tables=tuple(tables),
         )
-

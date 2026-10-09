@@ -1,6 +1,6 @@
-# Hacktitlan — Clasificador de acero LIGIE, capítulo 72
+# Clasificador de acero LIGIE, capítulo 72
 
-Hacktitlan es un proyecto realizado por el **Equipo ZankaTec del Instituto
+Este programa es un proyecto realizado por el **Equipo ZankaTec del Instituto
 Tecnológico de la Costa Grande**. Ayuda a revisar certificados de materiales y
 proponer una clasificación arancelaria mexicana para productos de acero,
 con datos técnicos y evidencia que permitan entender cada resultado.

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+from functools import cache
 
 from backend.app.certificate_parser.vocabulary import METADATA_LABELS, normalize_term
 from backend.app.domain.document import DocumentLayout
@@ -26,10 +27,12 @@ def _label(text: str) -> tuple[str, str] | None:
 
 def extract_metadata(document: DocumentLayout) -> dict:
     candidates: dict[str, list[dict]] = {key: [] for key in METADATA_LABELS}
+    # Reuse label matches within this document without retaining certificate text across jobs.
+    cached_label = cache(_label)
 
     def add(key, value, page, bbox, source, label=None):
         value = value.strip().lstrip(":： ")
-        if not value or _label(value) or normalize_term(value) in {"refer notes", "see notes", "ver notas", "检验", "inspection", "insp"}:
+        if not value or cached_label(value) or normalize_term(value) in {"refer notes", "see notes", "ver notas", "检验", "inspection", "insp"}:
             return
         candidates[key].append({"value": value, "page_number": page,
                                 "bbox": bbox, "source_text": source, "label": label})
@@ -37,7 +40,7 @@ def extract_metadata(document: DocumentLayout) -> dict:
     for page in document.pages:
         blocks = [block for block in page.blocks if block.text.strip()]
         for block in blocks:
-            match = _label(block.text)
+            match = cached_label(block.text)
             if not match:
                 continue
             key, alias = match
@@ -50,7 +53,7 @@ def extract_metadata(document: DocumentLayout) -> dict:
             if inline:
                 add(key, inline[1], page.page_number, block.bbox.as_dict(), block.text, alias)
                 continue
-            nearby = [item for item in blocks if item is not block and not _label(item.text)
+            nearby = [item for item in blocks if item is not block and not cached_label(item.text)
                       and block.bbox.x1 - 5 <= item.bbox.x0 <= block.bbox.x1 + page.width * .15
                       and abs((item.bbox.top + item.bbox.bottom - block.bbox.top - block.bbox.bottom) / 2)
                       < max(8, block.bbox.bottom - block.bbox.top)]
@@ -70,7 +73,7 @@ def extract_metadata(document: DocumentLayout) -> dict:
                         "top": min(b.top for b in boxes), "bottom": max(b.bottom for b in boxes)}
                 add(key, raw, page.page_number, bbox, raw, block.text)
             else:
-                below = [item for item in blocks if item is not block and not _label(item.text)
+                below = [item for item in blocks if item is not block and not cached_label(item.text)
                          and 0 <= item.bbox.top - block.bbox.bottom <= max(15, block.bbox.bottom - block.bbox.top)
                          and max(item.bbox.x0, block.bbox.x0) < min(item.bbox.x1, block.bbox.x1)]
                 if key.endswith("date"):
@@ -83,7 +86,7 @@ def extract_metadata(document: DocumentLayout) -> dict:
         for table in page.tables:
             for row in table.rows:
                 for column, cell in enumerate(row[:-1]):
-                    match = _label(cell or "")
+                    match = cached_label(cell or "")
                     if match and row[column + 1]:
                         add(match[0], str(row[column + 1]), page.page_number,
                             table.bbox.as_dict(), str(row[column + 1]), str(cell))

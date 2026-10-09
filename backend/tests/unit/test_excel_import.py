@@ -75,6 +75,52 @@ def test_general_inverted_headers_withhold_chemistry(tmp_path):
     assert any("invertidos" in reason for reason in result["reasons"])
 
 
+@pytest.mark.parametrize("sheet_name", ["KIMITSU(MILL CERT)", "Unknown mill"])
+def test_kimitsu_inverted_pairs_preserve_percentages_and_cell_evidence(tmp_path, sheet_name):
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = sheet_name
+    sheet.append(["MILL NO", "PRODUCTION NAME", "HEAT No.", "THICK (mm)", "WIDTH (mm)", "LENGTH",
+                  *[f"溶鋼分析・{element}・{suffix}" for element in ("Ｃ", "Ｓｉ", "Ｍｎ", "Ｐ", "Ｓ")
+                    for suffix in ("実績値", "有効桁")],
+                  "溶鋼分析・ Al・有効桁", "溶鋼分析・ Al・有効桁",
+                  "溶鋼分析・ Ti・有効桁", "溶鋼分析・ Ti・有効桁"])
+    sheet.append(["E02511200001", "COLD-ROLLED STEEL STRIP", "25BH2B7550200", .9, 991, "C",
+                  4, .0013, None, 0, 2, .12, 3, .011, 3, .008, 3, .031, 3, .068])
+    sheet.append(["CERT-2", "STEEL STRIP", "HEAT-2", .9, 991, "C",
+                  .5, .0013, None, None, 2, .12])
+    path = tmp_path / "kimitsu.xlsx"
+    workbook.save(path)
+    result = extract_excel(path)
+    first, second = result["certificate"]["products"]
+    assert first["heat_no"] == "25BH2B7550200"
+    assert result["status"] == "needs_review"
+    if sheet_name == "KIMITSU(MILL CERT)":
+        assert first["composition_pct"] == {
+            "C": .0013, "Si": 0, "Mn": .12, "P": .011, "S": .008, "Al_total": .031, "Ti": .068,
+        }
+        detail = first["observations"]["composition_pct"]["C"]
+        assert detail["source_label"] == "'KIMITSU(MILL CERT)'!H2"
+        assert detail["raw_value"] == detail["normalized_value"] == .0013
+        assert second["composition_pct"]["C"] is None
+        assert second["composition_pct"]["Si"] is None
+    else:
+        assert all(value is None for value in first["composition_pct"].values())
+
+
+def test_cast_number_identifies_heat_without_replacing_coil_number(tmp_path):
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.append(["CAST NO", "COIL NO", "WIDTH", "THICK", "C"])
+    sheet.append(["G82765", "603214670", 1183, 1.99, .05])
+    path = tmp_path / "cast.xlsx"
+    workbook.save(path)
+    product = extract_excel(path)["certificate"]["products"][0]
+    assert product["heat_no"] == "G82765"
+    assert product["label_no"] == "603214670"
+    assert product["observations"]["heat_no"]["source_label"] == "'Sheet'!A2"
+
+
 def test_support_letter_preserves_merged_bounds_without_fake_products(tmp_path):
     workbook = Workbook()
     sheet = workbook.active

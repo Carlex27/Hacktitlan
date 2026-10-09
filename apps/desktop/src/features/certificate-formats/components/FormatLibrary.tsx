@@ -29,7 +29,7 @@ export function FormatLibrary({ documentId = null, certificateId = null, onBack,
   const blocked = editor.busy || editor.status === "loading";
   const page = editor.layout?.document.pages.find(p => p.page_number === pageNumber) ?? editor.layout?.document.pages[0] ?? null;
   const { version, configuration } = editor;
-  return <div className="w-full overflow-y-auto"><div className="mx-auto max-w-[100rem] px-4 py-8 sm:px-8 space-y-6">
+  return <div className="w-full min-h-0 flex-1 overflow-y-auto bg-background text-foreground"><div className="mx-auto max-w-[100rem] px-4 py-8 sm:px-8 space-y-6">
     <header className="flex flex-wrap items-start justify-between gap-3"><div><h1 className="text-2xl font-semibold">{es.formats.title}</h1><p className="mt-2 max-w-2xl text-muted-foreground">{es.formats.intro}</p></div>
       {onBack && <Button variant="outline" disabled={editor.dirty || editor.busy} onClick={onBack}>{es.formats.back}</Button>}</header>
     {editor.error && <Alert id="format-error" variant="destructive"><AlertTitle>{es.formats.error}</AlertTitle><AlertDescription>{editor.error}</AlertDescription></Alert>}
@@ -77,7 +77,7 @@ export function FormatLibrary({ documentId = null, certificateId = null, onBack,
         {!version && <div className="rounded-xl border border-dashed bg-card p-8"><h2 className="text-lg font-semibold">{es.formats.startTitle}</h2><p className="mt-2 max-w-prose text-sm text-muted-foreground">{es.formats.startHelp}</p></div>}
         {version && configuration && <>
           <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_19rem]">
-            <div className="min-w-0 rounded-xl border bg-card p-4 space-y-4">{page && editor.layout ? <>
+            <div className="min-w-0 rounded-xl border border-border bg-muted/40 p-4 space-y-4">{page && editor.layout ? <>
               <div className="flex flex-wrap gap-3"><div className="text-sm"><label htmlFor={`${selectId}-page`} className="block text-sm mb-1">{es.formats.page}</label>
       <SelectField id={`${selectId}-page`} value={String(page.page_number)} options={editor.layout.document.pages.map(p => ({ value: String(p.page_number), label: String(p.page_number) }))} onChange={next => { setPageNumber(Number(next)); setRegion(null); }} /></div>
                 <div className="text-sm"><label htmlFor={`${selectId}-zoom`} className="block text-sm mb-1">{es.formats.zoom}</label>

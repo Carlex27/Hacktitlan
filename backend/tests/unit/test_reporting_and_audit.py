@@ -658,7 +658,7 @@ def test_excel_export_service_generates_eight_sheets_and_auditable_content(db_se
 
     # Verify Resumen sheet
     ws_resumen = wb["Resumen"]
-    a1_val = str(ws_resumen["A1"].value)
+    a1_val = str(ws_resumen["A2"].value)
     assert settings.demo_notice in a1_val
     assert "PRELIMINAR" not in a1_val
 
@@ -683,6 +683,14 @@ def test_excel_export_service_generates_eight_sheets_and_auditable_content(db_se
     assert "72091504-02" in str(row4["alternativa_2"])
     assert "72091599-00" in str(row4["alternativa_3"])
     assert row4["seleccionado_por"] == "Ing. Auditor"
+    assert row4["fracción"] == "72091504"
+    assert row4["NICO"] == "01"
+    assert row4["aprobación_fracción_NICO"] == "Aprobado"
+    assert ws_clas.sheet_view.showGridLines is False
+    assert ws_clas.freeze_panes == "E4"
+    assert len(ws_clas.conditional_formatting) > 0
+    assert wb["Actas"]["M4"].value == "Aprobado"
+    assert wb["Rollos"]["O4"].value is None
     assert "chapter72.thickness.gte_3mm" in str(row4["factores_clave"])
 
     # Check internal hyperlink in Clasificación pointing to Evidencia
@@ -742,7 +750,8 @@ def test_excel_export_service_generates_eight_sheets_and_auditable_content(db_se
     )
     wb_prelim = openpyxl.load_workbook(out_prelim)
     ws_prelim_resumen = wb_prelim["Resumen"]
-    assert "PRELIMINAR" in str(ws_prelim_resumen["A1"].value)
+    assert "REPORTE DE CONSULTA" in str(ws_prelim_resumen["A2"].value)
+    assert wb_prelim["Clasificación"]["R4"].value == "02"
     assert wb_prelim["Clasificación"]["E4"].value == "72091504-02"
     assert wb_prelim["Clasificación"]["F4"].value == "72091504-01"
     assert wb_prelim["Clasificación"]["G4"].value == "72091599-00"
@@ -752,6 +761,23 @@ def test_excel_export_service_generates_eight_sheets_and_auditable_content(db_se
     assert [r for r in audit if r[0] == "APROBACION_ESTADO" and r[1] == appr.id][0][-1] == "Reemplazada"
     wb.close()
     wb_prelim.close()
+
+    res.details_json = {"selection_cleared": True}
+    res.fraction = None
+    res.nico = None
+    res.outcome = "needs_review"
+    run.approval_status = "needs_review"
+    session.add(Product(certificate_id=cert.id, product_identifier="SIN-CLASIFICACION"))
+    session.flush()
+    service.export_certificates(session, certificate_ids=[cert.id], destination=dest_prelim, official=False)
+    cleared = openpyxl.load_workbook(dest_prelim)
+    assert cleared["Clasificación"]["E4"].value == "Pendiente de selección"
+    assert cleared["Clasificación"]["Q4"].value is None
+    assert cleared["Clasificación"]["S4"].value == "Pendiente de aprobación"
+    assert cleared["Clasificación"]["S5"].value == "Pendiente de clasificación"
+    selection_rows = [r for r in cleared["Auditoría"].iter_rows(min_row=4, values_only=True) if r[0] == "SELECCION_CANDIDATO"]
+    assert all(r[-1] == "Retirada" for r in selection_rows)
+    cleared.close()
 
 
 def test_official_export_blocks_unapproved_records(db_session, tmp_path):
@@ -838,6 +864,9 @@ def test_api_certificates_and_export_endpoints(db_session, tmp_path):
         assert data["workstation_name"] == "WS-TEST"
         assert data["filters"] == {"period": "month"}
         assert data["status"] in {"queued", "running", "succeeded"}
+        contract = client.get("/openapi.json").json()
+        assert contract["paths"]["/api/v1/exports"]["post"]["responses"]["202"]["content"]["application/json"]["schema"]["$ref"].endswith("ExportCreatedEnvelope")
+        assert contract["components"]["schemas"]["ExportStatusRead"]["properties"]["status"]["enum"] == ["queued", "running", "succeeded", "failed"]
 
 
 @pytest.mark.parametrize("scenario", ["missing", "latest_unapproved", "partial_explicit"])

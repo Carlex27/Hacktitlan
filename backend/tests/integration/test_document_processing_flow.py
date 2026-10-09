@@ -158,9 +158,9 @@ def test_xlsx_upload_real_worker_provenance_and_download(processing_settings: Se
         sheet.append(["SPEC", "Alloy or Non-Alloy", "Yield Point(N/mm2)"])
         sheet.append(["SPCC", "non-alloy", "<355"])
     else:
-        sheet.append(["MILL NO", "PRODUCTION NAME", "WIDTH", "THICK", "C", "Ti"])
-        sheet.append(["CERT-1", "HOT ROLLED STEEL SHEET IN COIL", 1000, 2, .05, .05])
-        sheet.append(["CERT-2", "HOT ROLLED STEEL SHEET IN COIL", 1000, 2, .05, .05])
+        sheet.append(["MILL NO", "PRODUCTION NAME", "WIDTH", "THICK", "C", "Ti", "CAST NO"])
+        sheet.append(["CERT-1", "HOT ROLLED STEEL SHEET IN COIL", 1000, 2, .05, .05, "G82765"])
+        sheet.append(["CERT-2", "HOT ROLLED STEEL SHEET IN COIL", 1000, 2, .05, .05, "G82765"])
     output = BytesIO()
     workbook.save(output)
     content = output.getvalue()
@@ -192,6 +192,7 @@ def test_xlsx_upload_real_worker_provenance_and_download(processing_settings: Se
             assert detail["specification_records"][0]["yield_strength"]["normalized_value"]["operator"] == "<"
         else:
             assert len(certificate["products"]) == 2
+            assert [heat["heat_no"] for heat in certificate["heats"]] == ["G82765"]
             chemistry = certificate["chemical_compositions"]
             assert len(chemistry) == 4
             assert all(item["product_id"] is not None for item in chemistry)
