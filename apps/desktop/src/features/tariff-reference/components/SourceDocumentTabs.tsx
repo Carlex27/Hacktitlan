@@ -3,22 +3,21 @@ import type { ReactNode } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { es } from "@/lib/i18n";
 
-import type { TariffReferenceState } from "../hooks/useTariffReference";
+import type { OpenTariffReference } from "../hooks/useTariffReference";
 
 export type SourceDocumentTab = "acta" | "ligie";
 
 export interface SourceDocumentTabsProps {
   activeTab: SourceDocumentTab;
   onTabChange(tab: SourceDocumentTab): void;
-  referenceState: TariffReferenceState;
+  activeReference: OpenTariffReference | null;
   /** Visor del acta; se recibe como slot para no acoplar features. */
   actaViewer: ReactNode;
   ligieViewer: ReactNode;
 }
 
-function ligieTabLabel(state: TariffReferenceState): string {
-  if (state.status !== "success") return es.tariffReference.ligieTab;
-  const page = state.entries[state.activeIndex]?.page ?? null;
+function ligieTabLabel(active: OpenTariffReference | null): string {
+  const page = active?.reference.page ?? null;
   return page === null ? es.tariffReference.ligieTab : es.tariffReference.ligieTabPage(page);
 }
 
@@ -26,7 +25,7 @@ function ligieTabLabel(state: TariffReferenceState): string {
 export function SourceDocumentTabs({
   activeTab,
   onTabChange,
-  referenceState,
+  activeReference,
   actaViewer,
   ligieViewer,
 }: SourceDocumentTabsProps) {
@@ -44,7 +43,7 @@ export function SourceDocumentTabs({
           {es.tariffReference.actaTab}
         </TabsTrigger>
         <TabsTrigger value="ligie" className="flex-none text-xs text-slate-300 data-[state=active]:text-slate-900">
-          {ligieTabLabel(referenceState)}
+          {ligieTabLabel(activeReference)}
         </TabsTrigger>
       </TabsList>
       {/* forceMount conserva el PDF del acta cargado al cambiar de pestaña. */}

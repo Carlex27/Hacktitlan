@@ -32,8 +32,8 @@ export function SelectionHistory({ selections }: SelectionHistoryProps) {
           key={sel.id}
           className="bg-white border border-slate-200 rounded-lg p-2.5 text-xs space-y-1"
         >
-          <div className="flex items-center justify-between gap-2">
-            <span className="font-semibold text-slate-800">
+          <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5">
+            <span className="min-w-0 font-semibold text-slate-800">
               {sel.person_name}
             </span>
             <span className="text-[10.5px] text-slate-400">
@@ -45,7 +45,7 @@ export function SelectionHistory({ selections }: SelectionHistoryProps) {
             "{sel.reason}"
           </p>
 
-          <div className="flex items-center justify-between text-[10px] text-slate-500 pt-0.5">
+          <div className="flex flex-wrap items-center justify-between gap-x-2 text-[10px] text-slate-500 pt-0.5">
             <span>{es.classification.workstation}: {sel.workstation_name}</span>
             <span>Candidato #{sel.candidate_id}</span>
           </div>

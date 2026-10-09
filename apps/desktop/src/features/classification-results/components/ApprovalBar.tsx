@@ -87,9 +87,9 @@ export function ApprovalBar({ run, onDecisionComplete }: ApprovalBarProps) {
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         {/* Input fields for Person & Reason (Audit Requirement) */}
-        <div className="flex flex-1 items-center gap-3 min-w-[320px]">
+        <div className="flex flex-1 flex-wrap items-start gap-3 min-w-0 sm:min-w-[320px]">
           {/* Person Input */}
-          <div className="flex-1 max-w-xs relative">
+          <div className="relative min-w-[10rem] flex-1 sm:max-w-xs">
             <User aria-hidden="true" className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" />
             <Input
               id={personInputId}
@@ -111,14 +111,14 @@ export function ApprovalBar({ run, onDecisionComplete }: ApprovalBarProps) {
               className="h-8 text-xs pl-8 bg-white"
             />
             {validationErrors.person && (
-              <p id={personErrId} role="alert" className="text-[10px] text-red-600 mt-0.5 absolute">
+              <p id={personErrId} role="alert" className="text-[10px] text-red-600 mt-0.5">
                 {validationErrors.person}
               </p>
             )}
           </div>
 
           {/* Reason / Comments Input */}
-          <div className="flex-1 relative">
+          <div className="relative min-w-[10rem] flex-1">
             <MessageSquare aria-hidden="true" className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" />
             <Input
               id={reasonInputId}
@@ -140,7 +140,7 @@ export function ApprovalBar({ run, onDecisionComplete }: ApprovalBarProps) {
               className="h-8 text-xs pl-8 bg-white"
             />
             {validationErrors.reason && (
-              <p id={reasonErrId} role="alert" className="text-[10px] text-red-600 mt-0.5 absolute">
+              <p id={reasonErrId} role="alert" className="text-[10px] text-red-600 mt-0.5">
                 {validationErrors.reason}
               </p>
             )}
@@ -148,7 +148,7 @@ export function ApprovalBar({ run, onDecisionComplete }: ApprovalBarProps) {
         </div>
 
         {/* Status Badge & Actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-1.5 text-xs text-slate-500 mr-2">
             <span>{es.approval.statusBadge}</span>
             <Badge

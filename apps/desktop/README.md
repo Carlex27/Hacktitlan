@@ -46,10 +46,10 @@ inalcanzable o PostgreSQL/almacenamiento no listos), con opción de reintentar.
 - **Revisión documental** (pantalla Documentos): cola `/document-reviews` y
   reprocesamiento desde extracción (`/certificates/{id}/reprocess`; 409 si ya
   hay una extracción en curso).
-- **Referencia LIGIE** (Validación → «Ver en LIGIE»): requiere que el backend
-  publique `GET /api/v1/rule-sources/ligie-72/entries/{code}` y el PDF en
-  `meta.file_url`. Mientras no exista, la app avisa que el servidor aún no la
-  ofrece.
+- **Referencia LIGIE** (Validación → «Ver en LIGIE» o «Ver en la fuente» en una
+  evidencia de regla): usa la referencia que el backend adjunta a la evidencia
+  `rule_source` (`reference.file_url`, `reference.page_number`) y abre el PDF de
+  `GET /api/v1/rule-sources/{source_hash}/file` en esa página. No requiere rutas extra.
 
 ## Estructura
 

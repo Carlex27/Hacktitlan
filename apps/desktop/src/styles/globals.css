@@ -137,6 +137,9 @@
     }
   body {
     @apply bg-background text-foreground;
+    /* Códigos, rutas de campo y textos sin espacios se parten antes de salirse de su
+       contenedor; además permite que filas flex/grid se encojan. */
+    overflow-wrap: anywhere;
     }
   html {
     @apply font-sans;

@@ -1,21 +1,18 @@
 import { BookOpenIcon } from "lucide-react";
 
+import type { SourceReference } from "@/features/classification-results";
 import { es } from "@/lib/i18n";
 
-import { toLigieLookupCode } from "../model/ligieCode";
-
 export interface TariffReferenceButtonProps {
-  fraction: string | null;
-  nico: string | null;
+  /** Referencia que adjunta el backend; sin ella no hay a dónde ir y no se muestra. */
+  reference: SourceReference | null;
   /** Código como se muestra al usuario. */
   displayCode: string;
-  onOpen(code: string, label: string): void;
+  onOpen(reference: SourceReference, label: string): void;
 }
 
-/** Abre la página de la LIGIE del código; sin fracción no se muestra. */
-export function TariffReferenceButton({ fraction, nico, displayCode, onOpen }: TariffReferenceButtonProps) {
-  const code = toLigieLookupCode(fraction, nico);
-  if (code === null) return null;
+export function TariffReferenceButton({ reference, displayCode, onOpen }: TariffReferenceButtonProps) {
+  if (reference === null) return null;
 
   return (
     <button
@@ -26,7 +23,7 @@ export function TariffReferenceButton({ fraction, nico, displayCode, onOpen }: T
         // Dentro de una etiqueta de opción no debe cambiar la selección.
         event.preventDefault();
         event.stopPropagation();
-        onOpen(code, displayCode);
+        onOpen(reference, displayCode);
       }}
       className="inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium text-blue-700 hover:bg-blue-50 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
     >

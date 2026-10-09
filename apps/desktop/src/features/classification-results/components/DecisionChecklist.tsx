@@ -36,11 +36,13 @@ export function DecisionChecklist({ steps, onViewEvidence }: DecisionChecklistPr
             key={step.id}
             className="bg-white border border-slate-200 rounded-lg p-2.5 text-xs space-y-1.5"
           >
-            <div className="flex items-center justify-between gap-2">
-              <span className="font-mono font-bold text-slate-800 text-[11px]">
+            <div className="flex items-start justify-between gap-2">
+              <span className="min-w-0 font-mono font-bold text-slate-800 text-[11px] break-all">
                 {step.rule_code}
               </span>
-              <ProcessingStatusBadge status={status} />
+              <span className="shrink-0">
+                <ProcessingStatusBadge status={status} />
+              </span>
             </div>
 
             {step.explanation && (

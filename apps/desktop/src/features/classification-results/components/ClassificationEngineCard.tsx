@@ -7,7 +7,12 @@ import type { ClassificationResultDto, ClassificationRunDto } from "@/lib/api";
 import { es } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
-import { extractReviewIndicators, formatTariffCode, type TariffActionRenderer } from "../model";
+import {
+  extractReviewIndicators,
+  findSourceReferenceForCode,
+  formatTariffCode,
+  type TariffActionRenderer,
+} from "../model";
 
 export interface ClassificationEngineCardProps {
   run: ClassificationRunDto | null;
@@ -77,8 +82,8 @@ export function ClassificationEngineCard({
       aria-labelledby="class-engine-title"
     >
       {/* Header with Run Title & Status */}
-      <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-3">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2.5 mb-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           <div className="w-6 h-6 rounded bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-600">
             <FlaskConical aria-hidden="true" className="w-3.5 h-3.5" />
           </div>
@@ -136,11 +141,11 @@ export function ClassificationEngineCard({
               )}
             </div>
 
-            <div className="flex items-center justify-between my-1">
-              <span className="text-lg font-black text-slate-900 tracking-tight font-mono">
+            <div className="flex flex-wrap items-center justify-between gap-1 my-1">
+              <span className="min-w-0 text-lg font-black text-slate-900 tracking-tight font-mono break-all">
                 {tariffCode}
               </span>
-              {renderTariffAction?.(shownFraction, shownNico, tariffCode)}
+              {renderTariffAction?.(findSourceReferenceForCode(result, shownFraction, shownNico), tariffCode)}
               {isDetermined && (
                 <span className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0">
                   <Check aria-hidden="true" className="w-3.5 h-3.5 stroke-[3]" />

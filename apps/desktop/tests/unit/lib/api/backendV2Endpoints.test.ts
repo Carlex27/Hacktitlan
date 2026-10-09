@@ -5,7 +5,6 @@ import {
   getCertificateQualityReport,
   getClassificationCandidate,
   getExport,
-  getLigieEntries,
   getOcrModels,
   listDocumentReviews,
   reprocessCertificate,
@@ -220,36 +219,5 @@ describe("endpoints del backend (commit Merge PR #1)", () => {
     await expect(getOcrModels(client)).resolves.toEqual(models);
     await expect(runOcrSmokeCheck(client)).resolves.toEqual(smoke);
     expect(calls).toEqual(["GET /api/v1/ocr/models", "POST /api/v1/ocr/smoke-check"]);
-  });
-});
-
-describe("referencia LIGIE", () => {
-  it("consulta las entradas del código y conserva el meta del backend", async () => {
-    const meta = {
-      source: "LIGIE capítulo 72 (fuente proporcionada)",
-      catalog_sha256: "c5fa",
-      file_url: "/api/v1/rule-sources/ligie-72/file",
-      file_status: { available: true, code: null, message: null },
-      notice: "Fuente SIN VIGENCIA",
-    };
-    const entry = {
-      code: "7201.10.01-00",
-      kind: "nico",
-      description: "Fundición en bruto",
-      page: 12,
-      fraction: "7201.10.01",
-      nico: "00",
-      umt: "Kg",
-      import_tax: "Ex.",
-      export_tax: "Ex.",
-    };
-    const { client, calls } = createFakeBackend({
-      "GET /api/v1/rule-sources/ligie-72/entries/7201100100": () =>
-        Response.json({ data: [entry], meta, error: null }),
-    });
-    const result = await getLigieEntries(client, "7201100100");
-    expect(calls).toEqual(["GET /api/v1/rule-sources/ligie-72/entries/7201100100"]);
-    expect(result.entries[0]?.page).toBe(12);
-    expect(client.url(result.meta.file_url)).toBe("http://backend.test/api/v1/rule-sources/ligie-72/file");
   });
 });

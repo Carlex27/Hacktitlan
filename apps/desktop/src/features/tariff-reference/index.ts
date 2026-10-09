@@ -5,6 +5,4 @@ export type { TariffReferenceButtonProps } from "./components/TariffReferenceBut
 export { TariffReferenceViewer } from "./components/TariffReferenceViewer";
 export type { TariffReferenceViewerProps } from "./components/TariffReferenceViewer";
 export { useTariffReference } from "./hooks/useTariffReference";
-export type { TariffReference, TariffReferenceState } from "./hooks/useTariffReference";
-export { toLigieLookupCode } from "./model/ligieCode";
-export { isReferenceUnsupported } from "./model/referenceSupport";
+export type { OpenTariffReference, TariffReference } from "./hooks/useTariffReference";

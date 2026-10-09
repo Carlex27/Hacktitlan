@@ -74,9 +74,9 @@ export function ProductsList({ products, isLoading = false }: ProductsListProps)
               key={p.id}
               className="bg-slate-50/70 border border-slate-200 rounded p-2 text-xs flex items-center justify-between gap-2"
             >
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-slate-900 truncate">
+              <div className="min-w-0 flex-1">
+                <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                  <span className="min-w-0 max-w-full font-semibold text-slate-900 truncate">
                     {p.product_identifier ?? p.label_no ?? `Producto #${p.id}`}
                   </span>
                   {p.product_type && <Badge variant="outline">{p.product_type}</Badge>}

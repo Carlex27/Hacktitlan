@@ -26,7 +26,7 @@
 | | `selectClassificationCandidate` | `POST /classification-results/{id}/select` |
 | | `approveClassificationRun`, `rejectClassificationRun` | `POST /classification-runs/{id}/approve`, `/reject` |
 | Evidencia | `getEvidence` | `GET /evidence/{id}` |
-| Referencia LIGIE | `getLigieEntries` | `GET /rule-sources/ligie-72/entries/{code}` (página del NICO); PDF en `meta.file_url` |
+| Fuente normativa | `PdfViewer` (vía `getBlob`) | `GET /rule-sources/{source_hash}/file`; la página viene en la evidencia `rule_source` (`reference.file_url`, `reference.page_number`) |
 | Exportación | `createExport`, `getExport` | `POST /exports`, `GET /exports/{id}` |
 
 Las rutas relativas que devuelve el backend (`file_url`, `detail_url`) se

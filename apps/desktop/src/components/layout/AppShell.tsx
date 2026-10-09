@@ -99,7 +99,7 @@ export function AppShell({
         {/* Top Header */}
         <header className="h-12 bg-white border-b border-slate-200 px-4 flex items-center justify-between shrink-0 z-10">
           {/* Dynamic Breadcrumbs */}
-          <nav aria-label="Migas de pan" className="flex items-center gap-2 text-slate-500 text-[13px]">
+          <nav aria-label="Migas de pan" className="flex min-w-0 items-center gap-2 text-slate-500 text-[13px]">
             {canGoBack && (
               <button
                 type="button"
@@ -114,10 +114,10 @@ export function AppShell({
             {breadcrumbs.map((crumb, idx) => {
               const isLast = idx === breadcrumbs.length - 1;
               return (
-                <div key={crumb.label} className="flex items-center gap-2">
+                <div key={crumb.label} className="flex min-w-0 items-center gap-2">
                   {idx > 0 && <span className="text-slate-300">/</span>}
                   {isLast ? (
-                    <span className="font-semibold text-slate-800" aria-current="page">
+                    <span className="truncate font-semibold text-slate-800" aria-current="page">
                       {crumb.label}
                     </span>
                   ) : crumb.onClick ? (

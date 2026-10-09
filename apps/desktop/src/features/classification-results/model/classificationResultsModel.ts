@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import type { SourceReference } from "./sourceReference";
+
 import type {
   ClassificationOutcomeDto,
   ClassificationResultDto,
@@ -82,9 +84,8 @@ export function findActiveResult(
   return results[0] ?? null;
 }
 
-/** Slot para una acción junto a un código arancelario mostrado. */
+/** Slot para una acción junto a un código mostrado (p. ej. abrir su página en la LIGIE). */
 export type TariffActionRenderer = (
-  fraction: string | null,
-  nico: string | null,
+  reference: SourceReference | null,
   displayCode: string,
 ) => ReactNode;
