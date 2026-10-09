@@ -8,11 +8,13 @@ import { partitionPdfFiles } from "../model/partitionPdfFiles";
 
 export interface CertificateDropzoneProps {
   disabled?: boolean;
+  errorId?: string;
   onFilesSelected(files: readonly File[]): void;
 }
 
 export function CertificateDropzone({
   disabled = false,
+  errorId: externalErrorId,
   onFilesSelected,
 }: CertificateDropzoneProps) {
   const inputId = useId();
@@ -76,11 +78,11 @@ export function CertificateDropzone({
           id={inputId}
           className="sr-only"
           type="file"
-          accept="application/pdf,.pdf"
+          accept=".pdf,.xlsx,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
           multiple
           disabled={disabled}
-          aria-describedby={hasError ? `${hintId} ${errorId}` : hintId}
-          aria-invalid={hasError || undefined}
+          aria-describedby={[hintId, hasError ? errorId : undefined, externalErrorId].filter(Boolean).join(" ")}
+          aria-invalid={hasError || !!externalErrorId || undefined}
           onChange={(event) => {
             handleFiles(Array.from(event.currentTarget.files ?? []));
             event.currentTarget.value = "";

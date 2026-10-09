@@ -140,7 +140,10 @@ class CertificatePersistenceService:
 
         for heat_no, entries in products_by_heat.items():
             compositions = [entry[1].get("composition_pct") or {} for entry in entries]
-            shared = bool(compositions) and all(value == compositions[0] for value in compositions[1:])
+            shared = heat_no != "UNKNOWN" and bool(compositions) and all(value == compositions[0] for value in compositions[1:])
+            # Spreadsheet cells belong to individual rows even when percentages match.
+            if any(item[1].get("source_format") == "xlsx" for item in entries):
+                shared = False
             if shared:
                 self._persist_composition(
                     session, certificate_id=certificate.id,
@@ -209,6 +212,8 @@ class CertificatePersistenceService:
                 )
             )
         for field_path, normalized_value, unit in self._additional_product_observations(product_data):
+            if field_path in observations:
+                continue
             session.add(
                 Observation(
                     certificate_id=certificate_id,

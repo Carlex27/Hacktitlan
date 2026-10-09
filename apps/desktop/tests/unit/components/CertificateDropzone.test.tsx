@@ -34,6 +34,20 @@ describe("CertificateDropzone", () => {
     render(<CertificateDropzone disabled onFilesSelected={vi.fn()} />);
     expect(screen.getByLabelText(/seleccionar certificados pdf/i)).toBeDisabled();
   });
+
+  it("asocia el error de subida sin reemplazar el mensaje de formato inválido", async () => {
+    const user = userEvent.setup({ applyAccept: false });
+    render(<>
+      <CertificateDropzone errorId="upload-error" onFilesSelected={vi.fn()} />
+      <p id="upload-error">No se pudo subir el archivo</p>
+    </>);
+    const input = screen.getByLabelText(/seleccionar certificados pdf/i);
+    expect(input).toHaveAttribute("aria-invalid", "true");
+    expect(input.getAttribute("aria-describedby")).toContain("upload-error");
+    await user.upload(input, new File([""], "foto.png", { type: "image/png" }));
+    expect(input.getAttribute("aria-describedby")).toContain("upload-error");
+    expect(input.getAttribute("aria-describedby")).toContain(screen.getByRole("alert").id);
+  });
 });
 
 describe("ProcessingStatusBadge", () => {

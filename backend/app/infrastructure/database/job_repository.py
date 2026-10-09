@@ -55,5 +55,5 @@ class JobRepository:
                 job.finished_at = datetime.now(timezone.utc)
             else:
                 job.status = ProcessingStatus.QUEUED.value
+                job.progress = 0
         return len(jobs)
-

@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import json
+from io import BytesIO
 from pathlib import Path
 from typing import Any
 
 import pytest
+from openpyxl import Workbook
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 
@@ -63,6 +65,53 @@ def upload(client: TestClient, content: bytes = b"%PDF-1.7\nfixture") -> dict[st
     )
     assert response.status_code == 202
     return response.json()["data"]
+
+
+@pytest.mark.parametrize("support_document", [False, True])
+def test_xlsx_upload_real_worker_provenance_and_download(processing_settings: Settings, support_document):
+    workbook = Workbook()
+    sheet = workbook.active
+    if support_document:
+        sheet.append(["SPEC", "Alloy or Non-Alloy", "Yield Point(N/mm2)"])
+        sheet.append(["SPCC", "non-alloy", "<355"])
+    else:
+        sheet.append(["MILL NO", "PRODUCTION NAME", "WIDTH", "THICK", "C", "Ti"])
+        sheet.append(["CERT-1", "HOT ROLLED STEEL SHEET IN COIL", 1000, 2, .05, .05])
+        sheet.append(["CERT-2", "HOT ROLLED STEEL SHEET IN COIL", 1000, 2, .05, .05])
+    output = BytesIO()
+    workbook.save(output)
+    content = output.getvalue()
+    sessions = create_session_factory(processing_settings)
+    storage = FileStorage(processing_settings.storage_root, processing_settings.max_pdf_bytes)
+    with TestClient(create_app(processing_settings)) as client:
+        response = client.post("/api/v1/documents", files={"file": ("mill.xlsx", content)})
+        assert response.status_code == 202
+        created = response.json()["data"]
+        assert Worker(processing_settings, sessions, storage).run_once()
+        job = client.get(f"/api/v1/jobs/{created['job_id']}").json()["data"]
+        assert job["status"] == "needs_review", job
+        certificate = client.get(f"/api/v1/certificates/{created['certificate_id']}").json()["data"]
+        assert certificate["approval_status"] == "needs_review"
+        detail = client.get(f"/api/v1/documents/{created['document_id']}/spreadsheet").json()["data"]
+        assert detail["sheets"][0]["rows"][1]["cells"]["A2"] == ("SPCC" if support_document else "CERT-1")
+        assert detail["formula_policy"] == "preserved_not_evaluated"
+        downloaded = client.get(detail["file_url"])
+        assert downloaded.content == content
+        assert "spreadsheetml.sheet" in downloaded.headers["content-type"]
+        assert client.post("/api/v1/documents", files={"file": ("renamed.xlsx", content)}).status_code == 200
+        if support_document:
+            assert certificate["products"] == []
+            assert detail["specification_records"][0]["yield_strength"]["normalized_value"]["operator"] == "<"
+        else:
+            assert len(certificate["products"]) == 2
+            chemistry = certificate["chemical_compositions"]
+            assert len(chemistry) == 4
+            assert all(item["product_id"] is not None for item in chemistry)
+            source_cells = {item["source_text"] for item in certificate["observations"] if item["field_path"] == "composition_pct.Ti"}
+            assert source_cells == {"'Sheet'!F2: 0.05", "'Sheet'!F3: 0.05"}
+        spec = client.get("/openapi.json").json()
+        assert "/api/v1/documents/{document_id}/spreadsheet" in spec["paths"]
+        assert "DocumentUploadEnvelope" in spec["components"]["schemas"]
 
 
 def test_upload_worker_and_persistence_complete_flow(processing_settings: Settings):

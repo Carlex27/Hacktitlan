@@ -74,7 +74,7 @@ class DocumentService:
         self.storage = storage
 
     def upload(self, session: Session, stream: BinaryIO, original_name: str) -> UploadResult:
-        artifact = self.storage.store_pdf(stream, original_name)
+        artifact = self.storage.store_document(stream, original_name)
         existing_file = session.scalar(select(StoredFile).where(StoredFile.sha256 == artifact.sha256))
         if existing_file is not None:
             document = session.scalar(

@@ -81,6 +81,7 @@ function AppContent() {
           />
         )}
       </ConnectionGate>
+
     </AppShell>
   );
 }

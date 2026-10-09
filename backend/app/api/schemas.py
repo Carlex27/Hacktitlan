@@ -4,6 +4,8 @@ from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from backend.app.domain.enums import ProcessingStatus
+
 
 class ActorReason(BaseModel):
     person_name: str = Field(min_length=2, max_length=200)
@@ -16,6 +18,64 @@ class ActorReason(BaseModel):
         if not value:
             raise ValueError("El valor no puede estar vacío")
         return value
+
+
+class DocumentUploadRead(BaseModel):
+    document_id: int
+    certificate_id: int
+    job_id: int | None
+    duplicate: bool
+
+
+class DocumentUploadEnvelope(BaseModel):
+    data: DocumentUploadRead
+    meta: dict[str, Any] = Field(default_factory=dict)
+    error: None = None
+
+
+class JobRead(BaseModel):
+    id: int
+    document_id: int | None
+    kind: str
+    status: ProcessingStatus
+    progress: int = Field(ge=0, le=100)
+    attempts: int
+    max_attempts: int
+    error_code: str | None
+    error_message: str | None
+    result: dict[str, Any] | None
+
+
+class JobEnvelope(BaseModel):
+    data: JobRead
+    meta: dict[str, Any] = Field(default_factory=dict)
+    error: None = None
+
+
+class SpreadsheetRowRead(BaseModel):
+    row: int
+    cells: dict[str, Any]
+
+
+class SpreadsheetSheetRead(BaseModel):
+    sheet: str
+    rows: list[SpreadsheetRowRead]
+
+
+class SpreadsheetRead(BaseModel):
+    document_id: int
+    processing_status: str
+    file_url: str
+    sheets: list[SpreadsheetSheetRead] = Field(default_factory=list)
+    specification_records: list[dict[str, Any]] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    formula_policy: Literal["preserved_not_evaluated"] = "preserved_not_evaluated"
+
+
+class SpreadsheetEnvelope(BaseModel):
+    data: SpreadsheetRead
+    meta: dict[str, Any] = Field(default_factory=dict)
+    error: None = None
 
 
 class CorrectionRequest(ActorReason):

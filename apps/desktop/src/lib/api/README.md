@@ -35,3 +35,8 @@ convierten en URL absolutas con `api.url(ruta)`.
 Al agregar un endpoint: DTO en `dto/<dominio>.ts`, función en
 `endpoints/<dominio>.ts`, exportarlos en sus `index.ts` y probar ruta, método y
 cuerpo en `tests/unit/lib/api/endpoints.test.ts`.
+
+`uploadDocument` usa el cliente `ApiClient`. La variante anterior que recibe
+una URL base se conserva como `uploadDocumentLegacy` para el importador anterior.
+El módulo `documentReviews.ts` permanece porque esos adaptadores todavía importan
+su función `request`; eliminarlo rompe la importación y el seguimiento de trabajos.

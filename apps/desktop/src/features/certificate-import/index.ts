@@ -1,5 +1,6 @@
 export { CertificateDropzone } from "./components/CertificateDropzone";
 export type { CertificateDropzoneProps } from "./components/CertificateDropzone";
+export { CertificateImporter } from "./components/CertificateImporter";
 export { ImportQueue } from "./components/ImportQueue";
 export type { ImportQueueProps } from "./components/ImportQueue";
 export { ImportQueueItem } from "./components/ImportQueueItem";

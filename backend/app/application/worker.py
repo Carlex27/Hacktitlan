@@ -95,6 +95,7 @@ class Worker:
                         else None
                     )
                     if job.status == ProcessingStatus.QUEUED.value:
+                        job.progress = 0
                         job.worker_id = None
                         job.heartbeat_at = None
                     if job.kind == JobKind.EXTRACT_DOCUMENT.value and job.document_id is not None:
@@ -142,21 +143,23 @@ class Worker:
             with self.sessions.begin() as s:
                 j = s.get(Job, job_id)
                 if j and j.status == "running":
-                    j.progress = progress_pct
+                    j.progress = max(j.progress, progress_pct)
 
         def is_cancelled() -> bool:
             with self.sessions() as s:
                 j = s.get(Job, job_id)
                 return bool(j and j.status == "cancelled")
 
+        page_progress(0, 1)
         with self._heartbeat(job_id):
             try:
+                analyze = getattr(self.extractor, "analyze_document", self.extractor.analyze_pdf)
                 try:
-                    result = self.extractor.analyze_pdf(
+                    result = analyze(
                         path, page_callback=page_progress, cancel_check=is_cancelled
                     )
                 except TypeError:
-                    result = self.extractor.analyze_pdf(path)
+                    result = analyze(path)
             except Exception as exc:
                 if exc.__class__.__name__ == "OcrCancellationRequested":
                     logger.info("job_cancelled_during_ocr", extra={"job_id": job_id})
@@ -173,6 +176,10 @@ class Worker:
             "unsupported": ProcessingStatus.NEEDS_REVIEW,
         }
         final_status = status_map[result["status"]]
+        with self.sessions.begin() as session:
+            job = session.get(Job, job_id)
+            if job is not None and job.status == ProcessingStatus.RUNNING.value:
+                job.progress = 95
         with self.sessions.begin() as session:
             job = session.get(Job, job_id)
             document = session.get(Document, document_id)

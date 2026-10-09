@@ -12,6 +12,7 @@ from backend.app.certificate_parser.detection import DocumentKind, detect_docume
 from backend.app.certificate_parser.format_profiles import evaluate_format_profiles
 from backend.app.certificate_parser.generic_extractor import GenericCertificateExtractor
 from backend.app.certificate_parser.mill_certificate import normalize_certificate
+from backend.app.certificate_parser.excel_certificate import extract_excel
 from backend.app.certificate_parser.semantics import (
     discover_field_candidates,
     discover_table_candidates,
@@ -46,6 +47,17 @@ class CertificateExtractionService:
         self.reader = reader
         self.adapters = adapters or default_adapter_registry()
         self.generic_extractor = generic_extractor or GenericCertificateExtractor()
+
+    def analyze_document(
+        self,
+        path: str | Path,
+        *,
+        page_callback: Callable[[int, int], None] | None = None,
+        cancel_check: Callable[[], bool] | None = None,
+    ) -> dict[str, Any]:
+        if Path(path).suffix.lower() == ".xlsx":
+            return extract_excel(Path(path), page_callback=page_callback, cancel_check=cancel_check)
+        return self.analyze_pdf(path, page_callback=page_callback, cancel_check=cancel_check)
 
     def analyze_pdf(
         self,

@@ -1,8 +1,13 @@
 # Aplicación de escritorio
 
-Frontend React 19 + TypeScript + Vite, UI con shadcn/ui (Radix, Tailwind v4) y
-shell Tauri 2. Las reglas obligatorias de componentes están en el `AGENTS.md` de
-la raíz.
+# Aplicación de escritorio
+
+Frontend React 19 + TypeScript + Vite, UI con shadcn/ui (Radix, Tailwind v4) y shell Tauri 2. Las reglas obligatorias de componentes están en el `AGENTS.md` de la raíz.
+
+La importación permite seleccionar PDF/XLSX y enviarlos mediante multipart a `/api/v1/documents`, usando el mismo `apiBaseUrl` configurado en `App`. Conserva los recibos de los archivos enviados si falla uno del lote; volver a enviar usa la deduplicación del backend. Cada recibo muestra una barra de progreso consultando su trabajo cada segundo. La subida y la espera de la primera respuesta usan una barra indeterminada. El porcentaje posterior pertenece al procesamiento, no a los bytes transferidos ni al tiempo restante. La consulta se detiene al terminar el trabajo; revisión, falta de OCR, fallo y cancelación se muestran explícitamente. Si falla la conexión, se puede reintentar la consulta sin volver a subir el archivo. Los datos se consultan actualizando la cola de revisión. No incluye todavía un visor de Excel.
+
+La revisión documental usa `DocumentReviewList` y la cola `/api/v1/document-reviews`.
+`App` acepta `apiBaseUrl` para configurar el host del backend; por defecto usa el origen del navegador y requiere proxy `/api/v1`. Para conexión directa pasar `http://100.74.94.9:8765` desde el punto de entrada del frontend y configurar CORS para el origen autorizado. La lista permite actualizar estados y bloquea el botón mientras exista un trabajo activo o una solicitud de reprocesamiento pendiente.
 
 ## Requisitos
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from contextlib import ExitStack
 import gc
 from html.parser import HTMLParser
 import logging
@@ -123,7 +124,8 @@ class PaddleStructureReader:
             raise OcrCancellationRequested("Procesamiento OCR cancelado antes de iniciar inferencia")
 
         try:
-            results = self._predict(path, runtime.selected_device, cancel_check=cancel_check)
+            results = self._predict(path, runtime.selected_device, cancel_check=cancel_check,
+                                    page_callback=page_callback, total_pages=len(original.pages))
         except Exception as exc:
             if isinstance(exc, OcrCancellationRequested):
                 raise
@@ -136,12 +138,12 @@ class PaddleStructureReader:
                 selected_device="cpu",
                 message=f"GPU falló ({type(exc).__name__}); se utilizó CPU",
             )
-            results = self._predict(path, "cpu", cancel_check=cancel_check)
+            results = self._predict(path, "cpu", cancel_check=cancel_check,
+                                    page_callback=page_callback, total_pages=len(original.pages))
 
         ocr_pages = self._convert_results(
             results,
             original.pages,
-            page_callback=page_callback,
             cancel_check=cancel_check,
         )
         pages = tuple(
@@ -183,41 +185,49 @@ class PaddleStructureReader:
         path: str | Path,
         device: str,
         cancel_check: Callable[[], bool] | None = None,
+        page_callback: Callable[[int, int], None] | None = None,
+        total_pages: int = 0,
     ) -> list[Any]:
         if cancel_check and cancel_check():
             raise OcrCancellationRequested("Procesamiento OCR cancelado por solicitud del usuario")
         pipeline = self._get_pipeline(device)
         input_path = Path(path)
-        if input_path.is_file() and input_path.suffix.lower() == ".pdf":
-            import numpy as np
-            import pdfplumber
-            from paddlex.inference.pipelines.components import rotate_image
+        results = []
+        with ExitStack() as stack:
+            pdf = None
+            if input_path.is_file() and input_path.suffix.lower() == ".pdf":
+                import numpy as np
+                import pdfplumber
+                from paddlex.inference.pipelines.components import rotate_image
 
-            results = list(pipeline.predict(
+                pdf = stack.enter_context(pdfplumber.open(input_path))
+            predictions = iter(pipeline.predict(
                 input=str(input_path), use_doc_orientation_classify=True,
                 use_textline_orientation=False, use_doc_unwarping=False,
                 use_table_recognition=True,
             ))
-            with pdfplumber.open(input_path) as pdf:
-                for page_index, result in enumerate(results):
-                    if cancel_check and cancel_check():
-                        raise OcrCancellationRequested("Procesamiento OCR cancelado entre páginas")
+            close = getattr(predictions, "close", None)
+            if callable(close):
+                stack.callback(close)
+            while True:
+                if cancel_check and cancel_check():
+                    raise OcrCancellationRequested("Procesamiento OCR cancelado entre páginas")
+                try:
+                    result = next(predictions)
+                except StopIteration:
+                    break
+                page_index = len(results)
+                if pdf is not None:
                     page = pdf.pages[page_index]
                     resolution = min(300, self.settings.ocr_max_page_dimension * 72 / max(page.width, page.height))
                     cell_image = np.array(page.to_image(resolution=resolution).original.convert("RGB"))[:, :, ::-1]
                     result["page_index"] = page_index
                     angle = result["doc_preprocessor_res"].get("angle", 0)
                     result["cell_image"] = rotate_image(cell_image, angle if angle >= 0 else 0)
-            return results
-        return list(
-            pipeline.predict(
-                input=str(Path(path)),
-                use_doc_orientation_classify=True,
-                use_textline_orientation=False,
-                use_doc_unwarping=False,
-                use_table_recognition=True,
-            )
-        )
+                results.append(result)
+                if page_callback:
+                    page_callback(page_index + 1, total_pages)
+        return results
 
     def release(self) -> None:
         self._pipeline = None
