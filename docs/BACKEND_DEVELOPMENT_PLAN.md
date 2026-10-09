@@ -2,6 +2,13 @@
 
 ## Resumen
 
+La revisión de reglas del 8 de octubre de 2026 está documentada en
+[`audit/CLASSIFICATION_SOURCE_REVIEW.md`](audit/CLASSIFICATION_SOURCE_REVIEW.md).
+Antes de declarar cobertura completa deben resolverse las brechas de vigencia,
+definiciones de aceros especiales, calificadores NICO y captura auditada de los
+hechos faltantes. La disponibilidad de una ruta ejecutable no certifica la
+clasificación jurídica de todos sus NICO.
+
 El backend será una API FastAPI central conectada a PostgreSQL 18. Administrará
 los PDF originales, el procesamiento en segundo plano, el historial, las
 correcciones, la aprobación, la clasificación, las exportaciones y los respaldos.
@@ -80,6 +87,13 @@ reemplazar la normalización determinista existente.
 
 ### 5. Clasificación, reportes y respaldo
 
+La ejecución del Hito 7 está registrada en
+[`audit/HITO_7_RESPALDO_VOLUMEN_RENDIMIENTO.md`](audit/HITO_7_RESPALDO_VOLUMEN_RENDIMIENTO.md).
+El respaldo usa un snapshot PostgreSQL compartido entre conteos y `pg_dump`,
+valida el ZIP antes de publicarlo y conserva un primario verificable si falla
+la segunda copia. La restauración local exige base y carpetas vacías. El volumen
+de cinco años ya se midió en desarrollo; la aceptación del servidor sigue pendiente.
+
 - Reglas versionadas exclusivamente desde el PDF proporcionado.
 - Resultados y reportes con la marca
   `DEMOSTRACIÓN — SIN VALIDEZ ADUANERA`.
@@ -135,4 +149,3 @@ reemplazar la normalización determinista existente.
 - Respaldo 7 diarios, 4 semanales y 12 mensuales con segunda copia configurable.
 - Este archivo fue creado antes del primer cambio de implementación y conserva
   el plan aprobado completo.
-

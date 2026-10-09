@@ -66,7 +66,7 @@ clasificación o aprobación humana.
 | Calidad y revisión documental | Pendiente |
 | Cobertura final del motor | Pendiente |
 | Consultas, reportes y auditoría | Pendiente |
-| Respaldo, volumen y rendimiento | Pendiente |
+| Respaldo, volumen y rendimiento | En validación del servidor |
 | Seguridad y Tailscale | Pendiente |
 | Empaquetado Windows | Pendiente |
 | Aceptación del backend v1 | Pendiente |
@@ -293,7 +293,7 @@ tiene regla ejecutable o un bloqueo documentado y visible para revisión.
 
 ## 9. Consultas, reportes y auditoría final (Completado)
 
-*(Completado y verificado con 9 pruebas unitarias e integración en `test_reporting_and_audit.py`; auditoría de código en `docs/audit/HITO_6_CONSULTAS_REPORTES_AUDITORIA.md`)*
+*(Revisado y corregido con 27 casos unitarios e integración en `test_reporting_and_audit.py`; hallazgos, límites y resultado global en `docs/audit/HITO_6_CONSULTAS_REPORTES_AUDITORIA.md`)*
 
 ### Trabajo
 
@@ -316,6 +316,20 @@ Un auditor puede partir de un reporte, llegar al producto, reconstruir su
 selección y localizar la evidencia original sin consultar tablas manualmente.
 
 ## 10. Respaldo, volumen y rendimiento
+
+**Estado: implementado y medido en desarrollo; aceptación del servidor pendiente.**
+El 8 de octubre de 2026 se sembraron 18,250 actas y 273,750 coladas en PostgreSQL
+desechable. Se verificaron respaldo/restauración completos, retención, segunda
+copia, carga diaria, ráfagas y respuesta de la API durante exportaciones.
+Los resultados y límites figuran en
+[`audit/HITO_7_RESPALDO_VOLUMEN_RENDIMIENTO.md`](audit/HITO_7_RESPALDO_VOLUMEN_RENDIMIENTO.md)
+y [`audit/HITO_7_MEDICIONES.json`](audit/HITO_7_MEDICIONES.json).
+
+Faltan los tiempos acordados, la repetición en el servidor objetivo, OCR con PDF
+escaneado real y el arranque de Windows después de omitir las 02:00. El contrato
+`StartWhenAvailable` y la recuperación de períodos semanales/mensuales se prueban,
+pero no sustituyen ese arranque real. Conforme a la sección 15, el hito no se
+marca completado mientras falten esas verificaciones.
 
 ### Trabajo
 

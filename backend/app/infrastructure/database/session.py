@@ -38,8 +38,13 @@ def create_database_engine(settings: Settings, *, echo: bool = False) -> Engine:
 
         @event.listens_for(engine, "connect")
         def set_statement_timeout(dbapi_connection, _connection_record) -> None:
-            with dbapi_connection.cursor() as cursor:
-                cursor.execute(f"SET statement_timeout = {int(timeout)}")
+            autocommit = dbapi_connection.autocommit
+            try:
+                dbapi_connection.autocommit = True
+                with dbapi_connection.cursor() as cursor:
+                    cursor.execute(f"SET statement_timeout = {int(timeout)}")
+            finally:
+                dbapi_connection.autocommit = autocommit
     return engine
 
 
@@ -63,4 +68,3 @@ def session_scope(factory: sessionmaker[Session]) -> Iterator[Session]:
         raise
     finally:
         session.close()
-

@@ -41,6 +41,29 @@ class ExcelExportService:
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
 
+    @staticmethod
+    def resolve_runs(
+        session: Session, certificate_ids: list[int],
+        classification_run_ids: list[int] | None, official: bool,
+    ) -> list[ClassificationRun]:
+        query = select(ClassificationRun).where(ClassificationRun.certificate_id.in_(certificate_ids))
+        if classification_run_ids is not None:
+            requested = set(classification_run_ids)
+            runs = list(session.scalars(query.where(ClassificationRun.id.in_(requested)).order_by(ClassificationRun.id)))
+            if len(runs) != len(requested):
+                raise ValueError("Una ejecución no pertenece al alcance seleccionado")
+        else:
+            latest: dict[int, ClassificationRun] = {}
+            for run in session.scalars(query.order_by(ClassificationRun.id.desc())):
+                latest.setdefault(run.certificate_id, run)
+            runs = list(latest.values())
+        if official:
+            if {run.certificate_id for run in runs} != set(certificate_ids):
+                raise ValueError("Un reporte oficial requiere una ejecución aprobada por cada acta")
+            if any(run.approval_status != "approved" for run in runs):
+                raise ValueError("Un reporte oficial sólo admite ejecuciones aprobadas")
+        return runs
+
     def export_certificates(
         self,
         session: Session,
@@ -87,7 +110,8 @@ class ExcelExportService:
         observation_query = select(Observation).where(Observation.certificate_id.in_(certificate_ids))
         if restrict_heats:
             observation_query = observation_query.where(
-                or_(Observation.heat_id.in_(selected_heat_ids), Observation.product_id.in_(product_ids))
+                or_(Observation.heat_id.in_(selected_heat_ids), Observation.product_id.in_(product_ids),
+                    (Observation.heat_id.is_(None) & Observation.product_id.is_(None)))
             )
         observations = session.scalars(observation_query.order_by(Observation.id)).all()
         obs_by_product: dict[int, int] = {}  # product_id -> row index in Evidencia sheet
@@ -100,33 +124,14 @@ class ExcelExportService:
                 .order_by(ChemicalComposition.id)
             ).all()
 
-        runs_query = select(ClassificationRun).where(
-            ClassificationRun.certificate_id.in_(certificate_ids)
-        )
-        if classification_run_ids:
-            requested_run_ids = list(dict.fromkeys(classification_run_ids))
-            runs_query = runs_query.where(ClassificationRun.id.in_(requested_run_ids))
-            runs = session.scalars(runs_query.order_by(ClassificationRun.id)).all()
-            if len(runs) != len(requested_run_ids):
-                raise ValueError("Una ejecución no pertenece al alcance seleccionado")
-            if official and any(run.approval_status != "approved" for run in runs):
-                raise ValueError("Un reporte oficial sólo admite ejecuciones aprobadas")
-        else:
-            if official:
-                runs_query = runs_query.where(ClassificationRun.approval_status == "approved")
-            available_runs = session.scalars(
-                runs_query.order_by(ClassificationRun.certificate_id, ClassificationRun.id.desc())
-            ).all()
-            latest_by_certificate: dict[int, ClassificationRun] = {}
-            for run in available_runs:
-                latest_by_certificate.setdefault(run.certificate_id, run)
-            runs = list(latest_by_certificate.values())
-            if official and not runs:
-                raise ValueError("Un reporte oficial requiere al menos una ejecución de clasificación aprobada")
+        runs = self.resolve_runs(session, certificate_ids, classification_run_ids, official)
 
         run_ids = [item.id for item in runs]
         results = session.scalars(
-            select(ClassificationResult).where(ClassificationResult.classification_run_id.in_(run_ids)).order_by(ClassificationResult.id)
+            select(ClassificationResult).where(
+                ClassificationResult.classification_run_id.in_(run_ids),
+                ClassificationResult.product_id.in_(product_ids),
+            ).order_by(ClassificationResult.id)
         ).all() if run_ids else []
         result_ids = [item.id for item in results]
 
@@ -155,16 +160,19 @@ class ExcelExportService:
             .where(EvidenceLink.candidate_factor_id.in_(factor_ids))
             .order_by(EvidenceLink.candidate_factor_id, EvidenceLink.id)
         ).all() if factor_ids else []
-        rule_by_observation: dict[int, str] = {}
+        rule_by_observation: dict[int, list[str]] = {}
         factor_by_id = {f.id: f for f in factors}
         for link in factor_links:
             if link.observation_id and link.candidate_factor_id in factor_by_id:
-                rule_by_observation[link.observation_id] = factor_by_id[link.candidate_factor_id].rule_code
+                codes = rule_by_observation.setdefault(link.observation_id, [])
+                code = factor_by_id[link.candidate_factor_id].rule_code
+                if code not in codes:
+                    codes.append(code)
 
         selections = session.scalars(
             select(ClassificationSelection)
             .where(ClassificationSelection.classification_result_id.in_(result_ids))
-            .order_by(ClassificationSelection.classification_result_id, ClassificationSelection.id)
+            .order_by(ClassificationSelection.classification_result_id, ClassificationSelection.created_at, ClassificationSelection.id)
         ).all() if result_ids else []
         selections_by_result: dict[int, list[ClassificationSelection]] = {}
         active_selection_by_result: dict[int, ClassificationSelection] = {}
@@ -182,15 +190,16 @@ class ExcelExportService:
         approval_events = session.scalars(
             select(ApprovalEvent)
             .where(ApprovalEvent.classification_run_id.in_(run_ids))
-            .order_by(ApprovalEvent.id)
+            .order_by(ApprovalEvent.created_at, ApprovalEvent.id)
         ).all() if run_ids else []
 
         makers = {item.id: item for item in session.scalars(select(Manufacturer)).all()}
         rules = {item.id: item for item in session.scalars(select(RuleSet)).all()}
         products_by_id = {p.id: p for p in products}
-        corrections = session.scalars(
-            select(Correction).where(Correction.certificate_id.in_(certificate_ids)).order_by(Correction.id)
-        ).all()
+        corrections_query = select(Correction).where(Correction.certificate_id.in_(certificate_ids))
+        if restrict_heats:
+            corrections_query = corrections_query.where(Correction.replacement_observation_id.in_([o.id for o in observations]))
+        corrections = session.scalars(corrections_query.order_by(Correction.id)).all()
 
         workbook = Workbook()
         workbook.remove(workbook.active)
@@ -254,7 +263,7 @@ class ExcelExportService:
         for row_idx, o in enumerate(observations, start=4):
             if o.product_id and o.product_id not in obs_by_product:
                 obs_by_product[o.product_id] = row_idx
-            regla_asociada = rule_by_observation.get(o.id, "")
+            regla_asociada = "; ".join(rule_by_observation.get(o.id, []))
             evidencia_rows.append([
                 o.id, o.certificate_id, o.heat_id, o.product_id, o.field_path,
                 str(o.raw_value_json) if o.raw_value_json is not None else None,
@@ -275,10 +284,7 @@ class ExcelExportService:
             res_cands = candidates_by_result.get(r.id, [])
             cands_by_rank = {c.rank: c for c in res_cands}
 
-            # Candidate 1, 2, 3
-            cand1_code = f"{cands_by_rank[1].fraction}-{cands_by_rank[1].nico}" if 1 in cands_by_rank else None
-            cand2_code = f"{cands_by_rank[2].fraction}-{cands_by_rank[2].nico}" if 2 in cands_by_rank else "—"
-            cand3_code = f"{cands_by_rank[3].fraction}-{cands_by_rank[3].nico}" if 3 in cands_by_rank else "—"
+            # Candidate 1, 2, 3 are ordered by rank in res_cands.
 
             # Selection resolution
             active_sel = active_selection_by_result.get(r.id)
@@ -291,7 +297,9 @@ class ExcelExportService:
             elif r.outcome == "classified" and r.fraction and r.nico:
                 chosen_code = f"{r.fraction}-{r.nico}"
                 chosen_by = "Motor determinista"
-                chosen_reason = "Resolución unívoca aprobada"
+                chosen_reason = ("Resolución unívoca aprobada"
+                                 if run_by_id[r.classification_run_id].approval_status == "approved"
+                                 else "Resolución unívoca pendiente de aprobación")
                 chosen_date = r.created_at.isoformat()
             else:
                 chosen_code = "Pendiente de selección"
@@ -307,19 +315,27 @@ class ExcelExportService:
             prod = products_by_id.get(r.product_id)
             prod_ident = prod.product_identifier if prod else str(r.product_id)
 
+            alternatives = [c for c in res_cands if c.id != active_cand_id]
+            cand2_code = f"{alternatives[0].fraction}-{alternatives[0].nico}" if alternatives else "—"
+            cand3_code = f"{alternatives[1].fraction}-{alternatives[1].nico}" if len(alternatives) > 1 else "—"
+            target_ev_row = obs_by_product.get(r.product_id)
+            if target_ev_row is None:
+                target_ev_row = next((i for i, o in enumerate(observations, start=4)
+                                      if prod and o.product_id is None
+                                      and o.heat_id == prod.heat_id and o.heat_id is not None), None)
             clasificacion_rows.append([
                 r.id, r.classification_run_id, r.product_id, prod_ident,
                 chosen_code, cand2_code, cand3_code,
                 chosen_by, chosen_reason, chosen_date,
-                factores_str, "Ver evidencia",
+                factores_str, "Ver evidencia" if target_ev_row is not None else "Sin evidencia",
                 r.outcome,
                 ", ".join(r.details_json.get("missing_fields") or []) or "Ninguno",
                 run_by_id[r.classification_run_id].approval_status,
                 rules.get(run_by_id[r.classification_run_id].rule_set_id).version if run_by_id[r.classification_run_id].rule_set_id in rules else "—",
             ])
 
-            target_ev_row = obs_by_product.get(r.product_id, 4)
-            evidence_link_cells.append((result_idx, target_ev_row))
+            if target_ev_row is not None:
+                evidence_link_cells.append((result_idx, target_ev_row))
 
         self._write_sheet(workbook["Clasificación"],
             ["result_id", "run_id", "product_id", "rollo_identificador", "candidato_elegido", "alternativa_2", "alternativa_3",
@@ -353,6 +369,7 @@ class ExcelExportService:
             ])
 
         # Approval events timeline
+        latest_approval = {event.classification_run_id: event.id for event in approval_events}
         for app in approval_events:
             auditoria_rows.append([
                 "APROBACION_ESTADO", app.id,
@@ -360,16 +377,18 @@ class ExcelExportService:
                 app.classification_run_id, None,
                 f"Cambio de estado: {app.from_status} -> {app.to_status}",
                 app.person_name, app.reason, app.workstation_name, app.created_at.isoformat(),
-                "Vigente",
+                "Vigente" if latest_approval[app.classification_run_id] == app.id else "Reemplazada",
             ])
 
         # Corrections timeline
+        observations_by_id = {o.id: o for o in observations}
         for cor in corrections:
+            replacement = observations_by_id.get(cor.replacement_observation_id)
             auditoria_rows.append([
                 "CORRECCION_DATO", cor.id, cor.certificate_id, None, None,
                 f"Corrección obs {cor.previous_observation_id} -> {cor.replacement_observation_id}",
                 cor.person_name, cor.reason, cor.workstation_name, cor.created_at.isoformat(),
-                "Vigente",
+                "Vigente" if replacement and replacement.is_current else "Reemplazada",
             ])
 
         auditoria_rows.sort(key=lambda item: str(item[9]))
@@ -389,7 +408,7 @@ class ExcelExportService:
         sheet["A1"].font = Font(bold=True, color="9C0006")
         sheet.append([])
         sheet.append(headers)
-        for row in rows:
+        for row_index, row in enumerate(rows, start=4):
             clean_row = [
                 cell_val.astimezone(timezone.utc).replace(tzinfo=None)
                 if isinstance(cell_val, datetime) and cell_val.tzinfo is not None
@@ -397,6 +416,10 @@ class ExcelExportService:
                 for cell_val in row
             ]
             sheet.append(clean_row)
+            # External text must remain text, even when Excel recognizes a formula.
+            for column_index, value in enumerate(clean_row, start=1):
+                if isinstance(value, str):
+                    sheet.cell(row_index, column_index).data_type = "s"
         for cell in sheet[3]:
             cell.fill = PatternFill("solid", fgColor="1F4E78")
             cell.font = Font(color="FFFFFF", bold=True)

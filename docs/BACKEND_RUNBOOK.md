@@ -27,6 +27,29 @@ Aplicar la regla como administrador con
 
 ## Validación
 
+El PDF normativo proporcionado está incluido en
+`data/ligie/chapter-72/source-provided/LIGIE-UNIFICADA-ACERO.pdf`.
+`GET /api/v1/rule-sources/{source_hash}/file` sirve únicamente esa fuente
+administrada. Su hash figura en `SOURCE.md`; una versión inexistente responde
+404 y una alteración del archivo responde 409 (`rule_source_integrity_error`).
+El cliente no envía rutas de archivos.
+
+`GET /api/v1/evidence/{evidence_link_id}` conserva dos variantes en OpenAPI:
+observación del acta y referencia normativa. Para la fuente normativa, las
+referencias nuevas incluyen `file_url`, `page_number`, `bbox`, `source_text`,
+`can_focus_region` y `fallback`. Los umbrales químicos apuntan a la página 7;
+los factores de fracción y NICO apuntan a sus entradas del catálogo. Si falta
+geometría, `fallback: full_page` exige mostrar la página completa.
+Los enlaces históricos no se reescriben: reclasificar genera referencias nuevas.
+Al empaquetar el backend deben incluirse el PDF y los JSON de esta carpeta.
+
+La captura auditada existente de observaciones permite `stainless_series` con
+`200`, `300`, `400` u `other`; `null` conserva un dato desconocido. No se acepta
+un grado como `304` en ese campo ni se infiere la serie desde porcentajes sin
+una regla respaldada. Informar solamente una cara del recubrimiento conserva
+`coating_both_sides` desconocido; una cara expresamente con 0 demuestra que no
+están recubiertas ambas.
+
 ```powershell
 uv run pytest
 uv run alembic current
@@ -50,13 +73,97 @@ Una exportación integral manual se genera con
 
 La restauración es deliberadamente local y manual. En una base vacía:
 
-1. Extraer el ZIP y comprobar los hashes de `manifest.json`.
-2. Ejecutar `pg_restore --list database.dump`.
-3. Restaurar con una cuenta administradora:
-   `pg_restore --clean --if-exists --no-owner --dbname hacktitlan database.dump`.
-4. Copiar `storage/` a la ruta configurada y validar `/health/ready`.
+1. Crear una base vacía y preparar los roles y permisos. Configurar
+   `HACKTITLAN_DATABASE_URL` para esa base, con el rol restaurador.
+2. Elegir carpetas vacías para almacenamiento y reglas. Ejecutar:
+
+   ```powershell
+   uv run python -m backend.app.operations.restore C:\respaldos\backup_manual.zip --storage-root C:\recuperacion\storage --rules-root C:\recuperacion\rules
+   ```
+
+3. Exigir `verified: true`: el comando verifica hashes antes de escribir, ejecuta
+   `pg_restore --single-transaction --no-owner --no-privileges` y compara conteos
+   y archivos al terminar. No ejecutar migraciones antes de restaurar: la base
+   debe estar vacía. El respaldo ya incluye `alembic_version`.
+4. Aplicar permisos del rol de aplicación sobre tablas/secuencias restauradas,
+   configurar el servicio con la base y almacenamiento recuperados, ubicar las
+   reglas bajo las rutas del proyecto y validar `/api/v1/health/ready`.
+
+Sólo restaurar ZIP de origen confiable: `pg_restore` ejecuta los objetos SQL del
+respaldo. Los archivos se copian antes de restaurar la base. Si PostgreSQL falla,
+su transacción revierte; las carpetas copiadas permanecen para diagnóstico y el
+siguiente intento necesita destinos vacíos. El comando requiere el manifiesto
+con conteos generado por el Hito 7; los ZIP anteriores requieren el procedimiento
+manual de verificación de hashes y `pg_restore`.
+
+Si la segunda copia falla, el registro queda `failed`, conserva ruta/hash/manifiesto
+del primario y el comando devuelve error. Después de recuperar la unidad o el
+espacio, reintentar sin generar otro dump:
+
+```powershell
+uv run python -m backend.app.operations.backup --retry-secondary C:\respaldos\backup_daily.zip
+```
+
+La copia se publica atómicamente tras verificar su hash; el registro vuelve a
+`verified`. Almacenamiento, primario y secundario deben usar carpetas independientes,
+sin anidarse. Configurar el secundario en otra unidad para tolerar la pérdida del
+disco primario; las pruebas de desarrollo usan carpetas del mismo disco.
+
+La programación usa la hora local de Windows. Si falta respaldo de la semana ISO
+o del mes actual, lo genera en la siguiente ejecución disponible, aunque Windows
+haya estado apagado el lunes o el día primero. No reconstruye períodos pasados.
+El script propaga el código de salida de Python al Programador de tareas.
 
 No existe endpoint remoto de restauración.
+
+## Medición de volumen del Hito 7
+
+Configurar `HACKTITLAN_TEST_DATABASE_URL` para `hacktitlan_test`, con permisos de
+crear/eliminar bases desechables. No usar credenciales de producción. PostgreSQL
+18, `pg_dump`, `pg_restore` y `uv` deben estar disponibles en `PATH`.
+
+```powershell
+uv run python -m backend.app.operations.capacity --output tmp/hito7/capacity.json
+uv run python -m backend.app.operations.capacity --ocr-pdf C:\corpus\acta-escaneada.pdf --output tmp/hito7/capacity-ocr.json
+```
+
+La herramienta crea bases aleatorias `hacktitlan_hito7_*`, aplica migraciones,
+siembra 18,250 actas y 273,750 coladas/rollos, captura planes SQL, mide consultas,
+exportaciones y un worker separado, respalda y restaura, compara conteos/hashes
+y elimina únicamente las bases que acaba de crear. Conserva el JSON y los archivos
+de evidencia bajo `tmp/hito7`. `--certificates 55 --samples 1` permite verificar
+el recorrido sin repetir la medición completa.
+
+La carga diaria de diez documentos y la ráfaga de treinta usan una extracción
+normalizada controlada. No son mediciones OCR. El dataset histórico comparte un
+PDF pequeño, un elemento químico y un candidato por rollo; no representa el consumo
+de disco de cinco años de PDF reales. La API se mide mediante TestClient, sin TCP
+ni Tailscale. CPU/RAM/E/S corresponden al proceso worker; no son el consumo total
+de PostgreSQL ni del servidor. Para OCR, suministrar un PDF escaneado legible y
+el runtime/modelos instalados. El JSON conserva pendientes los objetivos de
+latencia y la aceptación del servidor; no inventa límites ni aprobación.
+
+## Consultas y reportes del Hito 6
+
+Consultar los contratos vigentes en `/openapi.json` o `/docs`.
+`GET /api/v1/certificates` valida `processing_status` con los estados declarados
+en OpenAPI. Un rango de fechas invertido devuelve HTTP 400 con
+`invalid_date_range`; un cursor inválido devuelve `invalid_cursor`.
+La paginación keyset conserva el orden de los registros originales bajo
+inserciones, pero no crea una instantánea ni cubre cambios de la fecha de ordenación.
+
+`POST /api/v1/exports` exige IDs positivos. Para `official=true`, cada acta debe
+estar aprobada y tener una ejecución elegida aprobada. Sin IDs explícitos se
+elige la última ejecución de cada acta; una última ejecución pendiente bloquea
+el reporte aunque exista una anterior aprobada. La aprobación incompleta produce
+HTTP 409 con `official_export_requires_approval` antes de crear el trabajo.
+Los IDs resueltos se guardan en el alcance y el worker vuelve a validar su
+aprobación al generar el libro. Los filtros guardados son metadatos de auditoría;
+el alcance efectivo procede de los IDs seleccionados.
+
+Los reportes por coladas incluyen sólo sus rollos, resultados y correcciones,
+además de la evidencia general del acta. Texto externo permanece como texto,
+sin ejecutarse como fórmula. La ausencia de evidencia se muestra sin hipervínculo.
 # Reprocesamiento sin duplicados
 
 `GET /api/v1/document-reviews` devuelve únicamente la última revisión de cada

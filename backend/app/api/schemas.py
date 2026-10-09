@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -25,9 +25,9 @@ class CorrectionRequest(ActorReason):
 
 
 class ExportRequest(BaseModel):
-    certificate_ids: list[int] = Field(default_factory=list, max_length=20_000)
-    heat_ids: list[int] = Field(default_factory=list, max_length=20_000)
-    classification_run_ids: list[int] = Field(default_factory=list, max_length=20_000)
+    certificate_ids: list[Annotated[int, Field(ge=1)]] = Field(default_factory=list, max_length=20_000)
+    heat_ids: list[Annotated[int, Field(ge=1)]] = Field(default_factory=list, max_length=20_000)
+    classification_run_ids: list[Annotated[int, Field(ge=1)]] = Field(default_factory=list, max_length=20_000)
     filters: dict[str, Any] = Field(default_factory=dict)
     official: bool = False
     person_name: str = Field(min_length=2, max_length=200)
@@ -91,6 +91,43 @@ class FactorEvidenceLink(BaseModel):
     observation_id: int | None = None
     reference: dict[str, Any] = Field(default_factory=dict)
     detail_url: str
+
+
+class RuleSourceReference(BaseModel):
+    source_hash: str
+    legal_status: str
+    file_url: str
+    page_number: int | None = None
+    bbox: dict[str, float] | None = None
+    source_text: str | None = None
+    can_focus_region: bool
+    fallback: str | None = None
+    model_config = {"extra": "allow"}
+
+
+class RuleSourceEvidenceRead(BaseModel):
+    id: int
+    decision_step_id: int | None = None
+    candidate_factor_id: int | None = None
+    source_type: Literal["rule_source"]
+    reference: RuleSourceReference | dict[str, Any]
+
+
+class ObservationEvidenceRead(BaseModel):
+    id: int
+    decision_step_id: int | None = None
+    candidate_factor_id: int | None = None
+    source_type: Literal["observation"]
+    field_path: str | None = None
+    observation: dict[str, Any]
+    document: dict[str, Any]
+    focus: dict[str, Any]
+
+
+class EvidenceEnvelope(BaseModel):
+    data: RuleSourceEvidenceRead | ObservationEvidenceRead
+    meta: dict[str, Any] = Field(default_factory=dict)
+    error: ErrorDetail | None = None
 
 
 class CandidateFactorRead(BaseModel):
@@ -234,5 +271,3 @@ class ReprocessEnvelope(BaseModel):
     data: ReprocessRead
     meta: dict[str, Any] = Field(default_factory=dict)
     error: ErrorDetail | None = None
-
-

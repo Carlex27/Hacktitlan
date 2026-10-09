@@ -8,7 +8,7 @@ import base64
 import json
 from typing import BinaryIO
 
-from sqlalchemy import Date, cast, func, or_, select, tuple_
+from sqlalchemy import Date, cast, func, select, tuple_
 from sqlalchemy.orm import Session
 
 from backend.app.config import Settings
@@ -44,8 +44,12 @@ def encode_cursor(sort_date: date, identifier: int) -> str:
 def decode_cursor(value: str) -> tuple[date, int]:
     try:
         padded = value + "=" * (-len(value) % 4)
-        decoded = json.loads(base64.urlsafe_b64decode(padded).decode())
-        return date.fromisoformat(decoded[0]), int(decoded[1])
+        decoded = json.loads(base64.b64decode(padded, altchars=b"-_", validate=True).decode())
+        if (not isinstance(decoded, list) or len(decoded) != 2
+                or not isinstance(decoded[0], str)
+                or type(decoded[1]) is not int or not 0 < decoded[1] <= 2**63 - 1):
+            raise ValueError("Invalid cursor payload")
+        return date.fromisoformat(decoded[0]), decoded[1]
     except Exception as exc:
         raise ApplicationError("invalid_cursor", "El cursor de paginación no es válido") from exc
 
@@ -154,6 +158,8 @@ class DocumentService:
                 date_from = date_from or p_from
             if p_to is not None:
                 date_to = date_to or p_to
+        if date_from and date_to and date_from > date_to:
+            raise ApplicationError("invalid_date_range", "La fecha inicial debe ser anterior o igual a la final")
 
         uploaded_date = cast(MillCertificate.uploaded_at, Date)
         sort_date = (
@@ -187,23 +193,18 @@ class DocumentService:
                     select(Product.certificate_id).where(Product.product_identifier.ilike(f"%{product_identifier}%"))
                 )
             )
-        if fraction:
-            clean_frac = fraction.replace(".", "").replace("-", "")
-            statement = statement.where(
-                MillCertificate.id.in_(
-                    select(ClassificationRun.certificate_id)
-                    .join(ClassificationResult, ClassificationResult.classification_run_id == ClassificationRun.id)
-                    .where(ClassificationResult.fraction.ilike(f"{clean_frac}%"))
-                )
+        if fraction or nico:
+            classifications = (
+                select(ClassificationRun.certificate_id)
+                .join(ClassificationResult, ClassificationResult.classification_run_id == ClassificationRun.id)
             )
-        if nico:
-            clean_nico = nico.strip()
+            if fraction:
+                clean_frac = fraction.replace(".", "").replace("-", "")
+                classifications = classifications.where(ClassificationResult.fraction.ilike(f"{clean_frac}%"))
+            if nico:
+                classifications = classifications.where(ClassificationResult.nico == nico.strip())
             statement = statement.where(
-                MillCertificate.id.in_(
-                    select(ClassificationRun.certificate_id)
-                    .join(ClassificationResult, ClassificationResult.classification_run_id == ClassificationRun.id)
-                    .where(ClassificationResult.nico == clean_nico)
-                )
+                MillCertificate.id.in_(classifications)
             )
         if date_from:
             statement = statement.where(sort_date >= date_from)
@@ -233,4 +234,3 @@ class DocumentService:
         if certificate is None:
             raise NotFoundError("Acta", certificate_id)
         return certificate
-

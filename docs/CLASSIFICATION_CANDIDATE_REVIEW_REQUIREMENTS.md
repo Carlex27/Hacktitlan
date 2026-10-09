@@ -141,6 +141,13 @@ accesible y conservar los estados `loading`, `empty`, `success`,
 
 ## Estado
 
+Actualización del 8 de octubre de 2026: la evidencia normativa de ejecuciones
+nuevas entrega URL administrada del PDF incluido, página y coordenadas de los
+umbrales de aleación. Los factores químicos apuntan a la nota correspondiente,
+no a la tabla del NICO. Las referencias históricas se conservan.
+La aprobación rechaza factores obligatorios cuyo resultado no sea `matched`,
+incluso si una selección humana ya fue registrada.
+
 Generación, persistencia, selección auditada, bloqueo de aprobación y enlace
 exacto paso–observación implementados. El backend ya entrega página, región y
 URL administrada para navegación. El componente visual del visor PDF permanece

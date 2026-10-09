@@ -247,7 +247,7 @@ class Worker:
                         session,
                         certificate_ids=certificate_ids,
                         heat_ids=heat_ids or None,
-                        classification_run_ids=classification_run_ids or None,
+                        classification_run_ids=classification_run_ids if "classification_run_ids" in export.scope_json else None,
                         destination=Path(temporary_path),
                         official=official,
                     )
