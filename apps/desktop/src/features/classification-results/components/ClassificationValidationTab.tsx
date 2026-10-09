@@ -52,6 +52,7 @@ export function ClassificationValidationTab({
     <>
       {resultId === undefined && results.length > 1 && (
         <ResultSelector
+          key={run?.id}
           products={products}
           results={results}
           activeResultId={activeResult?.id ?? null}

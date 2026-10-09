@@ -215,6 +215,7 @@ describe("endpoints del commit Backend", () => {
     const certificateData: CertificateDetailDto = {
       id: 21,
       document_id: 5,
+      source_file_name: "molino.xlsx",
       manufacturer: "MOLINO DE PRUEBA",
       certificate_no: "CERT-999",
       certificate_date: "2026-10-08",

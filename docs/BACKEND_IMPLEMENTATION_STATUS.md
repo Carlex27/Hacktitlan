@@ -27,6 +27,55 @@
 
 ## Implementado
 
+- Alternativas por laminación desconocida (9 de octubre de 2026): sólo si
+  frío y caliente resuelven cada uno una combinación fracción/NICO sin otras
+  condiciones pendientes ni contradicciones. Se conservan `rolling=null`,
+  estado `needs_review` y un factor explícito de confirmación del operador
+  por candidato. Los códigos iguales se deduplican. Selección auditada probada
+  mediante worker, PostgreSQL y API; no sustituye la laminación extraída.
+  La regla general conserva ese límite. Por instrucción posterior del usuario,
+  el zinc electrolítico admite sugerencias provisionales con química parcial,
+  compatibles con ambos escenarios de laminación y sin contradicciones conocidas.
+  Familia del acero y laminación permanecen pendientes y explícitas en los factores.
+  Acta 15 de Molino 4: nueva clasificación 15, conservando la 14; comprobados
+  en navegador los seis rollos con candidatos `72103002.01` y `72259101.00`.
+  No se seleccionó candidato ni se modificaron valores extraídos.
+
+- Diagnóstico del flujo activo de Molino 3 (9 de octubre de 2026): acta original
+  6, documento 6, extracción 6 y trabajo 9; PDF SHA-256
+  `7ebbf27942b5013b89b1f51decb2c220a80c09967a329827b95a2d3c828bfc9a`.
+  El worker que atendió esa importación arrancó el 8 de octubre a las 19:37,
+  antes de los cambios de OCR/refinamiento y metadatos. Se retiró manualmente
+  y quedó el worker actualizado iniciado el 9 de octubre a las 01:35.
+  La lectura real registró OCR antes/después del refinamiento: la lectura inicial
+  mezcla columnas y pierde repeticiones; la refinada recupera los 11 rollos.
+  Reprocesamiento por API: acta 9, revisión 2 de acta 6, documento 9,
+  extracción 8, trabajo 12, worker `CarlonsioZ-28872a61`, clasificación 5.
+  PostgreSQL y API conservan 12 elementos por rollo, C 0.35/0.33,
+  1.8 × 895 mm, producto declarado, SAE 1035 y grado 1035.
+  En navegador se abrieron los 11 detalles y los 11 selectores de candidatos:
+  tres candidatos por rollo, todos pendientes de revisión. La extracción original
+  permanece sin cambios. Evidencia local en `tmp/flow-audit/` (no versionada).
+  Regresiones con PDF real: Molino 1, acta 10/trabajo 13, seis rollos con
+  dimensiones y pesos iguales a la revisión anterior; Molino 2, acta 11/trabajo
+  14, un rollo de 1.71 × 1220 mm y cinco elementos iguales a la referencia OCR.
+  Ambos guardaron tres candidatos por rollo. Validación: 450 pruebas unitarias
+  backend, 13 de integración, compileall, typecheck y lint correctos.
+  Frontend: 176/177 pruebas correctas; fallo reproducible separado en
+  `tariffReferenceFlow.test.tsx` al buscar el botón «Ver evidencia».
+  No fue necesario agregar otra corrección al parser: el problema activo era
+  que el worker anterior seguía procesando con código antiguo.
+
+- Molino 3 (9 de octubre de 2026): refinamiento de celdas a 300 DPI con
+  eliminación de bordes y detección visual de comillas de repetición. Se separa
+  el nitrógeno químico de `N/mm²` y se reconoce la escala compartida de Cu/Ni/Cr.
+  Comprobado contra el PDF: 11 rollos, coladas `3VL99` y `1FN43`, 12 elementos
+  por rollo, C de 0.35/0.33, dimensiones 1.8 × 895 mm y norma SAE 1035.
+  El grado 1035 se extrae de esa designación y se guarda en la colada.
+  Regresión de extracción y flujo PostgreSQL/worker/API: tres candidatos por
+  rollo, sujetos a revisión por factores no declarados. Los registros previos
+  necesitan reprocesamiento con el worker actualizado.
+
 - Eliminación definitiva de actas para pruebas (9 de octubre de 2026):
   `DELETE /api/v1/certificates/{certificate_id}`, sin persona ni motivo,
   habilitado sólo en `development`/`test`. Elimina datos dependientes y
@@ -268,3 +317,7 @@ requisito de 8 GB de RAM; esa medición no condiciona la entrega a un límite fi
 - Captura manual mediante el endpoint de selección documentado en OpenAPI: formato de 8/2 dígitos, justificación, candidato conditional con `details.manual=true`, conservación de sugerencias y cadena de reemplazos. Migración 0007 amplía el rango para registros manuales; el motor sigue limitado a tres sugerencias. No verifica automáticamente vigencia normativa. Cambios manuales bloqueados sobre ejecuciones aprobadas.
 
 Por decisión del usuario, la selección auditada de fracción y NICO confirma la verificación humana de cada rollo. La aprobación del acta cierra la revisión completa; los datos faltantes y factores desconocidos del motor se preservan sin bloquear el cierre. Se mantienen bloqueos de contradicciones y cobertura incompleta.
+
+### Formato Calvert incorporado (2026-10-09)
+
+Por petición del usuario se añade el adaptador ArcelorMittal Calvert sobre el OCR existente. La carta complementaria conserva A1011 CS-B como evidencia y deja de crear un rollo ficticio A1011. Se validaron las cuatro páginas escaneadas, la extracción de un rollo con su colada, química en dos bandas y ensayos en otra página, y la persistencia mediante el worker/API en PostgreSQL de pruebas. La incorporación de este adaptador es una excepción solicitada al enfoque genérico descrito arriba; no modifica las reglas de clasificación. Los documentos previamente extraídos requieren reprocesamiento para actualizar sus datos.

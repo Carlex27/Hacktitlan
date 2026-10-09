@@ -47,6 +47,7 @@ export interface DocumentReviewIssueSummaryDto {
 
 /** Elemento de `GET /api/v1/document-reviews`. */
 export interface DocumentReviewQueueItemDto {
+  source_file_name: string | null;
   /** Revisión del acta; reprocesar desde extracción crea la siguiente. */
   revision_number: number;
   /** Trabajo de extracción en cola o en curso; mientras exista no se puede reprocesar. */

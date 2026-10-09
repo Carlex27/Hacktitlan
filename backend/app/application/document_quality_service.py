@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from typing import Any, Literal
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session, aliased
+from sqlalchemy.orm import Session, aliased, joinedload
 
 from backend.app.config import Settings, get_settings
 from backend.app.domain.document_quality import (
@@ -219,6 +219,7 @@ class DocumentQualityService:
         """Retrieve certificates in document review queue with summarized quality issues."""
         query = (
             select(MillCertificate, Document, Manufacturer)
+            .options(joinedload(Document.stored_file))
             .join(Document, MillCertificate.document_id == Document.id)
             .outerjoin(Manufacturer, MillCertificate.manufacturer_id == Manufacturer.id)
             .where(MillCertificate.approval_status != ApprovalStatus.APPROVED.value)
@@ -255,6 +256,7 @@ class DocumentQualityService:
             results.append({
                 "certificate_id": cert.id,
                 "document_id": doc.id,
+                "source_file_name": doc.stored_file.original_name,
                 "certificate_no": cert.certificate_no,
                 "manufacturer": mfr.name if mfr else None,
                 "uploaded_at": cert.uploaded_at.isoformat(),

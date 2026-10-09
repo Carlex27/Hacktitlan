@@ -24,11 +24,13 @@ function AppContent() {
   const [selectedCertificateId, setSelectedCertificateId] = useState<number | null>(null);
   const [selectedDocumentId, setSelectedDocumentId] = useState<number | null>(null);
   const [deleted, setDeleted] = useState(false);
+  const [sourceFileName, setSourceFileName] = useState<string | null>(null);
 
   const { items, addFiles, clearFinished, removeCertificate } = useCertificateImport();
 
   const handleReview = (certificateId: number, documentId?: number | null) => {
     setDeleted(false);
+    setSourceFileName(null);
     setSelectedCertificateId(certificateId);
     setSelectedDocumentId(documentId ?? null);
 
@@ -39,7 +41,7 @@ function AppContent() {
     ? [{ label: currentNav === "documents" ? es.nav.documents : es.nav.history }]
     : [{ label: currentNav === "documents" ? es.nav.documents : es.nav.history,
          onClick: () => { setSelectedCertificateId(null); setSelectedDocumentId(null); } },
-       { label: `${es.header.millCertificate} #${selectedCertificateId}` }], [currentNav, selectedCertificateId]);
+       { label: sourceFileName?.toLowerCase().endsWith(".xlsx") ? sourceFileName : `${es.header.millCertificate} #${selectedCertificateId}` }], [currentNav, selectedCertificateId, sourceFileName]);
 
   return (
     <AppShell
@@ -60,6 +62,7 @@ function AppContent() {
         {deleted && <p role="status" className="px-6 py-3 text-sm">{es.certificateDeletion.success}</p>}
         {selectedCertificateId !== null ? (
           <ValidationPage key={`${selectedCertificateId}:${items.find((item) => item.certificateId === selectedCertificateId)?.phase ?? "saved"}`} certificateId={selectedCertificateId} documentId={selectedDocumentId} onBack={backToList}
+            onSourceFileName={setSourceFileName}
             onDeleted={() => { removeCertificate(selectedCertificateId); setDeleted(true); backToList(); }} />
         ) : currentNav === "documents" ? (
           <DocumentsPage

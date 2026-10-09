@@ -37,7 +37,7 @@ export function SavedCertificates({ refreshKey, onReview }: SavedCertificatesPro
         </Empty> :
         <ul aria-label={text.title} className="divide-y divide-border">
           {state?.items.map((item) => <SavedCertificateItem key={item.id}
-            number={item.certificate_no ?? text.unnamed(item.id)} manufacturer={item.manufacturer}
+            number={item.source_file_name?.toLowerCase().endsWith(".xlsx") ? item.source_file_name : item.certificate_no ?? text.unnamed(item.id)} manufacturer={item.manufacturer}
             date={item.certificate_date} status={item.approval_status}
             onReview={() => onReview(item.id, item.document_id)} />)}
         </ul>}

@@ -21,6 +21,7 @@ function item(overrides: Partial<DocumentReviewQueueItemDto>): DocumentReviewQue
     can_reprocess: true,
     certificate_id: 42,
     document_id: 10,
+    source_file_name: null,
     certificate_no: "CM-42",
     manufacturer: "Fabricante Uno",
     uploaded_at: "2026-10-08T00:00:00+00:00",
@@ -53,7 +54,19 @@ function queue() {
 }
 
 describe("Revisión documental", () => {
-  it("permite volver a analizar sólo actas con errores y bloquea trabajos activos", async () => {
+  it("identifica los Excel por su nombre original durante procesamiento y revisión", async () => {
+    renderWith({
+      "GET /api/v1/document-reviews": () => envelope([
+        item({ source_file_name: "MOLINOS GENERAL.xlsx", certificate_no: null }),
+        item({ certificate_id: 43, source_file_name: "Otro molino.XLSX", active_job_id: 9, can_reprocess: false }),
+      ]),
+    });
+    const list = await queue();
+    expect(within(list).getByRole("listitem", { name: "MOLINOS GENERAL.xlsx" })).toBeInTheDocument();
+    expect(within(list).getByRole("listitem", { name: "Otro molino.XLSX" })).toBeInTheDocument();
+    expect(within(list).queryByText("Acta #42")).not.toBeInTheDocument();
+  });
+  it("muestra el resumen y los trabajos activos sin acciones de reprocesamiento", async () => {
     renderWith({
       "GET /api/v1/document-reviews": () =>
         envelope([
@@ -67,49 +80,20 @@ describe("Revisión documental", () => {
     const list = await queue();
     expect(screen.queryByRole("region", { name: "Visor de documento" })).not.toBeInTheDocument();
     const ready = within(list).getByRole("listitem", { name: "CM-42" });
-    expect(within(ready).getByText(/Falta el espesor/)).toBeInTheDocument();
-    expect(within(ready).getByRole("button", { name: "Volver a analizar" })).toBeEnabled();
+    expect(within(ready).queryByText(/Falta el espesor/)).not.toBeInTheDocument();
+    expect(within(ready).queryByText("products[0].thickness_mm")).not.toBeInTheDocument();
+    expect(within(ready).queryByRole("button", { name: "Volver a analizar" })).not.toBeInTheDocument();
     expect(within(ready).queryByRole("button", { name: "Reprocesar PDF" })).not.toBeInTheDocument();
     expect(within(ready).queryByLabelText("Persona responsable")).not.toBeInTheDocument();
     expect(within(ready).queryByLabelText("Motivo del reprocesamiento")).not.toBeInTheDocument();
 
     const busy = within(list).getByRole("listitem", { name: "CM-43" });
     expect(within(busy).getByText(/trabajo #9/)).toBeInTheDocument();
-    expect(within(busy).getByRole("button", { name: "Volver a analizar" })).toBeDisabled();
+    expect(within(busy).queryByRole("button", { name: "Volver a analizar" })).not.toBeInTheDocument();
     for (const name of ["CM-44", "CM-45"]) {
       expect(within(within(list).getByRole("listitem", { name })).queryByRole("button", { name: "Volver a analizar" })).not.toBeInTheDocument();
     }
     expect(within(busy).queryByRole("button", { name: "Reprocesar PDF" })).not.toBeInTheDocument();
-  });
-
-  it("envía la extracción auditada y actualiza la cola", async () => {
-    let body: unknown;
-    let queued = false;
-    const { backend, user } = renderWith({
-      "GET /api/v1/document-reviews": () => envelope([item(queued ? { active_job_id: 12, can_reprocess: false } : {})]),
-      "POST /api/v1/certificates/42/reprocess": (init) => {
-        body = JSON.parse(String(init?.body));
-        queued = true;
-        return envelope({ certificate_id: 46, job_id: 12, stage: "extraction", status: "queued", quality_report: null });
-      },
-    });
-    await queue();
-    await user.click(screen.getByRole("button", { name: "Volver a analizar" }));
-    await waitFor(() => expect(backend.calls.filter((call) => call === "GET /api/v1/document-reviews")).toHaveLength(2));
-    expect(body).toEqual({ from_stage: "extraction", person_name: "Administrador", reason: "Volver a analizar el documento por errores detectados en la extracción." });
-    expect(await screen.findByText(/trabajo #12/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Volver a analizar" })).toBeDisabled();
-  });
-
-  it("muestra el error de reprocesamiento y permite reintentar", async () => {
-    const { user } = renderWith({
-      "GET /api/v1/document-reviews": () => envelope([item({})]),
-      "POST /api/v1/certificates/42/reprocess": () => errorEnvelope("internal_error", "Falló la extracción", 500),
-    });
-    await queue();
-    await user.click(screen.getByRole("button", { name: "Volver a analizar" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("Falló la extracción");
-    expect(screen.getByRole("button", { name: "Volver a analizar" })).toBeEnabled();
   });
 
   it("actualiza la cola sin enviar solicitudes de reprocesamiento", async () => {

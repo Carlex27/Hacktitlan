@@ -24,6 +24,7 @@ def read_snapshot(number):
     (2, 1, '263W220590210', 8995),
     (3, 11, '14159481', 7280),
     (4, 6, 'CBG2629A', 5360),
+    ('4-refined', 6, 'CBG2629A', 5360),
 ])
 def test_real_pdf_ocr_produces_products_without_supplier_specific_adapters(number, count, first_id, weight):
     class Reader:
@@ -49,8 +50,20 @@ def test_real_pdf_ocr_produces_products_without_supplier_specific_adapters(numbe
         assert sum(p['weight_kg'] for p in products) == 80320
         assert products[0]['label_no'] == 'T137278'
         assert products[0]['mechanical_properties']['tensile_strength_mpa'] == 546
-    if number == 4:
+    if number in (4, '4-refined'):
         assert sum(p['weight_kg'] for p in products) == 34050
+        metadata = result['certificate']['document']
+        assert metadata['product_name'] == 'EG COIL(ZN)'
+        assert metadata['supplier'] == 'GOLDEN STATE CORPORATION'
+        assert metadata['customer'] == 'H&K INTERNATIONAL LIMITED'
+        assert [p['heat_no'] for p in products] == ['SB06562'] * 3 + ['SB05270'] * 3
+        for index, product in enumerate(products):
+            assert product['standard'] == 'SECC'
+            assert product['composition_pct'] == (
+                {'C': .0136, 'Si': .020, 'Mn': .116, 'P': .0090, 'S': .0061}
+                if index < 3 else
+                {'C': .0142, 'Si': .022, 'Mn': .127, 'P': .0102, 'S': .0054}
+            )
         assert products[0]['coating']['superior_g_m2'] == 19.1
         assert products[0]['composition_pct']['C'] == .0136
 
@@ -65,6 +78,25 @@ def test_real_metadata_snapshot_finds_notes_and_does_not_mix_shipping_with_issue
     assert "JUN 28" in metadata["shipping_date_raw"]
     assert "ABOUT" in metadata["shipping_date_raw"]
     assert metadata["product_name"] == "HOT ROLLED SHEET-COIL (MILL EDGE)"
+
+
+def test_molino3_refined_cells_preserve_all_elements_and_repeated_dimensions():
+    from backend.app.certificate_parser.generic_extractor import GenericCertificateExtractor
+    certificate = GenericCertificateExtractor().extract(read_snapshot('3-refined')).certificate
+    products = certificate['products']
+    assert len(products) == 11
+    assert [p['heat_no'] for p in products] == ['3VL99'] * 2 + ['1FN43'] * 9
+    expected = {'C': .35, 'Mn': .63, 'P': .017, 'S': .001, 'Si': .2,
+                'Cu': .01, 'Ni': .01, 'Cr': .01, 'Al_total': .019,
+                'B': .0003, 'Mo': 0, 'N': .004}
+    for index, product in enumerate(products):
+        chemistry = expected if index < 2 else {**expected, 'C': .33, 'Mn': .64,
+                     'P': .016, 'S': .002, 'Si': .18, 'Al_total': .025, 'B': .0002}
+        assert product['composition_pct'] == chemistry
+        assert (product['thickness_mm'], product['width_mm']) == (1.8, 895)
+        assert (product['standard'], product['grade']) == ('SAE 1035', '1035')
+        if index not in (0, 2):
+            assert product['observations']['composition_pct']['C']['inherited']
 
 
 def test_molino3_prefers_original_33_and_retains_conflicting_39():

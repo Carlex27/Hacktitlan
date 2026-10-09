@@ -34,7 +34,7 @@ METADATA_LABELS: dict[str, tuple[str, ...]] = {
     ),
     "shipping_date": ("shipping date", "shipment date", "fecha de embarque", "交运日期"),
     "delivery_date": ("delivery date", "fecha de entrega", "出厂日期"),
-    "product_name": ("product description", "product name", "descripcion del producto", "producto declarado"),
+    "product_name": ("product description", "product name", "commodity", "descripcion del producto", "producto declarado"),
     "customer": (
         "customer", "consignee", "buyer", "purchaser", "cliente", "destinatario",
         "comprador", "订货单位", "收货单位", "客户名称", "客戶名稱",

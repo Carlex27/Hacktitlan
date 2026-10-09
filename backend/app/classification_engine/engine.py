@@ -80,6 +80,8 @@ class Chapter72ClassificationEngine:
             if value is None:
                 missing.add(name)
         if missing:
+            if missing == {"rolling"}:
+                return self._rolling_alternatives(facts)
             steps.append(Decision(
                 "chapter72.flat_rolled.required_dimensions",
                 StepOutcome.MISSING,
@@ -219,6 +221,72 @@ class Chapter72ClassificationEngine:
             candidates,
             steps,
             facts,
+        )
+
+    def _rolling_alternatives(self, facts: ProductFacts) -> ClassificationDecision:
+        branches = [(rolling, self.classify(replace(facts, rolling=rolling)))
+                    for rolling in ("cold", "hot")]
+        missing = {"rolling"}.union(*(set(result.missing_fields) for _, result in branches))
+        step = Decision(
+            "chapter72.flat_rolled.rolling_confirmation", StepOutcome.MISSING,
+            "El operador debe confirmar la laminación y los datos pendientes de cada candidato.",
+            {"rolling": None, "missing": sorted(missing)}, evidence_fields=("rolling",),
+        )
+        eligible = all(result.outcome is ClassificationOutcome.CLASSIFIED
+                       and not result.missing_fields and len(result.ranked_candidates) == 1
+                       and all(factor.outcome is StepOutcome.MATCHED
+                               for factor in result.ranked_candidates[0].factors)
+                       for _, result in branches)
+        candidates: list[ClassificationCandidate] = []
+        provisional_zinc = (facts.coated is True and facts.coating_metal == "Zn"
+                            and facts.coating_process == "electrolytic"
+                            and any(value is not None for value in facts.composition_pct.values())
+                            and all(field == "rolling" or field.startswith("composition_pct.")
+                                    for field in missing))
+        if eligible or provisional_zinc:
+            options = [(rolling, candidate) for rolling, result in branches
+                       for candidate in result.ranked_candidates
+                       if not candidate.conflicts and all(factor.outcome is not StepOutcome.CONFLICT
+                                                         for factor in candidate.factors)]
+            pairs = dict.fromkeys((candidate.fraction, candidate.nico) for _, candidate in options)
+            if not eligible:
+                # Keep coating suggestions supported under both rolling scenarios.
+                pairs = {pair: None for pair in pairs if all(
+                    any(value == rolling and (candidate.fraction, candidate.nico) == pair
+                        for value, candidate in options) for rolling, _ in branches)}
+            for fraction, nico in pairs:
+                matching = [(rolling, candidate) for rolling, candidate in options
+                            if (candidate.fraction, candidate.nico) == (fraction, nico)]
+                labels = {"cold": "en frío", "hot": "en caliente"}
+                factors = tuple(replace(factor, observed={**factor.observed, "rolling": None})
+                                if "rolling" in factor.observed else factor
+                                for factor in matching[0][1].factors)
+                if not eligible:
+                    chemistry_missing = sorted(field for field in missing if field.startswith("composition_pct."))
+                    factors += (CandidateFactor(
+                        sequence=len(factors) + 1, rule_code="chapter72.definition.steel_family_confirmation",
+                        outcome=StepOutcome.UNKNOWN,
+                        explanation="Sugerencia provisional por recubrimiento: el operador debe confirmar la familia del acero; hay elementos químicos no declarados.",
+                        expected={"family": "non_alloy" if fraction.startswith("7210") else "other_alloy"},
+                        observed={field: None for field in chemistry_missing},
+                        evidence_fields=tuple(chemistry_missing),
+                    ),)
+                confirmation = CandidateFactor(
+                    sequence=len(factors) + 1, rule_code=step.rule_code,
+                    outcome=StepOutcome.UNKNOWN,
+                    explanation="El operador debe confirmar laminación " + " o ".join(labels[value] for value, _ in matching) + ".",
+                    operator="in", expected={"rolling": [value for value, _ in matching]},
+                    observed={"rolling": None}, evidence_fields=("rolling",),
+                )
+                candidates.append(replace(matching[0][1], rank=len(candidates) + 1,
+                                          support_level="conditional", missing_fields=tuple(sorted(
+                                              missing | set(matching[0][1].missing_fields))),
+                                          factors=(*factors, confirmation)))
+        return ClassificationDecision(
+            outcome=ClassificationOutcome.NEEDS_REVIEW, product_type="flat_rolled",
+            fraction=None, nico=None, description=None, missing_fields=tuple(sorted(missing)),
+            candidates=tuple(candidate.fraction + candidate.nico for candidate in candidates),
+            ranked_candidates=tuple(candidates), discarded_candidates=(), steps=(step,),
         )
 
     @staticmethod

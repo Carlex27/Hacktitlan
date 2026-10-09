@@ -145,3 +145,14 @@ críticos. Si OCR y lectura de tabla discrepan, si falta el exponente o si no
 cuadran los totales, el resultado es `needs_review`; no se corrige ni se infiere
 silenciosamente. Distintos formatos deben implementar adaptadores que produzcan
 el mismo contrato intermedio usado por `normalize_certificate`.
+
+## ArcelorMittal Calvert: certificado y carta complementaria
+
+- Perfil `ARCELORMITTAL_CALVERT`, identificado por fabricante, título y bloques de composición/especificación; utiliza el OCR local existente.
+- La portada y la carta para licencias no generan filas de rollos. Los identificadores se leen de Coil/Heat en la tabla MATERIAL DESCRIPTION del certificado.
+- La especificación de Steel Grade/Customer Specification se conserva separada de la identificación internacional de la carta. En la muestra: M2021 SP221PE y A1011 CS-B, respectivamente. A1011 no es un identificador de rollo.
+- Dimensiones en mm, pesos Net/Gross en kg, química en porcentaje en masa y ensayos en MPa/%; los valores originales, página y región se conservan en evidencia.
+- Los ensayos sin identificador sólo se asocian cuando existe un único rollo. No se distribuyen por orden entre varios rollos.
+- Regresión con OCR real de cuatro páginas: acta/rollo 2302380630, colada 2620689, 1.8 × 1496 mm, peso neto/bruto 10000 kg, 17 elementos y ensayos 209 MPa / 322 MPa / 47 %.
+
+En Calvert, Weight Net KG alimenta también el peso mostrado del rollo (weight_kg), marcado como neto; Weight Gross KG permanece separado. Un peso neto ausente no se sustituye por el bruto.

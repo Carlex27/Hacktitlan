@@ -62,6 +62,80 @@ def test_cold_rolled_coil_between_one_and_three_mm():
     assert "three_valid_candidates" not in result.missing_fields
 
 
+def test_only_unknown_rolling_offers_two_operator_confirmed_alternatives():
+    product = facts(rolling=None, pickled=False, pattern_in_relief=False)
+    result = Chapter72ClassificationEngine().classify(product)
+    assert product.rolling is None
+    assert result.outcome is ClassificationOutcome.NEEDS_REVIEW
+    assert result.fraction is None and result.nico is None
+    assert result.missing_fields == ("rolling",)
+    assert [(c.fraction, c.nico) for c in result.ranked_candidates] == [
+        ("72091601", "99"), ("72083901", "99"),
+    ]
+    for candidate, rolling in zip(result.ranked_candidates, ("cold", "hot"), strict=True):
+        assert candidate.support_level == "conditional"
+        assert candidate.missing_fields == ("rolling",)
+        confirmation = candidate.factors[-1]
+        assert confirmation.outcome is StepOutcome.UNKNOWN
+        assert confirmation.expected == {"rolling": [rolling]}
+        assert confirmation.observed == {"rolling": None}
+        assert confirmation.required_for_selection
+        assert all(f.outcome is StepOutcome.MATCHED for f in candidate.factors[:-1])
+        assert all(f.observed.get("rolling") is None for f in candidate.factors)
+
+
+@pytest.mark.parametrize("changes", [
+    {"composition_pct": {"C": Decimal("0.08")}},
+    {"width_mm": None}, {"thickness_mm": None}, {"coiled": None},
+    {"coated": None}, {"pickled": None}, {"pattern_in_relief": None},
+    {"yield_strength_mpa": None},
+    {"coated": False, "coating_metal": "Zn"},
+])
+def test_rolling_alternatives_require_every_other_condition(changes):
+    product = facts(**{"rolling": None, "pickled": False, "pattern_in_relief": False, **changes})
+    result = Chapter72ClassificationEngine().classify(product)
+    assert result.outcome is ClassificationOutcome.NEEDS_REVIEW
+    assert not result.ranked_candidates
+    assert "rolling" in result.missing_fields
+
+
+def test_rolling_branches_with_same_code_are_not_duplicate_candidates():
+    result = Chapter72ClassificationEngine().classify(facts(
+        rolling=None, coated=True, coating_metal="Zn", coating_process="electrolytic",
+        coating_both_sides=True,
+    ))
+    assert len(result.ranked_candidates) == 1
+    assert result.ranked_candidates[0].factors[-1].expected == {"rolling": ["cold", "hot"]}
+    assert result.outcome is ClassificationOutcome.NEEDS_REVIEW
+
+
+def test_electrolytic_zinc_with_partial_chemistry_offers_provisional_coating_candidates():
+    product = facts(rolling=None, coated=True, coating_metal="Zn",
+                    coating_process="electrolytic", coating_both_sides=True,
+                    composition_pct={"C": Decimal("0.0136"), "Mn": Decimal("0.116")})
+    result = Chapter72ClassificationEngine().classify(product)
+    assert result.outcome is ClassificationOutcome.NEEDS_REVIEW
+    assert result.fraction is None and result.nico is None
+    assert [(c.fraction, c.nico) for c in result.ranked_candidates] == [
+        ("72103002", "01"), ("72259101", "00"),
+    ]
+    assert product.rolling is None and "Cr" not in product.composition_pct
+    for candidate in result.ranked_candidates:
+        assert candidate.support_level == "conditional"
+        assert "composition_pct.Cr" in candidate.missing_fields
+        family = next(f for f in candidate.factors if f.rule_code.endswith("steel_family_confirmation"))
+        assert family.outcome is StepOutcome.UNKNOWN and family.observed["composition_pct.Cr"] is None
+        assert candidate.factors[-1].expected == {"rolling": ["cold", "hot"]}
+
+
+def test_provisional_zinc_does_not_override_known_alloy_or_coating_conflicts():
+    result = Chapter72ClassificationEngine().classify(facts(
+        rolling=None, coated=True, coating_metal="Zn", coating_process="electrolytic",
+        composition_pct={"C": Decimal("0.0136"), "Cr": Decimal("12")},
+    ))
+    assert not result.ranked_candidates
+
+
 def test_high_strength_boundary_is_inclusive():
     result = Chapter72ClassificationEngine().classify(
         facts(yield_strength_mpa=Decimal("355"))

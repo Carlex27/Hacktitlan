@@ -29,6 +29,7 @@ from backend.app.api.schemas import (
     DeselectionEnvelope,
     CorrectionRequest,
     CertificateDetailEnvelope,
+    CertificateListEnvelope,
     DocumentQualityReportEnvelope,
     DocumentReviewQueueEnvelope,
     DocumentUploadEnvelope,
@@ -130,6 +131,7 @@ def serialize_certificate(certificate: MillCertificate, manufacturer: Manufactur
     return {
         "id": certificate.id,
         "document_id": certificate.document_id,
+        "source_file_name": certificate.document.stored_file.original_name,
         "manufacturer": manufacturer.name if manufacturer else None,
         "certificate_no": certificate.certificate_no,
         "certificate_date": certificate.certificate_date.isoformat() if certificate.certificate_date else None,
@@ -285,7 +287,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             status_code=200 if result.duplicate else 202,
         )
 
-    @app.get("/api/v1/certificates", responses={
+    @app.get("/api/v1/certificates", response_model=CertificateListEnvelope, responses={
         400: {"model": ErrorEnvelope, "description": "invalid_cursor o invalid_date_range"},
     })
     def list_certificates(

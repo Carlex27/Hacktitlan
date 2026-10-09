@@ -1,5 +1,5 @@
 import { ArrowLeft, FileText, RotateCw, X } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { DeleteCertificateButton, HeatReview, useCertificate } from "@/features/certificate-review";
 import {
@@ -26,9 +26,10 @@ export interface ValidationPageProps {
   documentId: number | null;
   onBack?: () => void;
   onDeleted?: () => void;
+  onSourceFileName?: (name: string | null) => void;
 }
 
-export function ValidationPage({ certificateId, documentId, onBack, onDeleted }: ValidationPageProps) {
+export function ValidationPage({ certificateId, documentId, onBack, onDeleted, onSourceFileName }: ValidationPageProps) {
   const [activeTab, setActiveTab] = useState<"rolls" | "extracted" | "validation" | "approval">("rolls");
   const [selectedHeatId, setSelectedHeatId] = useState<number | null | undefined>(undefined);
   const [pdfPage, setPdfPage] = useState(1);
@@ -42,6 +43,9 @@ export function ValidationPage({ certificateId, documentId, onBack, onDeleted }:
     error: certError,
     reload: reloadCertificate,
   } = useCertificate(certificateId);
+  useEffect(() => {
+    onSourceFileName?.(certificate?.source_file_name ?? null);
+  }, [certificate?.source_file_name, onSourceFileName]);
   const {
     run,
     isLoading: runLoading,
@@ -73,13 +77,16 @@ export function ValidationPage({ certificateId, documentId, onBack, onDeleted }:
   return (
     <div className="flex-1 flex overflow-hidden min-h-0 w-full">
       <main ref={reviewMain} className="flex-1 bg-background text-foreground text-sm leading-5 flex flex-col min-w-0 overflow-y-auto overscroll-y-contain lg:overflow-hidden min-h-0">
-        <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
+        <div className="shrink-0 border-b border-border px-4 py-3 sm:px-8">
+          <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3">
           <div>{onBack && <Button className="min-h-10" variant="ghost" onClick={onBack}><ArrowLeft aria-hidden="true" />{es.workspace.back}</Button>}</div>
           <Button className="min-h-10" variant="outline" onClick={() => { if (viewerOpen) setViewerOpen(false); else { setViewerTab("acta"); setViewerOpen(true); } }} disabled={!docId}>
             <FileText aria-hidden="true" />{viewerOpen ? es.workspace.closeViewer : es.workspace.original}
           </Button>
+          </div>
         </div>
-        <header className="px-4 sm:px-8 py-3 border-b border-border flex flex-wrap items-center justify-between gap-3 shrink-0 bg-background">
+        <header className="px-4 sm:px-8 py-3 border-b border-border shrink-0 bg-background">
+          <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3">
           <nav aria-label={es.workspace.reviewSections} className="flex min-w-0 max-w-full gap-1 overflow-x-auto rounded-lg bg-muted p-1">
             {(["rolls", "extracted", "validation", "approval"] as const).map((tab) => (
               <Button key={tab} type="button" variant="ghost" onClick={() => {
@@ -98,10 +105,11 @@ export function ValidationPage({ certificateId, documentId, onBack, onDeleted }:
                 {refreshButton}
               </ReclassificationForm>
             : refreshButton}
+          </div>
         </header>
 
         <div className="shrink-0 lg:flex-1 flex flex-col lg:flex-row lg:min-h-0 lg:overflow-hidden">
-        <div ref={reviewContent} className="lg:flex-1 lg:overflow-y-auto overscroll-y-contain p-4 sm:p-6 space-y-6 bg-muted/30 lg:min-h-0 min-w-0">
+        <div ref={reviewContent} className="lg:flex-1 lg:overflow-y-auto overscroll-y-contain px-4 py-8 sm:px-8 space-y-8 [&>*]:w-full [&>*]:max-w-6xl [&>*]:mx-auto bg-muted/30 lg:min-h-0 min-w-0">
           <EvidenceArea state={evidence.state} onRetry={evidence.retry} onClose={evidence.close} onGoToPage={goToActaPage} onOpenSource={openTariffReference} />
           {(activeTab === "rolls" || activeTab === "extracted") && <HeatReview certificate={certificate} isLoading={certLoading}
             error={certError} onRetry={reloadCertificate} selectedHeatId={selectedHeatId} onSelectHeat={setSelectedHeatId}

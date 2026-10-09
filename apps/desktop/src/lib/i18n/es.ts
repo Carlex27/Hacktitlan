@@ -279,6 +279,10 @@ export const es = {
     loadError: "No se pudo cargar la clasificación",
     confirmed: "Confirmado",
     productsTitle: "Productos clasificados",
+    productsPagination: "Paginación de productos clasificados",
+    previousPage: "Página anterior",
+    nextPage: "Página siguiente",
+    pageOf: (page: number, total: number) => `Página ${page} de ${total}`,
     productLabel: (position: number, productType: string | null) =>
       `Producto ${position} · ${productType === null ? "Tipo sin determinar" : productTypeLabels[productType] ?? productType}`,
     productHistoryHeading: (label: string) => `Historial · ${label}`,

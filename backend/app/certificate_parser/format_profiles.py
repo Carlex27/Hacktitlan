@@ -47,6 +47,12 @@ class FormatProfile:
 
 KNOWN_PROFILES: tuple[FormatProfile, ...] = (
     FormatProfile(
+        name="ARCELORMITTAL_CALVERT",
+        required_signals=("arcelormittal calvert", "mill certificate"),
+        weighted_signals={"chemical composition of the coil": 0.20, "steel grade customer specification": 0.20,
+                          "tensile test": 0.10},
+    ),
+    FormatProfile(
         name="MOLINO_1_BX_POSCO",
         required_signals=("bx steel posco",),
         weighted_signals={

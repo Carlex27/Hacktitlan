@@ -19,6 +19,21 @@
    respaldo distinta del disco principal.
 5. Ejecutar `scripts/run-api.ps1` y `scripts/run-worker.ps1`.
 
+Después de actualizar extracción/OCR, cerrar los workers anteriores antes de
+iniciar el nuevo. Reiniciar sólo la API no actualiza el código cargado por los
+workers. Comprobar sus PID, fecha de inicio y ruta con:
+
+```powershell
+Get-CimInstance Win32_Process |
+  Where-Object { $_.Name -eq 'python.exe' -and $_.CommandLine -match 'backend.app.application.worker' } |
+  Select-Object ProcessId, ParentProcessId, CreationDate, CommandLine
+```
+
+El lanzador Python puede tener un proceso hijo: contar árboles de procesos,
+no filas. Esperar los trabajos activos antes de cerrar su worker. Verificar
+después el `worker_id` del trabajo en PostgreSQL y reprocesar por la API para
+crear una revisión nueva, conservando el acta y sus decisiones anteriores.
+
 El firewall de Windows debe admitir TCP al puerto configurado únicamente desde
 la interfaz/perfil de Tailscale. PostgreSQL no debe publicarse en Tailscale ni
 en Internet. El cliente consume sólo `http://<ip-tailscale>:8765/api/v1`.
@@ -62,6 +77,23 @@ documentales. Se conservan las advertencias, los datos faltantes y las sugerenci
 para revisión del personal; las incidencias bloqueantes mantienen el resultado
 en `needs_review`, sin aprobarlo automáticamente. Después de actualizar el worker,
 reclasificar las actas existentes para generar una nueva ejecución con sugerencias.
+
+Si la laminación es el único dato pendiente, el motor evalúa frío y caliente
+por separado. Sólo ofrece esas alternativas si ambas ramas resuelven una única
+fracción/NICO y todos sus demás factores cumplen. Cada candidato conserva
+`rolling` desconocido y un factor que indica la laminación que el operador debe
+confirmar al elegirlo. La selección queda auditada; no cambia el dato extraído
+ni aprueba automáticamente el acta. Si ambas ramas dan el mismo código, se
+ofrece una sola opción. Otros datos pendientes o contradicciones impiden este
+caso especial; no se completan elementos químicos ausentes con cero.
+
+Excepción solicitada para zinc electrolítico: con dimensiones, presentación y
+recubrimiento conocidos, y alguna química medida, pueden mostrarse sugerencias
+provisionales aunque falten elementos para determinar la familia del acero.
+Se conservan sólo los candidatos compatibles con ambos escenarios de
+laminación, sin contradicciones conocidas. Cada opción deja explícitos los
+elementos ausentes y exige confirmación de la familia y de la laminación por
+el operador; no rellena química, no selecciona ni aprueba automáticamente.
 
 
 Una ejecución aprobada conserva sus fracciones y NICO: `/api/v1/classification-results/{result_id}/select`
@@ -479,6 +511,15 @@ identificadores y pesos, junto con campos químicos y mecánicos seleccionados.
 Estas capturas prueban el parser sin exigir ejecutar los modelos en cada prueba;
 una actualización de Paddle requiere volver a verificar los PDF reales.
 
+Para POSCO EG, `Commodity` se conserva como descripción del producto y
+`Spec & Type` como especificación; `Grade Total` es un subtotal, no un grado.
+Las lecturas OCR superpuestas de un identificador se combinan por geometría
+para evitar rollos duplicados. En química marcada `%` se prioriza la alineación
+con el encabezado para evitar recortes que pierdan el último decimal.
+La captura `molino-4-refined.json` comprueba seis rollos, dos coladas y cinco
+elementos por rollo con la segunda lectura de celdas del PDF real. Reiniciar el
+worker y reprocesar la extracción de las actas anteriores para aplicar el cambio.
+
 ## Unidades y porcentajes en extracción genérica
 
 Las unidades dimensionales explícitas en la celda o en su encabezado se convierten
@@ -517,3 +558,9 @@ El contrato vigente se consulta en `/openapi.json` y `/docs`: `/api/v1/classific
 En la web, el dictamen envía persona Administrador y un motivo fijo sin campos editables. Es una identificación operativa compartida, no una cuenta autenticada ni una firma individual. La captura manual conserva su justificación escrita. El historial de auditoría permanece en el backend aunque se retire la pestaña del detalle del acta.
 
 La confirmación del acta (`POST /api/v1/classification-runs/{run_id}/approve`) cierra la revisión humana registrada mediante las selecciones de cada rollo. Exige cobertura completa de productos y coladas, selección, fracción y NICO; conserva datos faltantes y factores desconocidos del motor, y bloquea contradicciones. El cliente envía persona y motivo fijos por decisión del usuario.
+
+El detalle de acta expone el nombre original del archivo en OpenAPI; la navegación web usa ese nombre para archivos XLSX, conservando el número extraído del certificado.
+
+El listado de actas publica también el nombre original del archivo mediante su esquema OpenAPI para presentar los XLSX por nombre en el historial.
+
+La cola de revisión documental incluye el nombre original del archivo en su esquema OpenAPI para mostrar los XLSX por nombre.

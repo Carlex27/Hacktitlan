@@ -12,7 +12,7 @@ export async function deleteCertificate(api: ApiClient, certificateId: number) {
 }
 
 export type CertificateSummaryDto = Pick<CertificateDetailDto,
-  "id" | "document_id" | "certificate_no" | "manufacturer" | "approval_status" | "certificate_date">;
+  "id" | "document_id" | "source_file_name" | "certificate_no" | "manufacturer" | "approval_status" | "certificate_date">;
 
 export interface CertificateFilters {
   certificate_no?: string;

@@ -102,6 +102,7 @@ describe("endpoints del backend (commit Merge PR #1)", () => {
 
   it("lista la cola de revisión con y sin filtros", async () => {
     const item: DocumentReviewQueueItemDto = {
+      source_file_name: "molino.xlsx",
       revision_number: 1,
       active_job_id: null,
       can_reprocess: true,

@@ -56,5 +56,6 @@ class AdapterRegistry:
 
 def default_adapter_registry() -> AdapterRegistry:
     from backend.app.certificate_parser.molino_1_adapter import Molino1Adapter
+    from backend.app.certificate_parser.calvert_adapter import CalvertAdapter
 
-    return AdapterRegistry((Molino1Adapter(),))
+    return AdapterRegistry((Molino1Adapter(), CalvertAdapter()))

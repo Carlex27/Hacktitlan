@@ -4,6 +4,7 @@ import { reviewItemStatus, validateReprocessForm } from "@/features/document-rev
 import type { DocumentReviewQueueItemDto } from "@/lib/api";
 
 const base: DocumentReviewQueueItemDto = {
+  source_file_name: null,
   revision_number: 1,
   active_job_id: null,
   can_reprocess: true,

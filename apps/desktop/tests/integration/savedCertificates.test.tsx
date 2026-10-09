@@ -23,7 +23,7 @@ describe("Actas guardadas", () => {
     expect(await screen.findByText("Prueba con otros datos o limpia los filtros para consultar las actas guardadas.")).toBeInTheDocument();
   });
   it("recupera actas al recargar y abre sus datos sin volver a subir el PDF", async () => {
-    const certificate = createFakeCertificate({ certificate_no: "ACTA-PERSISTIDA", manufacturer: "Molino persistido" });
+    const certificate = createFakeCertificate({ certificate_no: "ACTA-PERSISTIDA", manufacturer: "Molino persistido", source_file_name: "Reporte de molino.XLSX" });
     const backend = createFakeBackend({ ...healthyRoutes,
       "GET /api/v1/certificates": () => envelope([certificate]),
       "GET /api/v1/certificates/42": () => envelope(certificate),
@@ -31,13 +31,16 @@ describe("Actas guardadas", () => {
     });
     const first = render(<App apiClient={backend.client} />);
     await userEvent.setup().click(await screen.findByRole("button", { name: "Historial de actas" }));
-    expect(await screen.findByText("ACTA-PERSISTIDA")).toBeInTheDocument();
+    expect(await screen.findByText("Reporte de molino.XLSX")).toBeInTheDocument();
+    expect(screen.queryByText("ACTA-PERSISTIDA")).not.toBeInTheDocument();
     first.unmount();
     render(<App apiClient={backend.client} />);
     await userEvent.setup().click(await screen.findByRole("button", { name: "Historial de actas" }));
     const list = await screen.findByRole("list", { name: "Actas guardadas" });
     await userEvent.setup().click(within(list).getByRole("button", { name: "Abrir acta" }));
     expect(await screen.findByText("Molino persistido")).toBeInTheDocument();
+    expect(await screen.findByText("Reporte de molino.XLSX")).toBeInTheDocument();
+    expect(screen.queryByText("Acta de Molino #42")).not.toBeInTheDocument();
     expect(backend.calls).not.toContain("POST /api/v1/documents");
   });
 

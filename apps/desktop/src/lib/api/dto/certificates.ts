@@ -77,6 +77,7 @@ export interface CertificateChemicalCompositionDto {
 export interface CertificateDetailDto {
   id: number;
   document_id: number;
+  source_file_name: string | null;
   manufacturer: string | null;
   certificate_no: string | null;
   certificate_date: string | null;

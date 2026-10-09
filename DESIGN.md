@@ -40,13 +40,13 @@ No inventar valores de Figma ni construir una biblioteca paralela. Las reglas de
 
 Generar clasificación conserva sólo el botón en su sección; envía Administrador y un motivo fijo. Los avisos de proceso, resultado y error permanecen visibles cuando corresponden.
 
-Revisión documental muestra actas, incidencias y acceso a Revisar. Volver a analizar aparece sólo en actas con incidencias bloqueantes o estado de error; se deshabilita durante una extracción activa. Envía Administrador y un motivo fijo y crea una nueva revisión mediante la API. No incluye campos de reprocesamiento.
+Revisión documental muestra actas, fabricante, calidad, conteos de bloqueantes y advertencias y acceso a Revisar. Por petición del usuario, no muestra la lista de incidencias ni el botón Volver a analizar. Conserva Actualizar revisiones y los avisos de trabajos activos.
 
 Aplicadas la jerarquía de encabezado 24/32, texto introductorio 16/24 y texto auxiliar 14/20. La carga usa superficie clara y acción principal oscura; las colas tienen bordes discretos sin sombra. La revisión usa navegación segmentada, controles existentes y colores semánticos en la tabla. Los campos de reprocesamiento y clasificación usan etiquetas legibles y controles de 40 px de alto. Se conserva Geist: esta es una adaptación del sistema de Finesse al producto, no una copia exacta de sus tokens.
 
-### Barra lateral
+### Navegación superior
 
-Navegación clara con los tokens `sidebar` existentes y separación mediante borde. La sección activa usa fondo oscuro y texto claro, además de `aria-current`; hover y foco tienen tratamientos distintos. Opciones con margen interior, iconos de 20 px y texto de 14/20 en pantalla amplia. En pantallas estrechas se conservan iconos y etiquetas de 12/16; los controles mantienen un mínimo de 44 px de alto. El identificador de la aplicación no lleva sombra decorativa. Esta es una adaptación del proyecto, no una reproducción de valores de Figma.
+Por decisión del usuario, las dos secciones pasan de la barra lateral a una barra superior compacta. Nombre de la aplicación a la izquierda y Carga y revisión e Historial de actas a su lado. En pantallas estrechas, las secciones ocupan una segunda fila con sus etiquetas completas. Se reutilizan los tokens existentes de navegación, botones con altura mínima de 44 px, estado activo oscuro, `aria-current` y foco visible. Las migas de pan permanecen debajo y el contenido utiliza todo el ancho disponible. Es una adaptación del proyecto, no una exportación de Finesse.
 
 ### Historial de actas
 
@@ -88,3 +88,17 @@ La selección de una sugerencia de fracción/NICO se confirma con Elegir fracci�
 Confirmar cada rollo registra su verificación humana. Confirmar acta cierra esa revisión cuando todos los rollos y coladas tienen selección, fracción y NICO; los datos desconocidos del motor permanecen como evidencia. Las contradicciones y factores obligatorios no cumplidos bloquean el cierre y se explican en pendientes.
 
 Al generar clasificación se muestra una barra con el progreso reportado por el trabajo del backend, estado de envío, espera o ejecución y aviso final. Antes del primer reporte no se muestra un porcentaje estimado. Se reutiliza Progress y los tokens existentes.
+
+Al abrir un archivo XLSX, las migas de pan muestran su nombre original completo con extensión, también desde el historial. El número extraído del acta se conserva como dato independiente.
+
+El historial de actas usa también el nombre original del XLSX como título de su fila.
+
+Revisión documental identifica los XLSX por su nombre original, incluso mientras se procesan, con la misma regla del historial y las migas de pan.
+
+Productos clasificados muestra hasta 10 tarjetas por página: dos filas de cinco en pantalla amplia y menos columnas en pantallas estrechas. Si hay más de 10 resultados, muestra flechas anterior/siguiente y el contador de página; navegar conserva la selección y una ejecución nueva reinicia la paginación.
+
+Las migas de pan de sección y acta se integran en la barra superior junto a la navegación principal. En pantalla amplia se alinean a la derecha; con menos espacio pasan a otra línea dentro del mismo encabezado. Conservan ambas acciones de regreso, foco visible y el nombre completo del documento, que puede envolver. Se elimina la franja independiente de migas de pan.
+
+Historial de actas comparte el centrado y padding de Carga y revisión: contenido con max-w-6xl y márgenes automáticos, px-4/py-8 y sm:px-8; encabezado y bloques separados por gap-8.
+
+El detalle del acta comparte max-w-6xl y márgenes automáticos con Carga y revisión e Historial: barras de regreso/visor y secciones/acciones centradas, contenido con px-4 py-8 sm:px-8 y separación de 32 px. Al abrir el visor, el contenido conserva su adaptación al espacio disponible.

@@ -153,9 +153,10 @@ class CertificateObservationRead(BaseModel):
     verification: FieldVerificationRead | None = None
 
 
-class CertificateDetailRead(BaseModel):
+class CertificateSummaryRead(BaseModel):
     id: int
     document_id: int
+    source_file_name: str | None
     manufacturer: str | None
     certificate_no: str | None
     certificate_date: str | None
@@ -166,6 +167,15 @@ class CertificateDetailRead(BaseModel):
     standard: str | None
     product_name: str | None
     demo_notice: str
+
+
+class CertificateListEnvelope(BaseModel):
+    data: list[CertificateSummaryRead]
+    meta: dict[str, Any] = Field(default_factory=dict)
+    error: None = None
+
+
+class CertificateDetailRead(CertificateSummaryRead):
     heats: list[dict[str, Any]]
     products: list[dict[str, Any]]
     observations: list[CertificateObservationRead]
@@ -403,6 +413,7 @@ class DocumentReviewSummaryIssue(BaseModel):
 
 
 class DocumentReviewQueueItem(BaseModel):
+    source_file_name: str | None = None
     revision_number: int
     active_job_id: int | None = None
     can_reprocess: bool

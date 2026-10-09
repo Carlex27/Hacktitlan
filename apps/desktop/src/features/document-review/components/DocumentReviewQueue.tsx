@@ -69,7 +69,6 @@ export function DocumentReviewQueue({ onReview }: DocumentReviewQueueProps) {
               <DocumentReviewItem
                 key={item.certificate_id}
                 item={item}
-                onReprocessed={reviews.reload}
                 {...(onReview ? { onReview } : {})}
               />
             ))}

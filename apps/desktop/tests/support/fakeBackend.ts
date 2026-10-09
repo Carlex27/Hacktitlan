@@ -95,6 +95,7 @@ export function createFakeCertificate(
   return {
     id: 42,
     document_id: 10,
+    source_file_name: null,
     manufacturer: "Altos Hornos de México",
     certificate_no: "CM-2024-001",
     certificate_date: "2024-05-15",

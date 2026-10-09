@@ -9,6 +9,8 @@ from backend.app.domain.document import DocumentLayout
 
 def _label(text: str) -> tuple[str, str] | None:
     clean = normalize_term(text)
+    if re.match(r"^(?:sub|grade|grand)\s+total\b", clean):
+        return None
     if re.search(r'\bstandard\s+technique\b', clean):
         return None
     if re.search(r"\bcustomer\s+(?:no|number|id)\b", clean):

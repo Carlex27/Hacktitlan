@@ -26,6 +26,8 @@ def recover_rows(page: PageLayout) -> tuple[list[dict], dict[str, int]]:
     columns = []
     for block in page.blocks:
         category, key, exponent = match_column_semantic(block.text)
+        if category == 'product_id' and re.search(r'[:：]\s*\S', block.text):
+            continue
         if key and category != 'unknown':
             columns.append(LayoutColumn(block, category, key, exponent))
     identifiers = [c for c in columns if c.category == 'product_id']
@@ -40,6 +42,8 @@ def recover_rows(page: PageLayout) -> tuple[list[dict], dict[str, int]]:
             if abs(bx - x) > max((column.block.bbox.x1 - column.block.bbox.x0) / 2, page.width * .018):
                 continue
             tokens = re.findall(r'\b[A-Za-z0-9_-]*[A-Za-z][A-Za-z0-9_-]*\d[A-Za-z0-9_-]*\b|\b\d{6,}\b', block.text)
+            if re.search(r'\b(?:standard|specification|grade|norma|especificaci[oó]n)\b', block.text, re.I):
+                continue
             if len(tokens) == 1 and not re.search(r'total|subtotal', block.text, re.I):
                 anchors.append((block, tokens[0]))
         if anchors:
@@ -50,15 +54,17 @@ def recover_rows(page: PageLayout) -> tuple[list[dict], dict[str, int]]:
             for block, token in anchors:
                 b = block.bbox
                 duplicate = next((index for index, (previous, prior_token) in enumerate(unique)
-                    if prior_token == token
-                    and min(b.bottom, previous.bbox.bottom) - max(b.top, previous.bbox.top)
+                    if min(b.bottom, previous.bbox.bottom) - max(b.top, previous.bbox.top)
                         >= min(b.bottom - b.top, previous.bbox.bottom - previous.bbox.top) * .5
                     and min(b.x1, previous.bbox.x1) - max(b.x0, previous.bbox.x0)
                         >= min(b.x1 - b.x0, previous.bbox.x1 - previous.bbox.x0) * .5), None)
                 if duplicate is None:
                     unique.append((block, token))
-                elif b.bottom - b.top < unique[duplicate][0].bbox.bottom - unique[duplicate][0].bbox.top:
-                    unique[duplicate] = (block, token)
+                else:
+                    previous, prior_token = unique[duplicate]
+                    geometry = min((previous, block), key=lambda item: item.bbox.bottom - item.bbox.top)
+                    reading = max((previous, block), key=lambda item: item.confidence or 0)
+                    unique[duplicate] = (geometry, token if reading is block else prior_token)
             anchors = unique
             candidates.append((column, anchors))
     if not candidates:
@@ -134,6 +140,7 @@ def recover_rows(page: PageLayout) -> tuple[list[dict], dict[str, int]]:
                               or (key in {'thickness_mm', 'width_mm', 'length_m'} and dimension_value(b.text, column.block.text) is not None)]
                 values.sort(key=lambda b: (b.text.strip() not in DITTO_TOKENS,
                                           -(b.confidence or 0) if key == 'heat_no' else 0,
+                                          abs(center(b)[0] - x) if column.category == 'chemistry' and scales.get(key) == 0 else 0,
                                           b.bbox.bottom - b.bbox.top < (high - low) * .5 if column.category == 'chemistry' else False,
                                           b.bbox.x1 - b.bbox.x0 if column.category == 'chemistry' else 0,
                                           abs(center(b)[1] - y), abs(center(b)[0] - x)))

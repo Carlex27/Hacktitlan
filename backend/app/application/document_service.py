@@ -9,7 +9,7 @@ import json
 from typing import BinaryIO
 
 from sqlalchemy import Date, cast, func, select, tuple_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from backend.app.config import Settings
 from backend.app.domain.enums import JobKind, ProcessingStatus
@@ -169,6 +169,7 @@ class DocumentService:
         )
         statement = (
             select(MillCertificate, Manufacturer)
+            .options(joinedload(MillCertificate.document).joinedload(Document.stored_file))
             .outerjoin(Manufacturer, Manufacturer.id == MillCertificate.manufacturer_id)
             .join(Document, Document.id == MillCertificate.document_id)
             .where(Document.archived.is_(False))

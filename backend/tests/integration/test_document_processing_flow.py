@@ -29,6 +29,61 @@ class StaticExtractor:
         return self.result
 
 
+@pytest.mark.parametrize("provisional_zinc", [False, True])
+def test_unknown_rolling_candidates_persist_and_operator_selection_is_audited(processing_settings, provisional_zinc):
+    from sqlalchemy import select
+    from backend.app.application.classification_service import ClassificationService
+    from backend.app.infrastructure.database.models import Product
+    from backend.tests.unit.test_classification_engine import complete_non_alloy_chemistry
+
+    normalized = CertificateExtractionService.normalize_known_payload(json.loads(FIXTURE.read_text(encoding="utf-8")))
+    product = normalized["products"][0]
+    product.update(rolling=None, thickness_mm=1.71, width_mm=1220,
+                   condition=["not_pickled"], composition_pct={
+                       key: float(value) for key, value in complete_non_alloy_chemistry().items()
+                   },
+                   mechanical_properties={"yield_strength_mpa": 230})
+    normalized["products"] = [product]
+    if provisional_zinc:
+        product["composition_pct"] = {"C": .0136, "Mn": .116}
+        product["coating"] = {"metal": "Zn", "process": "electrolytic",
+                              "superior_g_m2": 19.1, "inferior_g_m2": 19.1}
+    extraction = {"status": "needs_review", "certificate": normalized,
+                  "document": {"page_count": 1}, "adapter": "test_complete_except_rolling"}
+    sessions = create_session_factory(processing_settings)
+    storage = FileStorage(processing_settings.storage_root, processing_settings.max_pdf_bytes)
+    with TestClient(create_app(processing_settings)) as client:
+        created = upload(client)
+        assert Worker(processing_settings, sessions, storage, extractor=StaticExtractor(extraction)).run_once()
+        with sessions.begin() as session:
+            row = session.scalar(select(Product).where(Product.certificate_id == created["certificate_id"]))
+            row.properties_json = {**row.properties_json, "coated": provisional_zinc, "pattern_in_relief": False}
+            session.flush()
+            run_id = ClassificationService(processing_settings).classify_certificate(
+                session, certificate_id=created["certificate_id"], person_name="Test operator",
+                reason="Only rolling is unknown",
+            ).id
+        run = client.get(f"/api/v1/classification-runs/{run_id}").json()["data"]
+        result = run["results"][0]
+        assert result["outcome"] == "needs_review" and result["fraction"] is None
+        assert len(result["candidates"]) == 2
+        for candidate in result["candidates"]:
+            assert "rolling" in candidate["details"]["missing_fields"]
+            if provisional_zinc:
+                assert "composition_pct.Cr" in candidate["details"]["missing_fields"]
+            else:
+                assert candidate["details"]["missing_fields"] == ["rolling"]
+            assert candidate["factors"][-1]["observed"] == {"rolling": None}
+            assert candidate["factors"][-1]["outcome"] == "unknown"
+        response = client.post(f"/api/v1/classification-results/{result['id']}/select", json={
+            "candidate_id": result["candidates"][0]["id"], "person_name": "Test operator",
+            "reason": "Confirmed cold rolling against additional evidence",
+        })
+        assert response.status_code == 200
+        detail = client.get(f"/api/v1/certificates/{created['certificate_id']}").json()["data"]
+        assert detail["products"][0]["rolling"] is None
+
+
 @pytest.fixture()
 def processing_settings(tmp_path) -> Settings:
     base = Settings()
@@ -67,6 +122,34 @@ def upload(client: TestClient, content: bytes = b"%PDF-1.7\nfixture") -> dict[st
     return response.json()["data"]
 
 
+def test_calvert_ocr_worker_persists_one_coil_with_supplemental_evidence(processing_settings):
+    from backend.tests.unit.test_calvert_adapter import layout
+
+    class Reader:
+        def read(self, *_args, **_kwargs):
+            return layout()
+
+    extraction = CertificateExtractionService(Reader()).analyze_pdf("calvert.pdf")
+    sessions = create_session_factory(processing_settings)
+    storage = FileStorage(processing_settings.storage_root, processing_settings.max_pdf_bytes)
+    with TestClient(create_app(processing_settings)) as client:
+        created = upload(client)
+        assert Worker(processing_settings, sessions, storage, extractor=StaticExtractor(extraction)).run_once()
+        response = client.get(f"/api/v1/certificates/{created['certificate_id']}")
+        assert response.status_code == 200
+        certificate = response.json()["data"]
+        assert certificate["certificate_no"] == "2302380630"
+        assert certificate["standard"] == "M2021 SP221PE"
+        assert certificate["certificate_date"] == "2026-06-28"
+        assert len(certificate["products"]) == 1
+        assert certificate["products"][0]["product_identifier"] == "2302380630"
+        assert float(certificate["products"][0]["weight_kg"]) == 10000
+        assert certificate["heats"][0]["heat_no"] == "2620689"
+        assert len(certificate["chemical_compositions"]) == 17
+        assert any(observation["page_number"] == 4 and "A1011 CS-B" in str(observation["raw_value"])
+                   for observation in certificate["observations"])
+
+
 @pytest.mark.parametrize("support_document", [False, True])
 def test_xlsx_upload_real_worker_provenance_and_download(processing_settings: Settings, support_document):
     workbook = Workbook()
@@ -91,6 +174,11 @@ def test_xlsx_upload_real_worker_provenance_and_download(processing_settings: Se
         job = client.get(f"/api/v1/jobs/{created['job_id']}").json()["data"]
         assert job["status"] == "needs_review", job
         certificate = client.get(f"/api/v1/certificates/{created['certificate_id']}").json()["data"]
+        assert certificate["source_file_name"] == "mill.xlsx"
+        reviews = client.get("/api/v1/document-reviews").json()["data"]
+        assert next(item for item in reviews if item["certificate_id"] == created["certificate_id"])["source_file_name"] == "mill.xlsx"
+        history = client.get("/api/v1/certificates").json()["data"]
+        assert next(item for item in history if item["id"] == created["certificate_id"])["source_file_name"] == "mill.xlsx"
         assert certificate["approval_status"] == "needs_review"
         detail = client.get(f"/api/v1/documents/{created['document_id']}/spreadsheet").json()["data"]
         assert detail["sheets"][0]["rows"][1]["cells"]["A2"] == ("SPCC" if support_document else "CERT-1")
@@ -275,3 +363,42 @@ def test_generic_metadata_persists_description_and_never_uses_delivery_as_issue(
         run = session.scalar(select(ExtractionRun).where(ExtractionRun.document_id == created["document_id"]))
         assert "ABOUT" in run.normalized_json["document"]["shipping_date_raw"]
         assert run.normalized_json["document"]["field_evidence"]["product_name"]
+
+
+@pytest.mark.parametrize('snapshot,product_count,element_count', [('3-refined', 11, 12), ('4-refined', 6, 5)])
+def test_real_mill_persists_two_heats_complete_chemistry_and_classification_candidates(processing_settings, snapshot, product_count, element_count):
+    from backend.tests.unit.test_real_mill_ocr_layouts import read_snapshot
+
+    class Reader:
+        def read(self, _path, **_kwargs):
+            return read_snapshot(snapshot)
+
+    extraction = CertificateExtractionService(Reader()).analyze_pdf("snapshot.pdf")
+    sessions = create_session_factory(processing_settings)
+    storage = FileStorage(processing_settings.storage_root, processing_settings.max_pdf_bytes)
+    with TestClient(create_app(processing_settings)) as client:
+        created = upload(client)
+        assert Worker(processing_settings, sessions, storage, extractor=StaticExtractor(extraction)).run_once()
+        certificate = client.get(f"/api/v1/certificates/{created['certificate_id']}").json()["data"]
+        assert {heat["heat_no"] for heat in certificate["heats"]} == (
+            {"3VL99", "1FN43"} if snapshot == '3-refined' else {"SB06562", "SB05270"})
+        if snapshot == '3-refined':
+            assert all(heat["grade"] == "1035" and heat["standard"] == "SAE 1035" for heat in certificate["heats"])
+        else:
+            assert all(heat["standard"] == "SECC" for heat in certificate["heats"])
+        assert len(certificate["products"]) == product_count
+        for product in certificate["products"]:
+            chemistry = {item["element"]: item["percentage"] for item in certificate["chemical_compositions"]
+                         if item["product_id"] == product["id"] or
+                         (item["product_id"] is None and item["heat_id"] == product["heat_id"])}
+            assert len(chemistry) == element_count
+            if snapshot == '3-refined':
+                assert float(chemistry['C']) == (.35 if product['product_identifier'] in {'14159481', '14159482'} else .33)
+            else:
+                assert certificate['product_name'] == 'EG COIL(ZN)'
+                assert float(chemistry['S']) == (.0061 if product['product_identifier'].startswith('CBG2629') else .0054)
+        runs = client.get(f"/api/v1/certificates/{created['certificate_id']}/classification-runs").json()["data"]
+        classification = client.get(f"/api/v1/classification-runs/{runs[0]['id']}").json()["data"]
+        assert len(classification["results"]) == product_count
+        if snapshot == '3-refined':
+            assert all(len(result["candidates"]) == 3 for result in classification["results"])
