@@ -106,6 +106,7 @@ def normalize_certificate(raw: dict[str, Any]) -> dict[str, Any]:
     for index, row in enumerate(rows, start=1):
         original_row = dict(row)
         row = dict(original_row)
+        row_scales = {**normalized_scales, **{_element_key(k): v for k, v in (row.get("chemistry_scales") or {}).items()}}
         previous_product_id = products[-1]["product_id"] if products else None
         for field in (
             "heat_no",
@@ -137,12 +138,12 @@ def normalize_certificate(raw: dict[str, Any]) -> dict[str, Any]:
                 index,
             )
             element = _element_key(source_label)
-            if element not in normalized_scales:
+            if element not in row_scales:
                 raise CertificateParseError(
                     f"No exponent was extracted for chemistry column {source_label!r}"
                 )
             normalized_percentage = _json_number(
-                normalize_scaled_percentage(raw_value, normalized_scales[element])
+                normalize_scaled_percentage(raw_value, row_scales[element])
             )
             chemistry[element] = normalized_percentage
             chemistry_observations[element] = {

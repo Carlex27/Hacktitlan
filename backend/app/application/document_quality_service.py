@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from typing import Any, Literal
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 
 from backend.app.config import Settings, get_settings
 from backend.app.domain.document_quality import (
@@ -25,6 +25,7 @@ from backend.app.infrastructure.database.models import (
     MillCertificate,
     Observation,
     Product,
+    StoredFile,
 )
 
 logger = logging.getLogger(__name__)
@@ -223,6 +224,13 @@ class DocumentQualityService:
             .where(MillCertificate.approval_status != ApprovalStatus.APPROVED.value)
             .order_by(MillCertificate.id.desc())
         )
+        revision_document = aliased(Document)
+        latest_ids = (
+            select(func.max(MillCertificate.id))
+            .join(revision_document, MillCertificate.document_id == revision_document.id)
+            .group_by(revision_document.stored_file_id)
+        )
+        query = query.where(MillCertificate.id.in_(latest_ids))
         if status_filter:
             query = query.where(MillCertificate.approval_status == status_filter)
 
@@ -231,6 +239,13 @@ class DocumentQualityService:
         results: list[dict[str, Any]] = []
 
         for cert, doc, mfr in rows:
+            active_job = session.scalar(
+                select(Job).join(Document, Job.document_id == Document.id).where(
+                    Document.stored_file_id == doc.stored_file_id,
+                    Job.kind == JobKind.EXTRACT_DOCUMENT.value,
+                    Job.status.in_((ProcessingStatus.QUEUED.value, ProcessingStatus.RUNNING.value)),
+                ).order_by(Job.id.desc()).limit(1)
+            )
             report = self.evaluate_certificate(session, cert.id)
             if report.blocking_count == 0 and (
                 doc.processing_status != ProcessingStatus.NEEDS_REVIEW.value
@@ -245,6 +260,9 @@ class DocumentQualityService:
                 "uploaded_at": cert.uploaded_at.isoformat(),
                 "document_status": doc.processing_status,
                 "approval_status": cert.approval_status,
+                "revision_number": cert.revision_number,
+                "active_job_id": active_job.id if active_job else None,
+                "can_reprocess": active_job is None,
                 "quality_score": report.quality_score,
                 "blocking_issues_count": report.blocking_count,
                 "warning_issues_count": report.warning_count,
@@ -282,6 +300,34 @@ class DocumentQualityService:
                 "La persona y el motivo son obligatorios para reprocesar",
             )
 
+        certificate = session.get(MillCertificate, certificate_id)
+        if certificate is None:
+            raise NotFoundError("Acta", certificate_id)
+        document = session.get(Document, certificate.document_id)
+        if document is None:
+            raise NotFoundError("Documento", certificate.document_id)
+        if from_stage == "extraction":
+            # Serialize requests for every revision of the same PDF, including sibling revisions.
+            session.scalar(select(StoredFile).where(
+                StoredFile.id == document.stored_file_id
+            ).with_for_update())
+            active_job = session.scalar(
+                select(Job).join(Document, Job.document_id == Document.id).where(
+                    Document.stored_file_id == document.stored_file_id,
+                    Job.kind == JobKind.EXTRACT_DOCUMENT.value,
+                    Job.status.in_((ProcessingStatus.QUEUED.value, ProcessingStatus.RUNNING.value)),
+                ).order_by(Job.id.desc()).limit(1)
+            )
+            if active_job:
+                raise ApplicationError(
+                    "reprocess_in_progress", "Este PDF ya tiene una extracción en curso",
+                    status_code=409, details={"job_id": active_job.id},
+                )
+            certificate_id = session.scalar(
+                select(MillCertificate.id).join(Document).where(
+                    Document.stored_file_id == document.stored_file_id
+                ).order_by(MillCertificate.id.desc()).limit(1)
+            )
         certificate = session.scalar(
             select(MillCertificate)
             .where(MillCertificate.id == certificate_id)

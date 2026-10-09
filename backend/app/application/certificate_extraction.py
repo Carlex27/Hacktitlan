@@ -7,7 +7,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Any, Callable, Protocol
 
-from backend.app.certificate_parser.adapters import AdapterRegistry
+from backend.app.certificate_parser.adapters import AdapterRegistry, default_adapter_registry
 from backend.app.certificate_parser.detection import DocumentKind, detect_document_kind
 from backend.app.certificate_parser.format_profiles import evaluate_format_profiles
 from backend.app.certificate_parser.generic_extractor import GenericCertificateExtractor
@@ -44,7 +44,7 @@ class CertificateExtractionService:
         generic_extractor: GenericCertificateExtractor | None = None,
     ) -> None:
         self.reader = reader
-        self.adapters = adapters or AdapterRegistry()
+        self.adapters = adapters or default_adapter_registry()
         self.generic_extractor = generic_extractor or GenericCertificateExtractor()
 
     def analyze_pdf(
@@ -89,25 +89,20 @@ class CertificateExtractionService:
                 profile_name, document, minimum_confidence=0.85
             )
             if adapter is not None:
-                raw_payload = adapter.extract(document)
-                return {
-                    **base,
-                    "status": ExtractionStatus.EXTRACTED.value,
-                    "adapter": adapter.name,
-                    "certificate": normalize_certificate(raw_payload),
-                }
-            return {
-                **base,
-                "status": ExtractionStatus.NEEDS_REVIEW.value,
-                "profile": {
-                    "name": profile_name,
-                    "confidence": profile_score,
-                    "signals": list(profile_signals),
-                },
-                "reasons": [
-                    f"El formato conocido {profile_name} no tiene un adaptador registrado"
-                ],
-            }
+                try:
+                    raw_payload = adapter.extract(document)
+                    certificate = normalize_certificate(raw_payload)
+                except ValueError:
+                    certificate = None
+                if certificate is not None:
+                    return {
+                        **base,
+                        "status": ExtractionStatus.EXTRACTED.value,
+                        "adapter": adapter.name,
+                        "certificate": certificate,
+                    }
+            base["profile"] = {"name": profile_name, "confidence": profile_score, "signals": list(profile_signals)}
+            base["reasons"] = [f"El formato conocido {profile_name} no tiene un adaptador utilizable; se intentó extracción genérica"]
 
         # Step 2: Generic deterministic extraction for unknown formats
         generic_result = self.generic_extractor.extract(document)
@@ -119,18 +114,19 @@ class CertificateExtractionService:
                 "certificate": generic_result.certificate,
                 "unmapped_blocks": generic_result.unmapped_blocks,
                 "signals": list(detection.signals) + generic_result.signals,
+                "reasons": ["Extracción genérica: verificar los valores OCR, las escalas químicas y los campos ausentes antes de aprobar"],
             }
 
         status = (
             ExtractionStatus.NEEDS_REVIEW
-            if detection.kind is not DocumentKind.UNKNOWN
+            if detection.kind is not DocumentKind.UNKNOWN or profile_name is not None
             else ExtractionStatus.UNSUPPORTED
         )
         return {
             **base,
             "status": status.value,
             "unmapped_blocks": generic_result.unmapped_blocks,
-            "reasons": generic_result.reasons,
+            "reasons": base.get("reasons", []) + generic_result.reasons,
         }
 
     def release(self) -> None:

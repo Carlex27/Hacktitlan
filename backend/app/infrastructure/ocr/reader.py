@@ -25,6 +25,7 @@ from backend.app.infrastructure.ocr.geometry import (
     normalize_points_to_bbox,
 )
 from backend.app.infrastructure.ocr.runtime import OcrRuntimeStatus, probe_ocr_runtime
+from backend.app.infrastructure.ocr.table_refinement import refine_cells
 
 logger = logging.getLogger(__name__)
 
@@ -39,12 +40,30 @@ class _TableParser(HTMLParser):
         self.rows: list[tuple[str | None, ...]] = []
         self._row: list[str | None] | None = None
         self._cell: list[str] | None = None
+        self._spans: dict[int, tuple[int, str | None]] = {}
+        self._colspan = 1
+        self._rowspan = 1
+
+    def _fill_spans(self) -> None:
+        while self._row is not None and len(self._row) in self._spans:
+            column = len(self._row)
+            remaining, value = self._spans[column]
+            self._row.append(value)
+            if remaining == 1:
+                del self._spans[column]
+            else:
+                self._spans[column] = (remaining - 1, value)
 
     def handle_starttag(self, tag: str, _attrs) -> None:
         if tag == "tr":
             self._row = []
+            self._fill_spans()
         elif tag in {"td", "th"} and self._row is not None:
+            self._fill_spans()
             self._cell = []
+            attrs = dict(_attrs)
+            self._colspan = max(1, min(100, int(attrs.get("colspan", "1"))))
+            self._rowspan = max(1, min(100, int(attrs.get("rowspan", "1"))))
 
     def handle_data(self, data: str) -> None:
         if self._cell is not None:
@@ -53,9 +72,14 @@ class _TableParser(HTMLParser):
     def handle_endtag(self, tag: str) -> None:
         if tag in {"td", "th"} and self._row is not None and self._cell is not None:
             value = " ".join("".join(self._cell).split())
-            self._row.append(value or None)
+            for _ in range(self._colspan):
+                column = len(self._row)
+                self._row.append(value or None)
+                if self._rowspan > 1:
+                    self._spans[column] = (self._rowspan - 1, value or None)
             self._cell = None
         elif tag == "tr" and self._row is not None:
+            self._fill_spans()
             self.rows.append(tuple(self._row))
             self._row = None
 
@@ -145,6 +169,7 @@ class PaddleStructureReader:
                 lang=self.settings.ocr_language,
                 cpu_threads=self.settings.ocr_cpu_threads,
                 use_doc_orientation_classify=True,
+                use_textline_orientation=False,
                 use_doc_unwarping=False,
                 use_table_recognition=True,
                 use_formula_recognition=False,
@@ -162,10 +187,33 @@ class PaddleStructureReader:
         if cancel_check and cancel_check():
             raise OcrCancellationRequested("Procesamiento OCR cancelado por solicitud del usuario")
         pipeline = self._get_pipeline(device)
+        input_path = Path(path)
+        if input_path.is_file() and input_path.suffix.lower() == ".pdf":
+            import numpy as np
+            import pdfplumber
+            from paddlex.inference.pipelines.components import rotate_image
+
+            results = list(pipeline.predict(
+                input=str(input_path), use_doc_orientation_classify=True,
+                use_textline_orientation=False, use_doc_unwarping=False,
+                use_table_recognition=True,
+            ))
+            with pdfplumber.open(input_path) as pdf:
+                for page_index, result in enumerate(results):
+                    if cancel_check and cancel_check():
+                        raise OcrCancellationRequested("Procesamiento OCR cancelado entre páginas")
+                    page = pdf.pages[page_index]
+                    resolution = min(300, self.settings.ocr_max_page_dimension * 72 / max(page.width, page.height))
+                    cell_image = np.array(page.to_image(resolution=resolution).original.convert("RGB"))[:, :, ::-1]
+                    result["page_index"] = page_index
+                    angle = result["doc_preprocessor_res"].get("angle", 0)
+                    result["cell_image"] = rotate_image(cell_image, angle if angle >= 0 else 0)
+            return results
         return list(
             pipeline.predict(
                 input=str(Path(path)),
                 use_doc_orientation_classify=True,
+                use_textline_orientation=False,
                 use_doc_unwarping=False,
                 use_table_recognition=True,
             )
@@ -205,6 +253,15 @@ class PaddleStructureReader:
 
             img_w = core.get("img_w") or core.get("width")
             img_h = core.get("img_h") or core.get("height")
+            image = None
+            # JSON omits raster dimensions; use the oriented image held by Paddle's result.
+            if hasattr(result, "get"):
+                image = (result.get("doc_preprocessor_res") or {}).get("output_img")
+                if image is not None and hasattr(image, "shape"):
+                    img_h, img_w = image.shape[:2]
+                    if (img_w > img_h) != (page_w > page_h):
+                        page_w, page_h = page_h, page_w
+                    page_rot = 0
             if img_w is not None:
                 img_w = float(img_w)
             if img_h is not None:
@@ -281,6 +338,14 @@ class PaddleStructureReader:
                 blocks=tuple(blocks),
                 tables=tuple(tables),
             )
+            if image is not None and self._pipeline is not None:
+                # shortcut: pinned PaddleX exposes the shared recognizer; revisit on OCR runtime upgrades.
+                pipeline = getattr(self._pipeline, "paddlex_pipeline", None)
+                ocr_pipeline = getattr(pipeline, "general_ocr_pipeline", None)
+                recognizer = getattr(ocr_pipeline, "text_rec_model", None)
+                if recognizer is not None:
+                    cell_image = result.get("cell_image") if hasattr(result, "get") else None
+                    converted[page_number] = refine_cells(converted[page_number], cell_image if cell_image is not None else image, recognizer, self.settings.ocr_min_confidence)
 
             if page_callback:
                 page_callback(page_number, total_pages)

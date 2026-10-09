@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
-from decimal import Decimal
+from dataclasses import dataclass
 import logging
 import re
 from typing import Any
@@ -14,9 +13,11 @@ from backend.app.certificate_parser.vocabulary import (
     METADATA_LABELS,
     match_column_semantic,
     normalize_term,
+    detect_scale_exponent,
 )
-from backend.app.domain.document import DocumentLayout, PageLayout, TableRegion, TextBlock
-from backend.app.normalization.chemistry import normalize_scaled_percentage
+from backend.app.domain.document import DocumentLayout, TableRegion
+from backend.app.certificate_parser.layout_rows import recover_rows
+from backend.app.certificate_parser.measurement_units import dimension_unit, dimension_value
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +28,7 @@ class ColumnDefinition:
     category: str  # "product_id", "heat_no", "dimension", "chemistry", "mechanical", "unknown"
     canonical_key: str | None
     exponent: int | None = None
+    header: str = ""
 
 
 @dataclass(frozen=True)
@@ -98,9 +100,54 @@ class GenericCertificateExtractor:
             "rows": product_rows,
             "unmapped_blocks": unmapped_blocks,
         }
+        corpus = normalize_term(document.text).replace(" ", "")
+        cold = "coldrolled" in corpus or "冷轧" in corpus
+        hot = "hotrolled" in corpus or "热轧" in corpus
+        raw_payload["rolling"] = "cold" if cold and not hot else "hot" if hot and not cold else None
+        if "egcoil" in corpus and "zn" in corpus:
+            raw_payload["coating"] = {"metal": "Zn", "process": "electrolytic"}
 
         try:
+            previous = {}
+            previous_chemistry = {}
+            for row in product_rows:
+                for key in ("heat_no", "thickness_mm", "width_mm", "length_raw"):
+                    value = row.get(key)
+                    if _is_ditto(str(value)):
+                        if previous.get(key) is None:
+                            row[key] = None
+                        else:
+                            value = previous[key]
+                    previous[key] = value if row.get(key) is not None else None
+                for element, value in list(row.get("chemistry", {}).items()):
+                    if _is_ditto(str(value)) and previous_chemistry.get(element) is None:
+                        del row["chemistry"][element]
+                    elif not _is_ditto(str(value)):
+                        previous_chemistry[element] = value
+                previous_chemistry = {element: previous_chemistry.get(element) for element in row.get("chemistry", {})}
             normalized = normalize_certificate(raw_payload)
+            for product, row in zip(normalized["products"], product_rows):
+                product["raw_values"] = row.get("raw_values", {})
+                for field, detail in product["observations"].items():
+                    if field == "composition_pct":
+                        for element, chemical_detail in detail.items():
+                            source_key = f"composition_pct.{element}"
+                            if source_key in product["raw_values"]:
+                                chemical_detail["raw_value"] = product["raw_values"][source_key]
+                    else:
+                        source_key = "length_m" if field == "length" else field
+                        if source_key in product["raw_values"]:
+                            detail["raw_value"] = product["raw_values"][source_key]
+                if product["observations"]["length"]["raw_value"] is None:
+                    product["coiled"] = None
+                for evidence in product["evidence"]:
+                    field = evidence.get("field_path")
+                    if field and field.startswith("composition_pct."):
+                        detail = product["observations"]["composition_pct"].get(field.split(".", 1)[1])
+                    else:
+                        detail = product["observations"].get("length" if field == "length_m" else field)
+                    if detail is not None:
+                        detail.update({"raw_value": evidence["source_text"], "page_number": evidence["page"], "bbox": evidence["bbox"], "source_text": evidence["source_text"], "confidence": evidence["confidence"]})
             signals.append(f"products_extracted:{len(product_rows)}")
             return GenericExtractionResult(
                 is_valid_certificate=True,
@@ -132,7 +179,7 @@ class GenericCertificateExtractor:
 
         page1 = document.pages[0]
         # Look through blocks on top half of page 1
-        blocks = [b for b in page1.blocks if b.bbox.top <= page1.height * 0.45]
+        blocks = [b for b in page1.blocks if b.bbox.top <= page1.height * 0.45 and b.text.strip()]
         text_lines = [b.text.strip() for b in blocks if b.text.strip()]
 
         for i, line in enumerate(text_lines):
@@ -141,17 +188,16 @@ class GenericCertificateExtractor:
                 if metadata[meta_key] is not None:
                     continue
                 for alias in aliases:
-                    if alias in clean_line:
+                    if re.search(r"(?<!\w)" + re.escape(alias) + r"(?!\w)", clean_line):
                         # Extract value after colon or following word
                         parts = re.split(r"[:：\-]", line, maxsplit=1)
                         if len(parts) > 1 and parts[1].strip():
                             metadata[meta_key] = parts[1].strip()
-                        elif i + 1 < len(text_lines) and not any(
-                            a in normalize_term(text_lines[i + 1])
-                            for sublist in METADATA_LABELS.values()
-                            for a in sublist
-                        ):
-                            metadata[meta_key] = text_lines[i + 1].strip()
+                        else:
+                            label = blocks[i]
+                            candidates = [b for b in blocks if b is not label and label.bbox.x1 - 5 <= b.bbox.x0 <= label.bbox.x1 + page1.width * .15 and abs((b.bbox.top + b.bbox.bottom - label.bbox.top - label.bbox.bottom) / 2) < max(8, label.bbox.bottom - label.bbox.top) and not any(re.search(r"(?<!\w)" + re.escape(a) + r"(?!\w)", normalize_term(b.text)) for aliases in METADATA_LABELS.values() for a in aliases)]
+                            if candidates:
+                                metadata[meta_key] = min(candidates, key=lambda b: b.bbox.x0 - label.bbox.x1).text.strip().lstrip(":： ")
                         break
 
         # Also search tables header cells for metadata if not found
@@ -165,7 +211,7 @@ class GenericCertificateExtractor:
                         if metadata[meta_key] is not None:
                             continue
                         for alias in aliases:
-                            if alias in clean_cell:
+                            if re.search(r"(?<!\w)" + re.escape(alias) + r"(?!\w)", clean_cell):
                                 # Check neighboring cell in table
                                 if cell_idx + 1 < len(row) and row[cell_idx + 1]:
                                     metadata[meta_key] = str(row[cell_idx + 1]).strip()
@@ -221,7 +267,7 @@ class GenericCertificateExtractor:
                     exp = detect_scale_exponent(grp)
                 if cat != "unknown":
                     identified_count += 1
-                cols.append(ColumnDefinition(c_idx, cat, key, exp))
+                cols.append(ColumnDefinition(c_idx, cat, key, exp, combined_text))
 
             if identified_count > max_identified:
                 max_identified = identified_count
@@ -236,6 +282,24 @@ class GenericCertificateExtractor:
         chemistry_scales: dict[str, int] = {}
 
         for page in document.pages:
+            geometric_rows, geometric_scales = recover_rows(page)
+            if geometric_rows:
+                for raw_row in geometric_rows:
+                    row = {"product_id": raw_row["product_id"], "chemistry": {}, "evidence": raw_row["evidence"], "chemistry_scales": geometric_scales}
+                    for key, value in raw_row.items():
+                        if key in {"product_id", "evidence", "chemistry", "dimension_headers"}:
+                            continue
+                        if key == "label_no":
+                            row[key] = value
+                            continue
+                        category = "heat_no" if key == "heat_no" else "mechanical" if key.endswith(("_mpa", "_pct", "_hrb")) else "dimension"
+                        self._apply_value(row, ColumnDefinition(0, category, key, header=raw_row.get("dimension_headers", {}).get(key, "")), value)
+                    for key, value in raw_row["chemistry"].items():
+                        if _is_ditto(value) or _parse_numeric(value) is not None:
+                            self._apply_value(row, ColumnDefinition(0, "chemistry", key), value)
+                    rows.append(row)
+                chemistry_scales.update(geometric_scales)
+                continue
             for t_idx, table in enumerate(page.tables):
                 header_idx, cols = self._analyze_table_columns(table)
                 if not any(c.category in {"product_id", "heat_no"} for c in cols):
@@ -243,8 +307,8 @@ class GenericCertificateExtractor:
 
                 for col in cols:
                     if col.category == "chemistry" and col.canonical_key:
-                        scale = col.exponent if col.exponent is not None else 0
-                        chemistry_scales[col.canonical_key] = scale
+                        if col.exponent is not None:
+                            chemistry_scales[col.canonical_key] = col.exponent
 
                 for r_idx in range(header_idx + 1, len(table.rows)):
                     raw_row = table.rows[r_idx]
@@ -261,6 +325,7 @@ class GenericCertificateExtractor:
                         "weight_kg": None,
                         "chemistry": {},
                         "evidence": [{"page": page.page_number, "table_row": r_idx}],
+                        "chemistry_scales": dict(chemistry_scales),
                     }
                     row_mapped_cells: set[tuple[int, int, int]] = set()
 
@@ -272,10 +337,13 @@ class GenericCertificateExtractor:
                             continue
 
                         if col.category != "unknown":
-                            row_mapped_cells.add(
-                                (page.page_number, t_idx, r_idx * 1000 + col.index)
-                            )
+                            if col.category == "chemistry" and col.exponent is None:
+                                continue
                             self._apply_value(product_dict, col, cell_val)
+                            key = "length_raw" if col.canonical_key == "length_m" else col.canonical_key
+                            mapped = product_dict["chemistry"].get(key) if col.category == "chemistry" else product_dict.get(key)
+                            if mapped is not None:
+                                row_mapped_cells.add((page.page_number, t_idx, r_idx * 1000 + col.index))
 
                     has_material_data = any(
                         product_dict.get(key) not in (None, "", {})
@@ -310,6 +378,8 @@ class GenericCertificateExtractor:
         str_val = str(value).strip()
         if not str_val:
             return
+        source_key = f"composition_pct.{col.canonical_key}" if col.category == "chemistry" else col.canonical_key
+        product.setdefault("raw_values", {})[source_key] = str_val
 
         if col.category == "product_id":
             product["product_id"] = str_val
@@ -319,14 +389,17 @@ class GenericCertificateExtractor:
 
         elif col.category == "dimension" and col.canonical_key:
             if _is_ditto(str_val):
-                product[col.canonical_key] = str_val
+                product["length_raw" if col.canonical_key == "length_m" else col.canonical_key] = str_val
                 return
 
-            if "x" in str_val.lower() and col.canonical_key == "thickness_mm":
-                parts = re.split(r"[xX*]", str_val)
+            if re.search(r"[xX×*]", str_val) and col.canonical_key == "thickness_mm":
+                parts = re.split(r"[xX×*]", str_val)
                 if len(parts) >= 2:
-                    th = _parse_numeric(parts[0])
-                    wi = _parse_numeric(parts[1])
+                    # shortcut: unordered imperial size tuples stay evidence; resolve with explicit dimension labels.
+                    if dimension_unit(str_val + ' ' + col.header) in {'in', 'ft'} and not re.search(r'thickness|espesor', col.header, re.I):
+                        return
+                    th = dimension_value(parts[0], col.header)
+                    wi = dimension_value(parts[1], col.header)
                     if th is not None:
                         product["thickness_mm"] = th
                     if wi is not None:
@@ -334,6 +407,8 @@ class GenericCertificateExtractor:
                     if len(parts) >= 3 and parts[2].upper().startswith("C"):
                         product["coiled"] = True
                         product["length_raw"] = "C"
+                    elif len(parts) >= 3:
+                        product["length_raw"] = dimension_value(parts[2], col.header or "mm", length=True)
                     return
 
             if col.canonical_key == "length_m":
@@ -341,22 +416,39 @@ class GenericCertificateExtractor:
                     product["length_raw"] = "COIL"
                     product["coiled"] = True
                 else:
-                    num = _parse_numeric(str_val)
-                    product["length_raw"] = num if num is not None else str_val
+                    num = dimension_value(str_val, col.header, length=True)
+                    if num is not None:
+                        product["length_raw"] = num
             else:
-                num = _parse_numeric(str_val)
-                product[col.canonical_key] = num if num is not None else str_val
+                numeric_text = str_val
+                if col.canonical_key == "thickness_mm" and re.fullmatch(r"\d+,\d+", str_val):
+                    numeric_text = str_val.replace(",", ".")
+                elif col.canonical_key in {"weight_kg", "net_weight_kg", "gross_weight_kg"} and re.fullmatch(r"\d{1,3}\.\d{3}", str_val):
+                    numeric_text = str_val.replace(".", "")
+                if col.canonical_key == 'width_mm' and dimension_unit(str_val) is None:
+                    numeric = _parse_numeric(str_val)
+                    if numeric is not None:
+                        numeric_text = str(numeric)
+                num = dimension_value(numeric_text, col.header) if col.canonical_key in {"thickness_mm", "width_mm"} else _parse_numeric(numeric_text)
+                if num is not None:
+                    product[col.canonical_key] = num
 
         elif col.category == "chemistry" and col.canonical_key:
             if _is_ditto(str_val):
                 product["chemistry"][col.canonical_key] = str_val
             else:
                 num = _parse_numeric(str_val)
-                product["chemistry"][col.canonical_key] = num if num is not None else str_val
+                if num is not None:
+                    product["chemistry"][col.canonical_key] = num
 
         elif col.category == "mechanical" and col.canonical_key:
             num = None if _is_ditto(str_val) else _parse_numeric(str_val)
-            product[col.canonical_key] = str_val if num is None else num
+            if num is not None:
+                if col.canonical_key == "elongation_pct" and not 0 <= num <= 100:
+                    return
+                if col.canonical_key == "hardness_hrb" and not 0 <= num <= 150:
+                    return
+                product[col.canonical_key] = num
 
     def _collect_unmapped(
         self,
