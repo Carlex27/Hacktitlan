@@ -18,7 +18,7 @@ En este hito se implementó la capa completa de consulta, auditoría y reportes 
    - Identificador de producto/rollo (`product_identifier`).
    - Fracción arancelaria (`fraction`) y NICO (`nico`).
    - Estados de aprobación documental (`approval_status`) y de procesamiento (`processing_status`).
-2. **Paginación estable por cursor keyset `(sort_date, id)`:** Paginación determinista que no presenta duplicados ni omisiones ante inserciones concurrentes durante la navegación de páginas.
+2. **Paginación por cursor keyset `(sort_date, id)`:** Evita desplazamientos por inserciones. No representa una instantánea: las nuevas filas anteriores al cursor pueden aparecer en páginas posteriores; las posteriores al cursor quedan fuera de esa navegación.
 3. **Detalle histórico de selecciones:** En `GET /api/v1/classification-runs/{run_id}` se exponen simultáneamente `current_selection` (la selección vigente actual) y `selections` (la línea de tiempo completa ordenada cronológicamente de selecciones históricas y reemplazos).
 4. **Libro Excel auditable de 8 hojas (`ExcelExportService`):**
    - Hojas obligatorias generadas: `Resumen`, `Actas`, `Coladas`, `Rollos`, `Composición`, `Clasificación`, `Evidencia`, `Auditoría`.
@@ -43,7 +43,7 @@ En este hito se implementó la capa completa de consulta, auditoría y reportes 
 - **Condición SQL:**
   $$\text{WHERE } (\text{sort\_date}, \text{id}) < (\text{cursor\_date}, \text{cursor\_id})$$
   ordenado de manera descendente: `ORDER BY sort_date DESC, id DESC`.
-- **Verificación:** Probado formalmente en `test_cursor_pagination_stability_under_concurrent_insertions`: al insertar registros concurrentes con fechas anteriores o posteriores entre páginas, los conjuntos de IDs de las páginas consecutivas son mutuamente disjuntos y preservan la secuencia intacta.
+- **Verificación:** `test_cursor_pagination_stability_under_concurrent_insertions` prueba inserciones anteriores y posteriores al cursor. Conserva el orden de los registros originales y evita duplicados. Las actualizaciones de la fecha usada para ordenar no quedan cubiertas por esta garantía.
 
 ### 2.2. Resolución de Presets de Período Temporal (`resolve_period_dates`)
 - La función pura `resolve_period_dates(period, today)` centraliza la lógica temporal:
@@ -98,7 +98,7 @@ En este hito se implementó la capa completa de consulta, auditoría y reportes 
 
 ## 4. Cobertura de Pruebas y Verificación
 
-Se ejecutó la suite completa con `uv run pytest`:
+Resultado histórico de la entrega original con `uv run pytest` (la revisión posterior figura en la sección 5):
 
 ```text
 ============================= test session starts =============================
@@ -150,4 +150,21 @@ backend\tests\unit\test_reporting_and_audit.py .........                 [100%]
 
 ## 5. Conclusión y Estado de Entrega
 
-El **Hito 6: Consultas, reportes y auditoría final** se encuentra **100% completado**, probado y verificado. Cumple todos los requerimientos de auditoría aduanera técnica, trazabilidad inmutable, paginación keyset y exportación a libro de cálculo sin dependencias de servicios externos.
+La revisión del 8 de octubre de 2026 encontró errores que las nueve pruebas originales no detectaban. Se corrigieron los siguientes hallazgos:
+
+| Hallazgo | Corrección y regresión |
+| :--- | :--- |
+| El reporte oficial podía omitir actas sin clasificación o elegir una ejecución aprobada antigua cuando la última estaba pendiente. La API tampoco comprobaba las ejecuciones implícitas. | API y exportador comparten `resolve_runs`: requieren cobertura de cada acta y aprobación de cada ejecución elegida. Sin IDs explícitos se toma la última ejecución, sin retroceder a otra aprobada. Se prueban los tres casos de rechazo y HTTP 409. |
+| Las ejecuciones implícitas podían cambiar entre la solicitud y el worker, sin reflejar el cambio en `scope_json`. | La solicitud guarda los IDs resueltos. El worker conserva también el alcance vacío explícito. Se prueba que una ejecución posterior no cambia los IDs elegidos. |
+| Filtrar por coladas dejaba clasificaciones y correcciones de otros rollos dentro del libro. | Resultados y correcciones respetan el alcance de productos y observaciones. Se conserva evidencia general del acta. |
+| El candidato elegido de rango 2 o 3 se repetía como alternativa y desaparecía el candidato de rango 1. | Las alternativas excluyen el candidato elegido y mantienen el orden de rango. |
+| Una observación enlazada a varias reglas conservaba sólo la última. Un rollo sin evidencia apuntaba a la primera fila ajena. | Se conservan todos los códigos distintos. El enlace usa evidencia del rollo o evidencia general de su colada; sin evidencia se muestra el dato ausente sin enlace. |
+| Aprobaciones antiguas y correcciones reemplazadas se marcaban como vigentes. | Sólo el último evento cronológico de aprobación queda vigente; la corrección usa `is_current` de su observación de reemplazo. |
+| Texto externo que comienza con `=` se guardaba como fórmula de Excel. | Las cadenas se guardan como texto literal sin modificar su contenido. La prueba reabre el XLSX y comprueba tipo y valor. |
+| Fracción y NICO podían coincidir en resultados distintos y devolver un falso positivo. | Ambos filtros se aplican al mismo resultado. |
+| Cursores aceptaban booleanos, decimales, IDs fuera de rango y campos extra; los rangos de fechas invertidos fallaban silenciosamente. | Validación estricta de estructura y BIGINT positivo; rangos invertidos producen `invalid_date_range`. OpenAPI documenta HTTP 400. |
+| IDs no positivos y estados de procesamiento desconocidos cruzaban la validación de entrada. | IDs positivos en `ExportRequest` y `ProcessingStatus` en consultas, declarados en OpenAPI. |
+
+La suite dedicada contiene ahora **27 casos**, incluyendo las regresiones anteriores. La compilación estática de los módulos modificados y `git diff --check` pasan.
+
+La primera ejecución general durante esta revisión registró **238 pruebas aprobadas y 8 fallidas** en `test_chapter72_coverage.py`. Se observaron cambios concurrentes en el motor de clasificación y sus pruebas, ajenos al Hito 6. La ejecución final sobre el estado compartido del repositorio terminó con **248 pruebas aprobadas y 2 advertencias** (deprecación de TestClient/httpx y ausencia de ccache para Paddle). No se verificó el diseño visual abriendo Microsoft Excel.

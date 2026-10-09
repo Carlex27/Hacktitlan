@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta, timezone
+import base64
+import json
 from decimal import Decimal
 from pathlib import Path
 from uuid import uuid4
@@ -72,6 +74,37 @@ def test_cursor_roundtrip_and_errors():
     assert exc_info.value.code == "invalid_cursor"
 
 
+@pytest.mark.parametrize("payload", [
+    ["2026-10-08", True], ["2026-10-08", 1.5], ["2026-10-08", "42"],
+    ["2026-10-08", 0], ["2026-10-08", -1], ["2026-10-08", 2**63], ["2026-10-08", 1, "extra"],
+    {"0": "2026-10-08", "1": 1},
+])
+def test_cursor_rejects_invalid_payload(payload):
+    encoded = base64.urlsafe_b64encode(json.dumps(payload).encode()).decode()
+    with pytest.raises(ApplicationError, match="cursor"):
+        decode_cursor(encoded)
+
+
+@pytest.mark.parametrize("scope", ["certificate_ids", "heat_ids", "classification_run_ids"])
+def test_export_request_requires_positive_ids(scope):
+    with pytest.raises(ValueError):
+        ExportRequest(person_name="Auditor", **{scope: [0]})
+
+
+def test_excel_external_text_is_not_a_formula(tmp_path):
+    workbook = openpyxl.Workbook()
+    text = '=HYPERLINK("https://example.test", "dato")'
+    ExcelExportService._write_sheet(workbook.active, ["texto", "fecha"],
+        [[text, datetime(2026, 10, 8, 12, tzinfo=timezone(timedelta(hours=-6)))]], "TextTable", "Aviso")
+    path = tmp_path / "text.xlsx"
+    workbook.save(path)
+    loaded = openpyxl.load_workbook(path)
+    assert loaded.active["A4"].value == text
+    assert loaded.active["A4"].data_type == "s"
+    assert loaded.active["B4"].value == datetime(2026, 10, 8, 18)
+    loaded.close()
+
+
 def test_export_request_validation():
     with pytest.raises(ValueError):
         ExportRequest(person_name="Test User")
@@ -97,6 +130,7 @@ def db_session():
     db_url = Settings().test_database_url
     if not db_url:
         pytest.skip("Requires HACKTITLAN_TEST_DATABASE_URL")
+    assert db_url.rsplit("/", 1)[-1].split("?", 1)[0] == "hacktitlan_test"
     engine = create_engine(db_url)
     connection = engine.connect()
     transaction = connection.begin()
@@ -202,6 +236,17 @@ def test_document_service_list_certificates_filters(db_session, tmp_path):
     items, _ = service.list_certificates(session, limit=50, fraction="72091504", nico="01")
     assert any(c.id == cert1.id for c, _ in items)
 
+    other_product = Product(certificate_id=cert1.id, heat_id=heat1.id, product_identifier="OTHER")
+    session.add(other_product)
+    session.flush()
+    session.add(ClassificationResult(classification_run_id=run1.id, product_id=other_product.id,
+                                    outcome="classified", fraction="72099999", nico="02"))
+    session.flush()
+    items, _ = service.list_certificates(session, limit=50, fraction="72091504", nico="02")
+    assert cert1.id not in [c.id for c, _ in items]
+    with pytest.raises(ApplicationError, match="fecha inicial"):
+        service.list_certificates(session, limit=50, date_from=today, date_to=today - timedelta(days=1))
+
     # 5. Filter by period="week" vs "month"
     items_week, _ = service.list_certificates(session, limit=50, period="week")
     assert any(c.id == cert1.id for c, _ in items_week)
@@ -217,7 +262,8 @@ def test_document_service_list_certificates_filters(db_session, tmp_path):
     assert not any(c.id == cert2.id for c, _ in items_appr)
 
 
-def test_cursor_pagination_stability_under_concurrent_insertions(db_session, tmp_path):
+@pytest.mark.parametrize("insert_day", [10, 1])
+def test_cursor_pagination_stability_under_concurrent_insertions(db_session, tmp_path, insert_day):
     session, db_url = db_session
     settings = Settings(database_url=db_url, storage_root=tmp_path / "storage")
     service = DocumentService(settings, FileStorage(settings.storage_root, 1024))
@@ -237,18 +283,21 @@ def test_cursor_pagination_stability_under_concurrent_insertions(db_session, tmp
     assert next_cursor is not None
 
     # Simulate concurrent insertion of a brand new certificate between page fetches
-    _, cert_concurrent, _ = _seed_test_document_and_cert(session, f"{prefix}-NEW", base_date + timedelta(days=10))
+    _, cert_concurrent, _ = _seed_test_document_and_cert(session, f"{prefix}-NEW", base_date + timedelta(days=insert_day))
 
     # Page 2 using cursor
-    p2_items, _ = service.list_certificates(session, limit=2, cursor=next_cursor, certificate_no=prefix)
+    p2_items, last_cursor = service.list_certificates(session, limit=2, cursor=next_cursor, certificate_no=prefix)
     assert len(p2_items) == 2
     p2_ids = [cert.id for cert, _ in p2_items]
 
     # Keyset pagination invariant: NO duplicate IDs between page 1 and page 2
     assert set(p1_ids).isdisjoint(set(p2_ids))
     # The concurrent insertion must not alter the relative boundary of page 2
-    assert certs[1].id in p2_ids
-    assert certs[0].id in p2_ids
+    rest, _ = service.list_certificates(session, limit=2, cursor=last_cursor, certificate_no=prefix) if last_cursor else ([], None)
+    all_ids = p1_ids + p2_ids + [c.id for c, _ in rest]
+    assert len(all_ids) == len(set(all_ids))
+    assert [i for i in all_ids if i != cert_concurrent.id] == [c.id for c in reversed(certs)]
+    assert (cert_concurrent.id in all_ids) == (insert_day == 1)
 
 
 def test_classification_run_detail_exposes_current_selection_and_selections(db_session):
@@ -607,6 +656,22 @@ def test_excel_export_service_generates_eight_sheets_and_auditable_content(db_se
     assert "APROBACION_ESTADO" in event_types
     assert "CORRECCION_DATO" in event_types
 
+    # A selected rank-2 candidate must not also appear as an alternative.
+    session.add(ClassificationSelection(
+        classification_result_id=res.id, candidate_id=c2.id, supersedes_selection_id=sel.id,
+        person_name="Supervisor", reason="Revisión de alternativa", workstation_name="WS-TEST"))
+    extra_factor = CandidateFactor(candidate_id=c2.id, sequence=1, rule_code="second.rule",
+        outcome="matched", explanation="Segunda regla", required_for_selection=True)
+    session.add(extra_factor)
+    session.flush()
+    session.add(EvidenceLink(candidate_factor_id=extra_factor.id, observation_id=obs.id,
+        source_type="observation", field_path="thickness_mm", source_reference_json={}))
+    session.add(ApprovalEvent(classification_run_id=run.id, from_status="approved", to_status="needs_review",
+        person_name="Supervisor", reason="Nueva revisión", workstation_name="WS-TEST",
+        created_at=datetime.now(timezone.utc)))
+    obs_replacement.is_current = False
+    session.flush()
+
     # --- 2. Export as official=False ---
     dest_prelim = tmp_path / "report_prelim.xlsx"
     out_prelim = service.export_certificates(
@@ -618,6 +683,15 @@ def test_excel_export_service_generates_eight_sheets_and_auditable_content(db_se
     wb_prelim = openpyxl.load_workbook(out_prelim)
     ws_prelim_resumen = wb_prelim["Resumen"]
     assert "PRELIMINAR" in str(ws_prelim_resumen["A1"].value)
+    assert wb_prelim["Clasificación"]["E4"].value == "72091504-02"
+    assert wb_prelim["Clasificación"]["F4"].value == "72091504-01"
+    assert wb_prelim["Clasificación"]["G4"].value == "72091599-00"
+    assert wb_prelim["Evidencia"]["M4"].value == "chapter72.thickness.gte_3mm; second.rule"
+    audit = list(wb_prelim["Auditoría"].iter_rows(min_row=4, values_only=True))
+    assert [r for r in audit if r[0] == "CORRECCION_DATO"][0][-1] == "Reemplazada"
+    assert [r for r in audit if r[0] == "APROBACION_ESTADO" and r[1] == appr.id][0][-1] == "Reemplazada"
+    wb.close()
+    wb_prelim.close()
 
 
 def test_official_export_blocks_unapproved_records(db_session, tmp_path):
@@ -704,3 +778,115 @@ def test_api_certificates_and_export_endpoints(db_session, tmp_path):
         assert data["workstation_name"] == "WS-TEST"
         assert data["filters"] == {"period": "month"}
         assert data["status"] in {"queued", "running", "succeeded"}
+
+
+@pytest.mark.parametrize("scenario", ["missing", "latest_unapproved", "partial_explicit"])
+def test_official_export_requires_approved_run_for_every_certificate(db_session, tmp_path, scenario):
+    session, db_url = db_session
+    settings = Settings(database_url=db_url, test_database_url=db_url, storage_root=tmp_path / "storage")
+    _, cert, _ = _seed_test_document_and_cert(session, "OFFICIAL", date.today(), status="approved")
+    _, missing_cert, _ = _seed_test_document_and_cert(session, "MISSING", date.today(), status="approved")
+    rs = session.scalar(select(RuleSet).order_by(RuleSet.id).limit(1))
+    run = ClassificationRun(certificate_id=cert.id, rule_set_id=rs.id, approval_status="approved",
+                            input_snapshot_json={}, demo_notice=settings.demo_notice)
+    session.add(run)
+    session.flush()
+    ids = [cert.id, missing_cert.id] if scenario != "latest_unapproved" else [cert.id]
+    explicit = [run.id] if scenario == "partial_explicit" else None
+    if scenario == "latest_unapproved":
+        session.add(ClassificationRun(certificate_id=cert.id, rule_set_id=rs.id, approval_status="needs_review",
+                                     input_snapshot_json={}, demo_notice=settings.demo_notice))
+        session.flush()
+    with pytest.raises(ValueError):
+        ExcelExportService(settings).export_certificates(session, certificate_ids=ids,
+            classification_run_ids=explicit, destination=tmp_path / "blocked.xlsx", official=True)
+    assert not (tmp_path / "blocked.xlsx").exists()
+    app = create_app(settings)
+    def override_session():
+        yield session
+    app.dependency_overrides[get_session] = override_session
+    with TestClient(app) as client:
+        response = client.post("/api/v1/exports", json={"certificate_ids": ids,
+            "classification_run_ids": explicit or [], "official": True, "person_name": "Auditor"})
+        assert response.status_code == 409
+        assert response.json()["error"]["code"] == "official_export_requires_approval"
+        assert "409" in client.get("/openapi.json").json()["paths"]["/api/v1/exports"]["post"]["responses"]
+
+
+def test_heat_export_limits_results_and_audit_and_never_links_unrelated_evidence(db_session, tmp_path):
+    session, db_url = db_session
+    settings = Settings(database_url=db_url, storage_root=tmp_path / "storage")
+    _, cert, _ = _seed_test_document_and_cert(session, "HEAT-SCOPE", date.today())
+    heats = [Heat(certificate_id=cert.id, heat_no=f"HEAT-{i}") for i in range(2)]
+    session.add_all(heats)
+    session.flush()
+    products = [Product(certificate_id=cert.id, heat_id=h.id, product_identifier=f"COIL-{i}")
+                for i, h in enumerate(heats)]
+    session.add_all(products)
+    session.flush()
+    rs = session.scalar(select(RuleSet).order_by(RuleSet.id).limit(1))
+    run = ClassificationRun(certificate_id=cert.id, rule_set_id=rs.id, approval_status="draft",
+                            input_snapshot_json={}, demo_notice=settings.demo_notice)
+    session.add(run)
+    session.flush()
+    session.add_all([ClassificationResult(classification_run_id=run.id, product_id=p.id,
+        outcome="classified", fraction="72091504", nico="01") for p in products])
+    unrelated = Observation(certificate_id=cert.id, product_id=products[1].id,
+        field_path="thickness_mm", raw_value_json=3, normalized_value_json=3)
+    session.add(unrelated)
+    session.flush()
+    session.add(Correction(certificate_id=cert.id, replacement_observation_id=unrelated.id,
+        person_name="Auditor", reason="Corrección ajena", workstation_name="WS-TEST"))
+    session.flush()
+    path = ExcelExportService(settings).export_certificates(session, certificate_ids=[cert.id],
+        heat_ids=[heats[0].id], destination=tmp_path / "heat.xlsx", official=False)
+    workbook = openpyxl.load_workbook(path)
+    assert workbook["Clasificación"].max_row == 4
+    assert workbook["Clasificación"]["C4"].value == products[0].id
+    assert workbook["Clasificación"]["L4"].value == "Sin evidencia"
+    assert workbook["Clasificación"]["L4"].hyperlink is None
+    assert workbook["Auditoría"].max_row == 3
+    workbook.close()
+    general = Observation(certificate_id=cert.id, field_path="certificate_no", raw_value_json="HEAT-SCOPE")
+    inherited = Observation(certificate_id=cert.id, heat_id=heats[0].id,
+                            field_path="composition.C", normalized_value_json=0.15)
+    session.add_all([general, inherited])
+    session.flush()
+    ExcelExportService(settings).export_certificates(session, certificate_ids=[cert.id],
+        heat_ids=[heats[0].id], destination=path, official=False)
+    workbook = openpyxl.load_workbook(path)
+    assert workbook["Evidencia"].max_row == 5
+    assert workbook["Clasificación"]["L4"].hyperlink.target == "#'Evidencia'!A5"
+    assert workbook["Clasificación"]["I4"].value == "Resolución unívoca pendiente de aprobación"
+    workbook.close()
+
+
+def test_export_request_pins_latest_run(db_session, tmp_path):
+    session, db_url = db_session
+    settings = Settings(database_url=db_url, test_database_url=db_url, storage_root=tmp_path / "storage")
+    _, cert, _ = _seed_test_document_and_cert(session, "PINNED", date.today(), status="approved")
+    rs = session.scalar(select(RuleSet).order_by(RuleSet.id).limit(1))
+    run = ClassificationRun(certificate_id=cert.id, rule_set_id=rs.id, approval_status="approved",
+                            input_snapshot_json={}, demo_notice=settings.demo_notice)
+    session.add(run)
+    session.flush()
+    app = create_app(settings)
+    def override_session():
+        yield session
+    app.dependency_overrides[get_session] = override_session
+    with TestClient(app) as client:
+        response = client.post("/api/v1/exports", json={"certificate_ids": [cert.id],
+            "official": True, "person_name": "Auditor"})
+        assert response.status_code == 202
+        export = session.get(Export, response.json()["data"]["export_id"])
+        assert export.scope_json["classification_run_ids"] == [run.id]
+        assert client.get("/api/v1/certificates?processing_status=unknown").status_code == 422
+        invalid_range = client.get("/api/v1/certificates?date_from=2026-10-08&date_to=2026-10-07")
+        assert invalid_range.status_code == 400
+        assert invalid_range.json()["error"]["code"] == "invalid_date_range"
+    session.add(ClassificationRun(certificate_id=cert.id, rule_set_id=rs.id, approval_status="draft",
+                                 input_snapshot_json={}, demo_notice=settings.demo_notice))
+    session.flush()
+    pinned = ExcelExportService.resolve_runs(session, [cert.id], export.scope_json["classification_run_ids"], True)
+    assert [item.id for item in pinned] == [run.id]
+    assert ExcelExportService.resolve_runs(session, [cert.id], [], False) == []

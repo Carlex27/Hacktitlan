@@ -236,11 +236,12 @@ def test_cold_rolled_thickness_boundaries(thickness_mm, expected_fraction):
 
 @pytest.mark.parametrize(
     ("thickness", "expected_nico"),
-    [("0.349", "01"), ("0.350", "01"), ("0.351", "02")],
+    [("2.999", "01"), ("3.000", "99"), ("3.001", "99")],
 )
-def test_galvanized_035mm_boundary(thickness, expected_nico):
+def test_galvanized_3mm_boundary(thickness, expected_nico):
     result = Chapter72ClassificationEngine().classify(make_facts(
-        coated=True, coating_metal="zinc", thickness_mm=Decimal(thickness)
+        coated=True, coating_metal="zinc", coating_process="hot_dip", pattern_in_relief=False,
+        thickness_mm=Decimal(thickness), yield_strength_mpa=Decimal("275")
     ))
     assert (result.fraction, result.nico) == ("72104999", expected_nico)
 
@@ -288,12 +289,12 @@ def test_heading_7210_coated_wide():
     assert res_tin_thin.fraction == "72101204"
 
     # Hot-dip galvanized relief -> 7210.41.01
-    f_galv_relief = make_facts(coated=True, coating_metal="zinc", pattern_in_relief=True)
+    f_galv_relief = make_facts(coated=True, coating_metal="zinc", pattern_in_relief=True, coating_process="hot_dip", coating_both_sides=True)
     res_galv_relief = engine.classify(f_galv_relief)
     assert res_galv_relief.fraction == "72104101"
 
-    # Hot-dip galvanized <= 0.35mm -> 7210.49.99 NICO 01
-    f_galv_thin = make_facts(coated=True, coating_metal="zinc", thickness_mm=Decimal("0.30"))
+    # NICO 01 requires thickness < 3 mm AND yield strength >= 275 MPa.
+    f_galv_thin = make_facts(coated=True, coating_metal="zinc", thickness_mm=Decimal("0.30"), coating_process="hot_dip", pattern_in_relief=False, yield_strength_mpa=Decimal("275"))
     res_galv_thin = engine.classify(f_galv_thin)
     assert res_galv_thin.fraction == "72104999"
     assert res_galv_thin.nico == "01"
@@ -327,13 +328,14 @@ def test_heading_7211_narrow_non_alloy():
     f_cold_med_c = make_facts(width_mm=Decimal("400"), rolling="cold", composition_pct=chem_med_c)
     res_cold_med_c = engine.classify(f_cold_med_c)
     assert res_cold_med_c.fraction == "72112999"
-    assert res_cold_med_c.nico == "01"
+    assert res_cold_med_c.nico is None
+    assert "product_kind" in res_cold_med_c.missing_fields
 
-    # Cold rolled narrow C < 0.25% <= 0.35mm -> 7211.23.03 NICO 01
+    # Carbon selects the fraction; strip/sheet evidence is needed for NICO.
     f_cold_low_c = make_facts(width_mm=Decimal("400"), rolling="cold", thickness_mm=Decimal("0.30"))
     res_cold_low_c = engine.classify(f_cold_low_c)
     assert res_cold_low_c.fraction == "72112303"
-    assert res_cold_low_c.nico == "01"
+    assert res_cold_low_c.nico is None
 
 
 def test_heading_7212_narrow_coated():
@@ -348,7 +350,8 @@ def test_heading_7212_narrow_coated():
     f_ez = make_facts(width_mm=Decimal("400"), coated=True, coating_metal="zinc", coating_process="electrolytic", coating_both_sides=True)
     res_ez = engine.classify(f_ez)
     assert res_ez.fraction == "72122003"
-    assert res_ez.nico == "01"
+    assert res_ez.nico is None
+    assert all(candidate.nico != "02" for candidate in res_ez.ranked_candidates)
 
     # Narrow painted -> 7212.40.04
     f_paint = make_facts(width_mm=Decimal("400"), coated=True, coating_metal="paint")
@@ -371,17 +374,18 @@ def test_heading_7219_stainless_wide():
     assert res_hot_10.fraction == "72191101"
     assert res_hot_10.nico == "00"  # 7219.11.01 has only NICO 00
 
-    # Hot rolled coiled 3.5mm -> 7219.13.01 with NICO 01 (300 series)
+    # Hot rolled coiled 3.5mm -> 7219.13.01, explicit series 300 -> NICO 02.
     f_hot_3 = make_facts(
         width_mm=Decimal("1200"),
         rolling="hot",
         coiled=True,
         thickness_mm=Decimal("3.5"),
         composition_pct=stainless_chemistry(),
+        stainless_series="300",
     )
     res_hot_3 = engine.classify(f_hot_3)
     assert res_hot_3.fraction == "72191301"
-    assert res_hot_3.nico == "01"
+    assert res_hot_3.nico == "02"
 
     # Cold rolled >= 4.75mm -> 7219.31.01
     f_cold_thick = make_facts(
@@ -447,6 +451,7 @@ def test_heading_7225_other_alloy_wide():
         width_mm=Decimal("1000"),
         coated=True,
         coating_metal="zinc",
+        coating_process="hot_dip",
         composition_pct=alloy_chem,
     )
     res_coated = engine.classify(f_coated)

@@ -29,6 +29,7 @@ from backend.app.api.schemas import (
     DocumentQualityReportEnvelope,
     DocumentReviewQueueEnvelope,
     Envelope,
+    EvidenceEnvelope,
     ErrorEnvelope,
     ExportRequest,
     ManualObservationRequest,
@@ -41,7 +42,9 @@ from backend.app.application.document_service import DocumentService, decode_cur
 
 from backend.app.application.review_service import ReviewService
 from backend.app.config import Settings, get_settings
-from backend.app.domain.enums import ApprovalStatus
+from backend.app.classification_engine import verified_source_pdf
+from backend.app.domain.enums import ApprovalStatus, ProcessingStatus
+from backend.app.reporting import ExcelExportService
 from backend.app.domain.errors import ApplicationError, NotFoundError
 from backend.app.infrastructure.database.models import (
     ChemicalComposition,
@@ -150,14 +153,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.sessions = sessions
     app.state.storage = storage
 
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-
     @app.middleware("http")
     async def correlation_id(request: Request, call_next):
         request_id = request.headers.get("X-Request-ID") or uuid4().hex
@@ -175,6 +170,19 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             },
         )
         return response
+
+    # Registrado después del middleware de correlación para que sea el más externo
+    # y también agregue encabezados CORS a respuestas de error.
+    # Lista explícita (HACKTITLAN_CORS_ORIGINS): el API no tiene autenticación, así
+    # que "*" permitiría a cualquier página web abierta en la red aprobar, rechazar
+    # o subir documentos. Para otro cliente, agregue su origen a la variable.
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_origins,
+        allow_methods=["GET", "POST"],
+        allow_headers=["Content-Type", "X-Request-ID"],
+        expose_headers=["X-Request-ID", "Content-Disposition"],
+    )
 
     @app.exception_handler(ApplicationError)
     async def application_error(_request: Request, exc: ApplicationError):
@@ -266,7 +274,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             status_code=200 if result.duplicate else 202,
         )
 
-    @app.get("/api/v1/certificates")
+    @app.get("/api/v1/certificates", responses={
+        400: {"model": ErrorEnvelope, "description": "invalid_cursor o invalid_date_range"},
+    })
     def list_certificates(
         session: DbSession,
         limit: int = Query(50, ge=1, le=200),
@@ -274,7 +284,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         certificate_no: str | None = None,
         manufacturer: str | None = None,
         approval_status: ApprovalStatus | None = None,
-        processing_status: str | None = None,
+        processing_status: ProcessingStatus | None = None,
         heat_no: str | None = None,
         product_identifier: str | None = None,
         fraction: str | None = None,
@@ -522,9 +532,30 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if stored is None:
             raise NotFoundError("Archivo", document.stored_file_id)
         path = request.app.state.storage.resolve(stored.relative_path)
-        return FileResponse(path, media_type=stored.media_type, filename=stored.original_name)
+        # `inline` permite mostrar el PDF en el visor de la app; el nombre se conserva
+        # para "Guardar como".
+        return FileResponse(
+            path,
+            media_type=stored.media_type,
+            filename=stored.original_name,
+            content_disposition_type="inline",
+        )
 
-    @app.get("/api/v1/evidence/{evidence_link_id}")
+    @app.get(
+        "/api/v1/rule-sources/{source_hash}/file",
+        response_class=FileResponse,
+        responses={200: {"content": {"application/pdf": {}}}, 404: {"model": ErrorEnvelope}, 409: {"model": ErrorEnvelope}},
+    )
+    def download_rule_source(source_hash: str):
+        try:
+            path = verified_source_pdf(source_hash)
+        except FileNotFoundError:
+            raise NotFoundError("Fuente normativa", source_hash) from None
+        except ValueError as exc:
+            raise ApplicationError("rule_source_integrity_error", str(exc), status_code=409) from exc
+        return FileResponse(path, media_type="application/pdf", headers={"Content-Disposition": "inline"})
+
+    @app.get("/api/v1/evidence/{evidence_link_id}", response_model=EvidenceEnvelope)
     def evidence_detail(evidence_link_id: int, session: DbSession):
         link = session.get(EvidenceLink, evidence_link_id)
         if link is None:
@@ -675,7 +706,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             export.error_message = "Cancelada por la persona solicitante"
         return ok({"job_id": job.id, "status": job.status})
 
-    @app.post("/api/v1/exports", status_code=status.HTTP_202_ACCEPTED)
+    @app.post("/api/v1/exports", status_code=status.HTTP_202_ACCEPTED,
+              responses={409: {"model": ErrorEnvelope, "description": "official_export_requires_approval: aprobación incompleta"}})
     def request_export(payload: ExportRequest, session: DbSession):
         certificate_ids = list(dict.fromkeys(payload.certificate_ids))
         heat_ids = list(dict.fromkeys(payload.heat_ids))
@@ -708,17 +740,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     f"Un reporte oficial sólo admite actas aprobadas (actas pendientes: {list(unapproved)})",
                     status_code=409,
                 )
-            if run_ids:
-                unapproved_runs = session.scalars(
-                    select(ClassificationRun.id)
-                    .where(ClassificationRun.id.in_(run_ids), ClassificationRun.approval_status != "approved")
-                ).all()
-                if unapproved_runs:
-                    raise ApplicationError(
-                        "official_export_requires_approval",
-                        f"Un reporte oficial sólo admite ejecuciones aprobadas (ejecuciones pendientes: {list(unapproved_runs)})",
-                        status_code=409,
-                    )
+        try:
+            resolved_runs = ExcelExportService.resolve_runs(session, certificate_ids, run_ids or None, payload.official)
+        except ValueError as exc:
+            raise ApplicationError("official_export_requires_approval", str(exc), status_code=409) from exc
+        run_ids = [run.id for run in resolved_runs]
         export = Export(
             format="xlsx",
             status="queued",
@@ -1001,7 +1027,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         selections = session.scalars(
             select(ClassificationSelection)
             .where(ClassificationSelection.classification_result_id.in_(result_ids))
-            .order_by(ClassificationSelection.classification_result_id, ClassificationSelection.id)
+            .order_by(ClassificationSelection.classification_result_id, ClassificationSelection.created_at, ClassificationSelection.id)
         ).all() if result_ids else []
         selections_by_result: dict[int, list[dict[str, Any]]] = {}
         for selection in selections:

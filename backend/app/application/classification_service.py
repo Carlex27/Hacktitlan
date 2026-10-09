@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from backend.app.application.document_quality_service import DocumentQualityService
-from backend.app.classification_engine import Chapter72ClassificationEngine, ProductFacts
+from backend.app.classification_engine import Chapter72ClassificationEngine, ProductFacts, source_reference
 from backend.app.config import Settings
 from backend.app.domain.enums import ApprovalStatus, RuleSetStatus
 from backend.app.domain.errors import ApplicationError, NotFoundError
@@ -317,6 +317,7 @@ class ClassificationService:
             if entry is not None:
                 reference["catalog_page"] = entry.page
                 reference["catalog_code"] = entry.code
+        reference.update(source_reference(self.engine.catalog, step.rule_code, fraction, nico, step.evidence_fields, rule_set.source_hash))
         return reference
 
     def _candidate_rule_reference(
@@ -337,6 +338,7 @@ class ClassificationService:
         if entry is not None:
             reference["catalog_page"] = entry.page
             reference["catalog_code"] = entry.code
+        reference.update(source_reference(self.engine.catalog, factor.rule_code, candidate.fraction, candidate.nico, factor.evidence_fields, rule_set.source_hash))
         return reference
 
     @staticmethod
@@ -434,10 +436,12 @@ class ClassificationService:
         condition_items = [condition_value] if isinstance(condition_value, str) else condition_value
         condition = {str(item).casefold() for item in condition_items}
         both_sides = None
-        superior = coating.get("superior_g_m2")
-        inferior = coating.get("inferior_g_m2")
-        if superior is not None or inferior is not None:
-            both_sides = superior is not None and inferior is not None
+        superior = ClassificationService._decimal(coating.get("superior_g_m2"))
+        inferior = ClassificationService._decimal(coating.get("inferior_g_m2"))
+        if superior == 0 or inferior == 0:
+            both_sides = False
+        elif superior is not None and inferior is not None:
+            both_sides = superior > 0 and inferior > 0
         return ProductFacts(
             product_id=product.id,
             form=current_values.get("form", product.form),

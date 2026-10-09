@@ -1,0 +1,194 @@
+{
+  "Al_total": {
+    "page_number": 7,
+    "bbox": {
+      "x0": 148.94,
+      "y0": 178.9369999999999,
+      "x1": 299.12,
+      "y1": 187.9369999999999,
+      "page_width": 612,
+      "page_height": 792
+    },
+    "source_text": "superior o igual al 0.3% de aluminio"
+  },
+  "B": {
+    "page_number": 7,
+    "bbox": {
+      "x0": 148.94,
+      "y0": 197.29700000000003,
+      "x1": 297.689,
+      "y1": 206.2969999999999,
+      "page_width": 612,
+      "page_height": 792
+    },
+    "source_text": "superior o igual al 0.0008% de boro"
+  },
+  "Cr": {
+    "page_number": 7,
+    "bbox": {
+      "x0": 148.94,
+      "y0": 215.65699999999993,
+      "x1": 289.664,
+      "y1": 224.65699999999993,
+      "page_width": 612,
+      "page_height": 792
+    },
+    "source_text": "superior o igual al 0.3% de cromo"
+  },
+  "Co": {
+    "page_number": 7,
+    "bbox": {
+      "x0": 148.94,
+      "y0": 234.13699999999994,
+      "x1": 293.495,
+      "y1": 243.13699999999994,
+      "page_width": 612,
+      "page_height": 792
+    },
+    "source_text": "superior o igual al 0.3% de cobalto"
+  },
+  "Cu": {
+    "page_number": 7,
+    "bbox": {
+      "x0": 148.94,
+      "y0": 252.52700000000004,
+      "x1": 286.286,
+      "y1": 261.52699999999993,
+      "page_width": 612,
+      "page_height": 792
+    },
+    "source_text": "superior o igual al 0.4% de cobre"
+  },
+  "Pb": {
+    "page_number": 7,
+    "bbox": {
+      "x0": 148.94,
+      "y0": 270.88699999999994,
+      "x1": 289.421,
+      "y1": 279.88699999999994,
+      "page_width": 612,
+      "page_height": 792
+    },
+    "source_text": "superior o igual al 0.4% de plomo"
+  },
+  "Mn": {
+    "page_number": 7,
+    "bbox": {
+      "x0": 148.94,
+      "y0": 289.247,
+      "x1": 317.489,
+      "y1": 298.247,
+      "page_width": 612,
+      "page_height": 792
+    },
+    "source_text": "superior o igual al 1.65% de manganeso"
+  },
+  "Mo": {
+    "page_number": 7,
+    "bbox": {
+      "x0": 148.94,
+      "y0": 307.607,
+      "x1": 313.03399999999993,
+      "y1": 316.607,
+      "page_width": 612,
+      "page_height": 792
+    },
+    "source_text": "superior o igual al 0.08% de molibdeno"
+  },
+  "Ni": {
+    "page_number": 7,
+    "bbox": {
+      "x0": 148.94,
+      "y0": 326.087,
+      "x1": 288.803,
+      "y1": 335.087,
+      "page_width": 612,
+      "page_height": 792
+    },
+    "source_text": "superior o igual al 0.3% de níquel"
+  },
+  "Nb": {
+    "page_number": 7,
+    "bbox": {
+      "x0": 148.94,
+      "y0": 344.447,
+      "x1": 294.215,
+      "y1": 353.447,
+      "page_width": 612,
+      "page_height": 792
+    },
+    "source_text": "superior o igual al 0.06% de niobio"
+  },
+  "Si": {
+    "page_number": 7,
+    "bbox": {
+      "x0": 148.94,
+      "y0": 362.807,
+      "x1": 433.65099999999995,
+      "y1": 371.807,
+      "page_width": 612,
+      "page_height": 792
+    },
+    "source_text": "superior o igual al 0.6% de silicio superior o igual al 0.05% de titanio"
+  },
+  "Ti": {
+    "page_number": 7,
+    "bbox": {
+      "x0": 148.94,
+      "y0": 362.807,
+      "x1": 433.65099999999995,
+      "y1": 371.807,
+      "page_width": 612,
+      "page_height": 792
+    },
+    "source_text": "superior o igual al 0.6% de silicio superior o igual al 0.05% de titanio"
+  },
+  "W": {
+    "page_number": 7,
+    "bbox": {
+      "x0": 148.94,
+      "y0": 381.167,
+      "x1": 353.36899999999997,
+      "y1": 390.167,
+      "page_width": 612,
+      "page_height": 792
+    },
+    "source_text": "superior o igual al 0.3% de volframio (tungsteno)"
+  },
+  "V": {
+    "page_number": 7,
+    "bbox": {
+      "x0": 148.94,
+      "y0": 399.647,
+      "x1": 295.766,
+      "y1": 408.647,
+      "page_width": 612,
+      "page_height": 792
+    },
+    "source_text": "superior o igual al 0.1% de vanadio"
+  },
+  "Zr": {
+    "page_number": 7,
+    "bbox": {
+      "x0": 148.94,
+      "y0": 418.007,
+      "x1": 300.91999999999996,
+      "y1": 427.007,
+      "page_width": 612,
+      "page_height": 792
+    },
+    "source_text": "superior o igual al 0.05% de circonio"
+  },
+  "OtherIndividual": {
+    "page_number": 7,
+    "bbox": {
+      "x0": 148.94,
+      "y0": 436.387,
+      "x1": 482.578,
+      "y1": 445.387,
+      "page_width": 612,
+      "page_height": 792
+    },
+    "source_text": "superior o igual al 0.1% de los demás elementos considerados individualmente"
+  }
+}
