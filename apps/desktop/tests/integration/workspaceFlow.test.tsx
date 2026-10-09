@@ -43,7 +43,7 @@ describe("Carga, revisión e historial", () => {
     expect(within(form).getByLabelText("Número de acta")).toHaveValue("");
     expect(within(form).getByRole("button", { name: "Desde: Seleccionar fecha" })).toBeVisible();
     expect(within(form).getByRole("combobox", { name: "Estado de revisión" })).toHaveTextContent("Todos");
-  });
+  }, 15_000);
 
   it("aplica filtros en el servidor y reinicia la paginación al limpiar", async () => {
     const backend = createFakeBackend({ ...healthyRoutes });

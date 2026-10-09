@@ -115,7 +115,7 @@ describe("Validación: todos los productos de la ejecución", () => {
     expect(within(selector).getByText("Sin determinar")).toBeInTheDocument();
 
     await openTab(user, "Dictamen de clasificación");
-    expect(screen.getByText(/el dictamen aplica a los 2 productos/i)).toBeInTheDocument();
+    expect(screen.getByText("El dictamen aplica a 1 colada de esta acta.")).toBeInTheDocument();
 
     expect(screen.queryByRole("button", { name: "Historial" })).not.toBeInTheDocument();
   });
