@@ -2,6 +2,12 @@
 
 ## En proceso
 
+- Progreso de importación conectado al trabajo real: avance por página durante
+  OCR, guardado al 95 y finalización al 100 dentro de la transacción. Barra por
+  archivo, consulta cada segundo, estados finales explícitos y recuperación de
+  errores de conexión. Se prueban worker/API y hook de importación; validación
+  visual pendiente del toolchain frontend.
+
 - Hito 7: respaldo y restauración verificados; volumen de 18,250 actas y 273,750
   coladas medido en desarrollo. Consultas p95 entre 5.53 y 151.297 ms; XLSX de 300
   actas/4,500 rollos en 3.058 s; respaldo en 3.218 s y restauración en 19.479 s.
@@ -20,6 +26,16 @@
   formatos conocidos. El Hito 7 ya tiene implementación y mediciones de desarrollo.
 
 ## Implementado
+
+- Importación XLSX (8 de octubre de 2026): almacenamiento original con hash,
+  validación del paquete y límites, extracción sin OCR de tablas MOSSMEX y cartas
+  por especificación, evidencia de hoja/celda y consulta documentada en OpenAPI.
+  Verificada lectura de los tres libros proporcionados y flujo API/worker/PostgreSQL.
+  Siempre requiere revisión; GENERAL conserva química ambigua sin normalizar,
+  no se fusionan hojas ni se adoptan fracciones/NICO del archivo como resultados.
+  Selector y envío React conectados a la API; visor Excel y validación visual
+  pendientes del toolchain frontend.
+  Detalles y límites en la sección Importación de Excel del runbook.
 
 - Hito 6: Consultas, reportes y auditoría final implementado y verificado (auditoría en `docs/audit/HITO_6_CONSULTAS_REPORTES_AUDITORIA.md`).
   - Consultas avanzadas y filtros multidimensionales en `DocumentService.list_certificates` y `GET /api/v1/certificates`: presets de período (`today`/`day`, `week`, `month`) con helper puro `resolve_period_dates`, rango explícito (`date_from`, `date_to`), número de certificado, fabricante, colada (`heat_no`), producto (`product_identifier`), fracción arancelaria (`fraction`), NICO (`nico`), estado documental (`approval_status`) y estado de procesamiento (`processing_status`).

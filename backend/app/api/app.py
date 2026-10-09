@@ -28,10 +28,13 @@ from backend.app.api.schemas import (
     CorrectionRequest,
     DocumentQualityReportEnvelope,
     DocumentReviewQueueEnvelope,
+    DocumentUploadEnvelope,
+    SpreadsheetEnvelope,
     Envelope,
     EvidenceEnvelope,
     ErrorEnvelope,
     ExportRequest,
+    JobEnvelope,
     ManualObservationRequest,
     ReclassificationRequest,
     ReprocessEnvelope,
@@ -254,8 +257,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def ocr_smoke_check():
         return ok(run_smoke_check(settings))
 
-    @app.post("/api/v1/documents", status_code=status.HTTP_202_ACCEPTED)
-    def upload_document(request: Request, session: DbSession, file: UploadFile = File(...)):
+    @app.post("/api/v1/documents", status_code=status.HTTP_202_ACCEPTED,
+              responses={202: {"model": DocumentUploadEnvelope}, 200: {"model": DocumentUploadEnvelope},
+                         400: {"model": ErrorEnvelope}, 413: {"model": ErrorEnvelope}})
+    def upload_document(request: Request, session: DbSession, file: UploadFile = File(..., description="Certificado PDF o libro Excel XLSX; máximo MAX_PDF_BYTES para ambos formatos")):
         result = DocumentService(settings, request.app.state.storage).upload(
             session, file.file, file.filename or "document.pdf"
         )
@@ -518,6 +523,25 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "weight_kg": str(product.weight_kg) if product.weight_kg is not None else None,
         } for product, heat, certificate in rows], meta={"next_cursor": next_cursor, "limit": limit, "date_basis": date_basis})
 
+    @app.get("/api/v1/documents/{document_id}/spreadsheet", responses={
+        200: {"model": SpreadsheetEnvelope}, 400: {"model": ErrorEnvelope}, 404: {"model": ErrorEnvelope},
+    })
+    def spreadsheet_detail(document_id: int, session: DbSession):
+        document = session.get(Document, document_id)
+        if document is None:
+            raise NotFoundError("Documento", document_id)
+        stored = session.get(StoredFile, document.stored_file_id)
+        if stored is None or not stored.original_name.lower().endswith(".xlsx"):
+            raise ApplicationError("not_spreadsheet", "El documento no es un libro XLSX")
+        metadata = document.metadata_json or {}
+        ingestion = metadata.get("ingestion") or {}
+        return ok({"document_id": document.id, "processing_status": document.processing_status,
+                   "file_url": f"/api/v1/documents/{document.id}/file",
+                   "sheets": ingestion.get("sheets") or [],
+                   "specification_records": ingestion.get("specification_records") or [],
+                   "warnings": metadata.get("extraction_reasons") or [],
+                   "formula_policy": "preserved_not_evaluated"})
+
     @app.get("/api/v1/documents/{document_id}/file")
     def download_document(document_id: int, request: Request, session: DbSession):
         document = session.get(Document, document_id)
@@ -563,7 +587,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         certificate = session.get(MillCertificate, observation.certificate_id)
         if certificate is None:
             raise NotFoundError("Acta de evidencia", observation.certificate_id)
-        can_focus_region = observation.page_number is not None and observation.bbox_json is not None
+        source_document = session.get(Document, certificate.document_id)
+        source_file = session.get(StoredFile, source_document.stored_file_id) if source_document else None
+        is_spreadsheet = bool(source_file and source_file.original_name.lower().endswith(".xlsx"))
+        can_focus_region = not is_spreadsheet and observation.page_number is not None and observation.bbox_json is not None
         return ok({
             "id": link.id,
             "decision_step_id": link.decision_step_id,
@@ -586,7 +613,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "page_number": observation.page_number,
                 "bbox": observation.bbox_json,
                 "can_focus_region": can_focus_region,
-                "fallback": None if can_focus_region else "full_page",
+                "fallback": "original_file" if is_spreadsheet else (None if can_focus_region else "full_page"),
             },
         })
 
@@ -657,7 +684,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         document.archived = payload.archived
         return ok({"document_id": document.id, "archived": document.archived})
 
-    @app.get("/api/v1/jobs/{job_id}")
+    @app.get("/api/v1/jobs/{job_id}", responses={
+        200: {"model": JobEnvelope, "description": "Estado y avance del trabajo; 100 al confirmar el guardado"},
+        404: {"model": ErrorEnvelope, "description": "Trabajo no encontrado"},
+    })
     def job_detail(job_id: int, session: DbSession):
         job = session.get(Job, job_id)
         if job is None:

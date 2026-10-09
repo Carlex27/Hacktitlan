@@ -1,17 +1,21 @@
 export interface CertificateDropzoneProps {
   disabled?: boolean;
+  errorId?: string;
   onFilesSelected(files: readonly File[]): void;
 }
 
 export function CertificateDropzone({
   disabled = false,
+  errorId,
   onFilesSelected,
 }: CertificateDropzoneProps) {
   return (
     <label>
-      <span>Seleccionar certificados PDF</span>
+      <span>{importTexts.selectFiles}</span>
       <input
-        accept="application/pdf"
+        aria-describedby={errorId}
+        aria-invalid={errorId ? true : undefined}
+        accept=".pdf,.xlsx,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         disabled={disabled}
         multiple
         type="file"
@@ -22,3 +26,4 @@ export function CertificateDropzone({
     </label>
   );
 }
+import { importTexts } from "../texts";

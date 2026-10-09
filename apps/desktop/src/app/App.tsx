@@ -5,7 +5,7 @@ import { DocumentReviewList } from "../features/certificate-review";
 export function App({ apiBaseUrl = window.location.origin }: { apiBaseUrl?: string }) {
   return (
     <AppShell>
-      <ImportCertificatePage />
+      <ImportCertificatePage apiBaseUrl={apiBaseUrl} />
       <DocumentReviewList apiBaseUrl={apiBaseUrl} />
     </AppShell>
   );

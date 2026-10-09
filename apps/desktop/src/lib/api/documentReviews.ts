@@ -12,7 +12,7 @@ interface Envelope<T> {
   error: { message: string } | null;
 }
 
-async function request<T>(baseUrl: string, path: string, init?: RequestInit): Promise<T> {
+export async function request<T>(baseUrl: string, path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${baseUrl.replace(/\/$/, "")}/api/v1${path}`, init);
   const envelope: Envelope<T> = await response.json();
   if (!response.ok || envelope.error) {

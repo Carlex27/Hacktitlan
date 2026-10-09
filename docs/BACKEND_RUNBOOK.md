@@ -27,6 +27,79 @@ Aplicar la regla como administrador con
 
 ## Validación
 
+### Progreso de procesamiento
+
+El recibo de subida incluye `job_id`. Su avance se consulta en
+`GET /api/v1/jobs/{job_id}`; el contrato tipado `JobEnvelope` se genera en
+OpenAPI. La aplicación consulta cada segundo y deja de hacerlo ante un estado
+terminal. El worker informa inicio (10), páginas OCR terminadas (hasta 90) y
+preparación del guardado (95). El 100 sólo se publica junto con el estado final
+en la transacción que guarda la extracción. `needs_review` y `needs_ocr` también
+son finales: terminar el trabajo no significa aprobar los datos ni completar
+OCR cuando falta el runtime.
+
+El avance ocurre antes de inferir la página siguiente. La carga de modelos o
+una página lenta pueden dejar el porcentaje fijo; no se simula avance ni se
+estima el tiempo restante. Un reintento completo reinicia el porcentaje; el
+fallback GPU/CPU del mismo intento mantiene el avance máximo alcanzado. Si la
+conexión falla, la interfaz muestra el error y permite reanudar la consulta.
+
+Pruebas del flujo:
+
+```powershell
+uv run pytest backend/tests/unit/test_ocr_runtime.py backend/tests/integration/test_processing_progress.py -q
+node --test apps/desktop/tests/integration/certificateImportProgress.test.mjs apps/desktop/tests/unit/documentUpload.test.mjs
+```
+
+Las pruebas frontend ejecutan el hook y las llamadas HTTP con un simulador de
+ciclo de hooks y temporizadores. El proyecto de escritorio todavía no incluye
+el manifiesto ni el toolchain React/Tauri para validar el renderizado real.
+
+### Importación de Excel
+
+`POST /api/v1/documents` acepta PDF y XLSX mediante el mismo multipart `file`.
+El original se guarda por SHA-256, conserva su extensión y se puede descargar
+desde `/api/v1/documents/{document_id}/file`. El límite `HACKTITLAN_MAX_PDF_BYTES`
+se aplica a ambos formatos; XLSX además admite hasta 200 MiB descomprimidos y
+1,000,000 de celdas. Se rechazan libros inválidos, cifrados, macros y archivos
+`.xls` antiguos. No se agregaron dependencias: se utiliza openpyxl existente.
+
+El worker procesa XLSX directamente, sin OCR. Las tablas con encabezados
+`MILL NO`, dimensiones y química se extraen por hoja y fila, incluyendo elementos
+en columnas japonesas y nombres químicos variables por registro. Los valores
+`有効桁` no se aplican como potencias a porcentajes ya decimales. El perfil
+GENERAL con encabezados químicos invertidos/repetidos conserva todas las
+celdas, pero deja la química desconocida hasta confirmar su significado.
+Las unidades faltantes y los ceros usados como marcadores de longitud o ensayos
+no se convierten en mediciones físicas. Las columnas FRACCION/NICO son datos
+de la fuente y nunca sustituyen los resultados del motor.
+
+`GET /api/v1/documents/{document_id}/spreadsheet`, documentado en OpenAPI, devuelve
+las hojas y celdas originales, advertencias y registros de cartas de resistencia
+por especificación. En estas cartas se conserva el operador (`<`, `>=`, etc.),
+la unidad MPa y la celda ancla de los rangos combinados; no se crean productos ni
+se vinculan automáticamente esas afirmaciones con rollos. Las fórmulas se
+conservan como texto y no se ejecutan. Una hoja desconocida se conserva igualmente.
+
+Todos los Excel terminan en `needs_review`. No se fusionan automáticamente
+filas entre hojas ni certificados distintos dentro del libro: su identificador
+interno corresponde a hoja/fila, y los números del origen son observaciones.
+El contenedor del libro no inventa un número de certificado ni fabricante.
+Las observaciones químicas se conservan por producto, incluso si coinciden sus
+porcentajes. El flujo React permite seleccionar PDF/XLSX, enviarlos a la API y
+ver los recibos o errores, conservando recibos previos si falla un archivo del
+lote. El resultado se consulta actualizando la cola de revisión existente.
+Las evidencias de Excel conservan la referencia de celda en `source_text` y
+utilizan `fallback: original_file`, evitando tratar una hoja como página PDF.
+Queda pendiente un visor de celdas. El frontend todavía no tiene manifiestos
+ni toolchain de compilación; no se verificó la pantalla en una aplicación ejecutable.
+
+Comprobación local: se leyeron sin modificar los tres archivos proporcionados:
+DIGITALES (718 filas), GENERAL (383 filas), SPCC-RESISTENCIA (280 registros de
+especificación). Los recuentos incluyen las hojas de análisis y no representan
+productos únicos. Las pruebas portables usan ejemplos sintéticos de sus
+estructuras y cubren carga, worker real, PostgreSQL, descarga y procedencia.
+
 El PDF normativo proporcionado está incluido en
 `data/ligie/chapter-72/source-provided/LIGIE-UNIFICADA-ACERO.pdf`.
 `GET /api/v1/rule-sources/{source_hash}/file` sirve únicamente esa fuente

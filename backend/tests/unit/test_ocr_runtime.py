@@ -294,7 +294,10 @@ def test_sequential_page_processing_and_progress_callback():
 
     class FakePipeline:
         def predict(self, **_kw):
-            return [FakeResult(0), FakeResult(1)]
+            yield FakeResult(0)
+            # The first page must be reported before inference starts on the second.
+            assert pages_reported == [(1, 2)]
+            yield FakeResult(1)
 
     reader = PaddleStructureReader(
         Settings(ocr_enabled=True),
@@ -310,6 +313,77 @@ def test_sequential_page_processing_and_progress_callback():
 
     assert len(result.pages) == 2
     assert pages_reported == [(1, 2), (2, 2)]
+
+
+def test_cancellation_after_page_one_does_not_infer_page_two():
+    import pytest
+
+    completed = []
+    closed = []
+
+    class FakePipeline:
+        def predict(self, **_kwargs):
+            try:
+                yield {"page_index": 0}
+                pytest.fail("La cancelación debe impedir la inferencia de la página siguiente")
+            finally:
+                closed.append(True)
+
+    reader = PaddleStructureReader(
+        Settings(ocr_enabled=True),
+        pipeline_factory=lambda **_kwargs: FakePipeline(),
+    )
+    with pytest.raises(OcrCancellationRequested):
+        reader._predict("ignored.pdf", "cpu", total_pages=2,
+                        page_callback=lambda page, total: completed.append((page, total)),
+                        cancel_check=lambda: bool(completed))
+    assert completed == [(1, 2)]
+    assert closed == [True]
+
+
+def test_pdf_raster_and_progress_are_processed_before_next_inference(tmp_path, monkeypatch):
+    import sys
+    import pdfplumber
+    from PIL import Image
+
+    events = []
+    image = Image.new("RGB", (32, 24), "white")
+
+    class Page:
+        width, height = 612, 792
+
+        def to_image(self, **_kwargs):
+            events.append("raster")
+            return SimpleNamespace(original=image)
+
+    class Pdf:
+        pages = [Page(), Page()]
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            events.append("closed")
+
+    monkeypatch.setattr(pdfplumber, "open", lambda _path: Pdf())
+    monkeypatch.setitem(sys.modules, "paddlex.inference.pipelines.components",
+                        SimpleNamespace(rotate_image=lambda image, angle: image))
+
+    class Pipeline:
+        def predict(self, **_kwargs):
+            for number in (1, 2):
+                events.append(f"infer-{number}")
+                yield {"doc_preprocessor_res": {"angle": 0}}
+
+    reader = PaddleStructureReader(Settings(ocr_enabled=True),
+                                   pipeline_factory=lambda **_kwargs: Pipeline())
+    path = tmp_path / "scan.pdf"
+    path.write_bytes(b"%PDF-1.7")
+    results = reader._predict(path, "cpu", total_pages=2,
+                             page_callback=lambda page, total: events.append(f"progress-{page}/{total}"))
+    assert events == ["infer-1", "raster", "progress-1/2", "infer-2", "raster", "progress-2/2", "closed"]
+    assert [result["page_index"] for result in results] == [0, 1]
+    assert all(result["cell_image"].shape == (24, 32, 3) for result in results)
 
 
 def test_ocr_cancellation_between_pages():
@@ -340,4 +414,3 @@ def test_ocr_cancellation_between_pages():
 
     with pytest.raises(OcrCancellationRequested):
         reader.read("ignored.pdf", cancel_check=lambda: True)
-

@@ -2,6 +2,14 @@
 
 ## Resumen
 
+La importación XLSX comparte almacenamiento, trabajos y revisión con PDF.
+Se conserva hoja/celda como evidencia y las cartas de resistencia permanecen
+como documentación de apoyo, sin vinculación automática por especificación.
+La química ambigua exige confirmación antes de normalizar; filas entre hojas
+no se deduplican por suposición. El envío React ya utiliza la API. El siguiente
+trabajo frontend es habilitar su toolchain y presentar las celdas y advertencias
+del endpoint documentado.
+
 La revisión de reglas del 8 de octubre de 2026 está documentada en
 [`audit/CLASSIFICATION_SOURCE_REVIEW.md`](audit/CLASSIFICATION_SOURCE_REVIEW.md).
 Antes de declarar cobertura completa deben resolverse las brechas de vigencia,

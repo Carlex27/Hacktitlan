@@ -10,6 +10,7 @@ import tempfile
 from typing import BinaryIO
 
 from backend.app.domain.errors import ApplicationError
+from backend.app.document_ingestion.excel_reader import validate_xlsx
 
 
 @dataclass(frozen=True)
@@ -31,9 +32,15 @@ class FileStorage:
         self.temp_root.mkdir(parents=True, exist_ok=True)
 
     def store_pdf(self, stream: BinaryIO, original_name: str) -> StoredArtifact:
-        safe_name = Path(original_name or "document.pdf").name
-        if Path(safe_name).suffix.lower() != ".pdf":
+        if Path(original_name).suffix.lower() != ".pdf":
             raise ApplicationError("invalid_file_type", "El archivo debe tener extensión .pdf")
+        return self.store_document(stream, original_name)
+
+    def store_document(self, stream: BinaryIO, original_name: str) -> StoredArtifact:
+        safe_name = Path(original_name or "document.pdf").name
+        suffix = Path(safe_name).suffix.lower()
+        if suffix not in {".pdf", ".xlsx"}:
+            raise ApplicationError("invalid_file_type", "El archivo debe tener extensión .pdf o .xlsx")
 
         digest = sha256()
         size = 0
@@ -51,7 +58,7 @@ class FileStorage:
                     if size > self.max_pdf_bytes:
                         raise ApplicationError(
                             "file_too_large",
-                            f"El PDF excede el límite de {self.max_pdf_bytes} bytes",
+                            f"El archivo excede el límite de {self.max_pdf_bytes} bytes",
                             status_code=413,
                         )
                     digest.update(chunk)
@@ -59,8 +66,10 @@ class FileStorage:
                 temporary.flush()
                 os.fsync(temporary.fileno())
 
-            if size == 0 or first_bytes != b"%PDF-":
+            if suffix == ".pdf" and (size == 0 or first_bytes != b"%PDF-"):
                 raise ApplicationError("invalid_pdf", "El archivo no contiene una cabecera PDF válida")
+            if suffix == ".xlsx":
+                validate_xlsx(temporary_path)
 
             hash_value = digest.hexdigest()
             verification = sha256()
@@ -73,7 +82,7 @@ class FileStorage:
                     "El archivo temporal no coincide con su hash calculado",
                     status_code=500,
                 )
-            relative = Path(hash_value[:2]) / hash_value[2:4] / f"{hash_value}.pdf"
+            relative = Path(hash_value[:2]) / hash_value[2:4] / f"{hash_value}{suffix}"
             final_path = self.root / relative
             final_path.parent.mkdir(parents=True, exist_ok=True)
             duplicate = final_path.exists()
@@ -86,7 +95,7 @@ class FileStorage:
                 original_name=safe_name,
                 storage_name=final_path.name,
                 relative_path=relative.as_posix(),
-                media_type="application/pdf",
+                media_type="application/pdf" if suffix == ".pdf" else "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 size_bytes=size,
                 duplicate=duplicate,
             )
@@ -151,4 +160,3 @@ class FileStorage:
             size_bytes=size,
             duplicate=duplicate,
         )
-
