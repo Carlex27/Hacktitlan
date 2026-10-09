@@ -50,12 +50,13 @@ if ($Action -eq "repair") {
 # part of the base uv.lock because CPU and GPU Paddle wheels are mutually exclusive.
 Invoke-CheckedNative uv pip install --python $python "paddleocr==3.7.0" "paddlex[ocr]==3.7.2"
 if ($Backend -eq "cpu") {
-    Invoke-CheckedNative uv pip install --python $python "paddlepaddle==3.3.0" `
+    # Paddle 3.3.x CPU fails on PP-OCR PIR models with ArrayAttribute<DoubleAttribute>.
+    Invoke-CheckedNative uv pip install --python $python "paddlepaddle==3.2.2" `
         --index-url "https://www.paddlepaddle.org.cn/packages/stable/cpu/"
 } else {
     $cudaDirectory = $Backend.Replace("cuda", "cu")
     $wheel = "https://paddle-whl.cdn.bcebos.com/stable/$cudaDirectory/paddlepaddle-gpu/" +
-        "paddlepaddle_gpu-3.3.0-cp312-cp312-win_amd64.whl"
+        "paddlepaddle_gpu-3.2.2-cp312-cp312-win_amd64.whl"
     Invoke-CheckedNative uv pip install --python $python $wheel
 }
 

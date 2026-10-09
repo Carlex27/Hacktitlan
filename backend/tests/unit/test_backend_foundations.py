@@ -292,7 +292,11 @@ def test_backup_retention_keeps_seven_daily_files(tmp_path):
     assert len(list(settings.backup_root.glob("backup_daily_*.zip"))) == 7
 
 
-def test_ocr_api_endpoints_return_structured_responses(tmp_path):
+def test_ocr_api_endpoints_return_structured_responses(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "backend.app.api.app.run_smoke_check",
+        lambda _settings: {"success": False, "error": "runtime unavailable"},
+    )
     settings = Settings(
         storage_root=tmp_path / "storage",
         model_root=tmp_path / "models",
@@ -312,5 +316,4 @@ def test_ocr_api_endpoints_return_structured_responses(tmp_path):
 
     assert smoke_res.status_code == 200
     assert smoke_res.json()["data"]["success"] is False  # not installed in test env
-
 

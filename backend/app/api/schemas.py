@@ -190,6 +190,9 @@ class DocumentReviewSummaryIssue(BaseModel):
 
 
 class DocumentReviewQueueItem(BaseModel):
+    revision_number: int
+    active_job_id: int | None = None
+    can_reprocess: bool
     certificate_id: int
     document_id: int
     certificate_no: str | None = None
@@ -231,6 +234,5 @@ class ReprocessEnvelope(BaseModel):
     data: ReprocessRead
     meta: dict[str, Any] = Field(default_factory=dict)
     error: ErrorDetail | None = None
-
 
 

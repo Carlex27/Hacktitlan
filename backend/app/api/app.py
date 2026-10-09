@@ -899,6 +899,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             200: {"model": ReprocessEnvelope, "description": "Reprocesamiento ejecutado o encolado"},
             400: {"model": ErrorEnvelope, "description": "Solicitud inválida"},
             404: {"model": ErrorEnvelope, "description": "Acta o documento no encontrado"},
+            409: {"model": ErrorEnvelope, "description": "El PDF ya tiene una extracción queued o running; error.code=reprocess_in_progress y error.details.job_id identifica el trabajo activo"},
         },
     )
     def reprocess_certificate(

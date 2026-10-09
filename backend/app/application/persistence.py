@@ -72,7 +72,7 @@ class CertificatePersistenceService:
         certificate_no = str(document_data.get("certificate_no") or "").strip() or None
         certificate.certificate_no = certificate_no
         parsed_date = parse_certificate_date(
-            document_data.get("certificate_date_raw") or document_data.get("delivery_date_raw")
+            document_data.get("certificate_date_raw") or document_data.get("delivery_date_raw") or document_data.get("issue_date_raw")
         )
         certificate.certificate_date = parsed_date.date() if parsed_date else None
         products_data = normalized.get("products") or []
@@ -279,4 +279,3 @@ class CertificatePersistenceService:
                     inherited=bool(detail.get("inherited")),
                 )
             )
-

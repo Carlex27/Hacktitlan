@@ -25,18 +25,19 @@ class FormatProfile:
 
     def evaluate(self, text_corpus: str) -> tuple[float, tuple[str, ...]]:
         matched: list[str] = []
+        compact_corpus = text_corpus.replace(" ", "")
         for negative in self.negative_signals:
-            if negative in text_corpus:
+            if negative in text_corpus or negative.replace(" ", "") in compact_corpus:
                 return 0.0, ()
 
         for req in self.required_signals:
-            if req not in text_corpus:
+            if req not in text_corpus and req.replace(" ", "") not in compact_corpus:
                 return 0.0, ()
             matched.append(f"required:{req}")
 
         score = 0.50  # Base score for fulfilling all required signals
         for sig, weight in self.weighted_signals.items():
-            if sig in text_corpus:
+            if sig in text_corpus or sig.replace(" ", "") in compact_corpus:
                 score += weight
                 matched.append(f"weighted:{sig}")
 
