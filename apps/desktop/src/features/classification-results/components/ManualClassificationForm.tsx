@@ -44,7 +44,9 @@ export function ManualClassificationForm({ result, disabled, onSaved }: { result
       <div><label className="mb-2 block text-sm font-medium" htmlFor={reasonId}>{text.reason}</label>
         <Textarea id={reasonId} required minLength={3} maxLength={4000} value={reason}
           onChange={(event) => { setReason(event.target.value); setSaved(false); }} aria-describedby={error ? errorId : undefined} /></div>
-      <Button type="submit" className="min-h-11">{isSubmitting ? text.saving : text.save}</Button>
+      <div className="flex justify-end">
+        <Button type="submit" className="min-h-11">{isSubmitting ? text.saving : text.save}</Button>
+      </div>
     </fieldset>
     {saved && <p role="status">{text.saved}</p>}
     {error && <Alert id={errorId} variant="destructive" role="alert"><AlertTitle>{es.approval.errorTitle}</AlertTitle>

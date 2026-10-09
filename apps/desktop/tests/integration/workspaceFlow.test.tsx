@@ -98,7 +98,8 @@ describe("Carga, revisión e historial", () => {
       attempts: 1, max_attempts: 3, error_code: null, error_message: null, result: null }));
     await waitFor(() => expect(screen.queryByText("1 documento(s) en procesamiento")).not.toBeInTheDocument());
     await user.click(screen.getByRole("button", { name: "Carga y revisión" }));
-    expect(await screen.findByRole("button", { name: "Revisar" })).toBeInTheDocument();
+    expect(await screen.findByText("No hay archivos seleccionados")).toBeInTheDocument();
+    expect(screen.queryByText("molino-1.pdf")).not.toBeInTheDocument();
   });
   it("genera clasificación para un acta existente y consulta el trabajo hasta terminar", async () => {
     let complete = false;

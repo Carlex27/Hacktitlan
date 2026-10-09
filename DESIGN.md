@@ -38,6 +38,8 @@ No inventar valores de Figma ni construir una biblioteca paralela. Las reglas de
 
 ### Aplicación en Carga y revisión
 
+Archivos enviados retira automáticamente las filas de extracción terminada (`succeeded` y `needs_review`). Conserva trabajos activos, errores y archivos que necesitan OCR. Sólo cambia la presentación de la cola; las actas y su evidencia permanecen guardadas y accesibles desde el historial y Revisión documental.
+
 Generar clasificación conserva sólo el botón en su sección; envía Administrador y un motivo fijo. Los avisos de proceso, resultado y error permanecen visibles cuando corresponden.
 
 Revisión documental muestra actas, fabricante, calidad, conteos de bloqueantes y advertencias y acceso a Revisar. Por petición del usuario, no muestra la lista de incidencias ni el botón Volver a analizar. Conserva Actualizar revisiones y los avisos de trabajos activos.

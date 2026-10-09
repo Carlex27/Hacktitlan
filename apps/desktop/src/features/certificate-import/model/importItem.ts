@@ -38,6 +38,10 @@ export function isTerminalPhase(phase: ImportPhase): boolean {
   return TERMINAL_PHASES.has(phase);
 }
 
+export function visibleImportItems(items: readonly ImportItem[]): readonly ImportItem[] {
+  return items.filter((item) => item.phase !== "succeeded" && item.phase !== "needs_review");
+}
+
 export function phaseToStatus(phase: ImportPhase): ProcessingStatus {
   switch (phase) {
     case "uploading":

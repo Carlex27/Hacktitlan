@@ -55,14 +55,14 @@ describe("Importación de actas", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("El servidor no está listo");
   });
 
-  it("carga un PDF y sigue el trabajo hasta terminar", async () => {
+  it.each(["succeeded", "needs_review"] as const)("retira el PDF de la cola al terminar en %s", async (status) => {
     const user = userEvent.setup();
-    const jobs = [jobResponse("queued", 0), jobResponse("running", 50), jobResponse("succeeded", 100)];
+    const jobs = [jobResponse("queued", 0), jobResponse("running", 50), jobResponse(status, 100)];
     const backend = createFakeBackend({
       ...healthyRoutes,
       "POST /api/v1/documents": () =>
         envelope({ document_id: 5, certificate_id: 21, job_id: 11, duplicate: false }, 202),
-      "GET /api/v1/jobs/11": () => jobs.shift() ?? jobResponse("succeeded", 100),
+      "GET /api/v1/jobs/11": () => jobs.shift() ?? jobResponse(status, 100),
     });
     render(<App apiClient={backend.client} />);
 
@@ -71,9 +71,8 @@ describe("Importación de actas", () => {
 
     const row = (await screen.findByText("molino-1.pdf")).closest("li");
     expect(row).not.toBeNull();
-    await waitFor(() => expect(row).toHaveAttribute("data-status", "success"), { timeout: 8000 });
-    expect(row).toHaveTextContent("Extracción completa");
-    expect(row).toHaveTextContent("Acta #21");
+    await waitFor(() => expect(row).not.toBeInTheDocument(), { timeout: 8000 });
+    expect(screen.getByText("No hay archivos seleccionados")).toBeInTheDocument();
     expect(backend.calls.filter((call) => call === "GET /api/v1/jobs/11")).toHaveLength(3);
   }, 10_000);
 

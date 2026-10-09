@@ -9,6 +9,7 @@ import {
   createImportItem,
   isTerminalPhase,
   phaseToStatus,
+  visibleImportItems,
   type ImportPhase,
 } from "@/features/certificate-import/model/importItem";
 import { importReducer } from "@/features/certificate-import/model/importReducer";
@@ -29,6 +30,15 @@ function job(overrides: Partial<JobDto> = {}): JobDto {
     ...overrides,
   };
 }
+
+it("oculta las extracciones terminadas y conserva trabajos activos, OCR y errores", () => {
+  const phases: ImportPhase[] = ["uploading", "queued", "running", "succeeded", "needs_review", "needs_ocr", "failed", "cancelled", "no_job", "request_failed"];
+  const items = phases.map((phase) => ({ ...createImportItem(phase, `${phase}.pdf`), phase }));
+  expect(visibleImportItems(items).map((item) => item.phase)).toEqual([
+    "uploading", "queued", "running", "needs_ocr", "failed", "cancelled", "no_job", "request_failed",
+  ]);
+  expect(items).toHaveLength(10);
+});
 
 it("retira sólo las cargas del acta borrada y conserva las otras", () => {
   const deleted = { ...createImportItem("a", "borrar.pdf"), certificateId: 42 };

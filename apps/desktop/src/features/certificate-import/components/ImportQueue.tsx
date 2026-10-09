@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/empty";
 import { es } from "@/lib/i18n";
 
-import { isTerminalPhase, type ImportItem } from "../model/importItem";
+import { isTerminalPhase, visibleImportItems, type ImportItem } from "../model/importItem";
 import { ImportQueueItem } from "./ImportQueueItem";
 
 export interface ImportQueueProps {
@@ -21,7 +21,8 @@ export interface ImportQueueProps {
 }
 
 export function ImportQueue({ items, onClearFinished, onReview }: ImportQueueProps) {
-  const hasFinished = items.some((item) => isTerminalPhase(item.phase));
+  const visibleItems = visibleImportItems(items);
+  const hasFinished = visibleItems.some((item) => isTerminalPhase(item.phase));
 
   return (
     <Card className="rounded-xl border-border shadow-none">
@@ -38,7 +39,7 @@ export function ImportQueue({ items, onClearFinished, onReview }: ImportQueuePro
         )}
       </CardHeader>
       <CardContent>
-        {items.length === 0 ? (
+        {visibleItems.length === 0 ? (
           <Empty>
             <EmptyHeader>
               <EmptyMedia variant="icon">
@@ -50,7 +51,7 @@ export function ImportQueue({ items, onClearFinished, onReview }: ImportQueuePro
           </Empty>
         ) : (
           <ul aria-live="polite" className="flex flex-col divide-y">
-            {items.map((item) => (
+            {visibleItems.map((item) => (
               <ImportQueueItem key={item.id} item={item} onReview={onReview} />
             ))}
           </ul>
