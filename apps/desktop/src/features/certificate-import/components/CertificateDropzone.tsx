@@ -3,6 +3,7 @@ import { useId, useState, type DragEvent } from "react";
 
 import { cn } from "@/lib/utils";
 import { es } from "@/lib/i18n";
+import { buttonVariants } from "@/components/ui/button";
 
 import { partitionPdfFiles } from "../model/partitionPdfFiles";
 
@@ -50,28 +51,28 @@ export function CertificateDropzone({
         onDragLeave={() => setIsDragging(false)}
         onDrop={handleDrop}
         className={cn(
-          "group flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-dashed border-slate-600 bg-[#1e2638] px-3.5 py-2 text-slate-200 transition-all shadow-sm",
-          "hover:bg-[#253047] hover:border-blue-400 has-focus-visible:ring-2 has-focus-visible:ring-blue-500",
-          "data-dragging:border-blue-400 data-dragging:bg-[#253047]",
+          "group flex cursor-pointer flex-wrap items-center justify-between gap-6 rounded-xl border border-dashed border-input bg-muted/30 p-6 sm:p-8 text-foreground transition-colors",
+          "hover:bg-muted/60 hover:border-primary has-focus-visible:outline-2 has-focus-visible:outline-offset-4 has-focus-visible:outline-primary",
+          "data-dragging:border-primary data-dragging:bg-muted",
           "data-disabled:cursor-not-allowed data-disabled:opacity-50",
         )}
       >
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-7 h-7 rounded-md bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-blue-400 shrink-0 group-hover:scale-105 transition-transform">
-            <FileUpIcon aria-hidden="true" className="w-3.5 h-3.5" />
+          <div className="size-12 rounded-lg bg-muted flex items-center justify-center text-foreground shrink-0">
+            <FileUpIcon aria-hidden="true" className="size-6" />
           </div>
           <div className="flex flex-col text-left min-w-0">
-            <span className="text-xs font-semibold text-slate-100 truncate">
+            <span className="text-base leading-6 font-semibold">
               {es.certificateImport.dropzone.label}
             </span>
-            <span id={hintId} className="text-[10.5px] text-slate-400 truncate">
+            <span id={hintId} className="text-sm leading-5 text-muted-foreground">
               {es.certificateImport.dropzone.hint}
             </span>
           </div>
         </div>
 
-        <span className="shrink-0 text-[11px] font-medium px-2 py-0.5 rounded bg-blue-600/30 border border-blue-500/40 text-blue-300 group-hover:bg-blue-600 group-hover:text-white transition-colors">
-          Examinar
+        <span className={cn(buttonVariants({ variant: "default", size: "lg" }), "min-h-11 px-4 group-hover:bg-primary/80")}>
+          {es.certificateImport.dropzone.browse}
         </span>
 
         <input
@@ -90,7 +91,7 @@ export function CertificateDropzone({
         />
       </label>
       {hasError && (
-        <p id={errorId} role="alert" className="mt-1 text-xs text-red-400 font-medium">
+        <p id={errorId} role="alert" className="mt-2 text-sm leading-5 text-destructive font-medium">
           {es.certificateImport.dropzone.rejected(rejected)}
         </p>
       )}

@@ -7,3 +7,4 @@ export type {
   FormattedChemicalItem,
   FormattedMechanicalProperty,
 } from "./certificateReviewModel";
+export { primaryObservations, verifiedChemicalObservations, displayObservationValue } from "./primaryObservations";

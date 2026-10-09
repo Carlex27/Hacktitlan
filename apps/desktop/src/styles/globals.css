@@ -6,6 +6,11 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+    --color-warning-background: var(--warning-background);
+    --color-warning-foreground: var(--warning-foreground);
+    --color-warning-border: var(--warning-border);
+    --color-success-background: var(--success-background);
+    --color-success-foreground: var(--success-foreground);
     --font-heading: var(--font-sans);
     --font-sans: 'Geist Variable', sans-serif;
     --color-sidebar-ring: var(--sidebar-ring);
@@ -56,6 +61,11 @@
 }
 
 :root {
+    --warning-background: var(--color-amber-50);
+    --warning-foreground: var(--color-amber-900);
+    --warning-border: var(--color-amber-200);
+    --success-background: var(--color-emerald-50);
+    --success-foreground: var(--color-emerald-800);
     --background: oklch(1 0 0);
     --foreground: oklch(0.145 0 0);
     --card: oklch(1 0 0);
@@ -132,6 +142,10 @@
 }
 
 @layer base {
+  html, body, #root {
+    height: 100%;
+    overflow: clip;
+  }
   * {
     @apply border-border outline-ring/50;
     }

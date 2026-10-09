@@ -53,77 +53,73 @@ function queue() {
 }
 
 describe("Revisión documental", () => {
-  it("lista las actas con incidencias y bloquea el reprocesamiento con un trabajo activo", async () => {
+  it("permite volver a analizar sólo actas con errores y bloquea trabajos activos", async () => {
     renderWith({
       "GET /api/v1/document-reviews": () =>
         envelope([
           item({}),
           item({ certificate_id: 43, certificate_no: "CM-43", active_job_id: 9, can_reprocess: false }),
+          item({ certificate_id: 44, certificate_no: "CM-44", blocking_issues_count: 0, warning_issues_count: 0, issues_summary: [] }),
+          item({ certificate_id: 45, certificate_no: "CM-45", blocking_issues_count: 0, warning_issues_count: 1 }),
         ]),
     });
 
     const list = await queue();
+    expect(screen.queryByRole("region", { name: "Visor de documento" })).not.toBeInTheDocument();
     const ready = within(list).getByRole("listitem", { name: "CM-42" });
     expect(within(ready).getByText(/Falta el espesor/)).toBeInTheDocument();
-    expect(within(ready).getByRole("button", { name: "Reprocesar PDF" })).toBeEnabled();
+    expect(within(ready).getByRole("button", { name: "Volver a analizar" })).toBeEnabled();
+    expect(within(ready).queryByRole("button", { name: "Reprocesar PDF" })).not.toBeInTheDocument();
+    expect(within(ready).queryByLabelText("Persona responsable")).not.toBeInTheDocument();
+    expect(within(ready).queryByLabelText("Motivo del reprocesamiento")).not.toBeInTheDocument();
 
     const busy = within(list).getByRole("listitem", { name: "CM-43" });
     expect(within(busy).getByText(/trabajo #9/)).toBeInTheDocument();
-    expect(within(busy).getByRole("button", { name: "Reprocesar PDF" })).toBeDisabled();
+    expect(within(busy).getByRole("button", { name: "Volver a analizar" })).toBeDisabled();
+    for (const name of ["CM-44", "CM-45"]) {
+      expect(within(within(list).getByRole("listitem", { name })).queryByRole("button", { name: "Volver a analizar" })).not.toBeInTheDocument();
+    }
+    expect(within(busy).queryByRole("button", { name: "Reprocesar PDF" })).not.toBeInTheDocument();
   });
 
-  it("reprocesa con persona y motivo, avisa la nueva revisión y actualiza la cola", async () => {
+  it("envía la extracción auditada y actualiza la cola", async () => {
     let body: unknown;
+    let queued = false;
     const { backend, user } = renderWith({
-      "GET /api/v1/document-reviews": () => envelope([item({})]),
+      "GET /api/v1/document-reviews": () => envelope([item(queued ? { active_job_id: 12, can_reprocess: false } : {})]),
       "POST /api/v1/certificates/42/reprocess": (init) => {
         body = JSON.parse(String(init?.body));
-        return envelope({
-          certificate_id: 44,
-          job_id: 12,
-          stage: "extraction",
-          status: "queued",
-          quality_report: null,
-        });
+        queued = true;
+        return envelope({ certificate_id: 46, job_id: 12, stage: "extraction", status: "queued", quality_report: null });
       },
     });
-
-    const row = within(await queue()).getByRole("listitem", { name: "CM-42" });
-    await user.click(within(row).getByRole("button", { name: "Reprocesar PDF" }));
-    expect(within(row).getByLabelText("Persona responsable")).toHaveAttribute("aria-invalid", "true");
-    expect(backend.calls).not.toContain("POST /api/v1/certificates/42/reprocess");
-
-    await user.type(within(row).getByLabelText("Persona responsable"), "Ana López");
-    await user.type(within(row).getByLabelText("Motivo del reprocesamiento"), "PDF corregido por el molino");
-    await user.click(within(row).getByRole("button", { name: "Reprocesar PDF" }));
-
-    expect(await screen.findByText(/la nueva revisión es el acta #44/)).toBeInTheDocument();
-    expect(body).toEqual({
-      from_stage: "extraction",
-      person_name: "Ana López",
-      reason: "PDF corregido por el molino",
-    });
-    await waitFor(() =>
-      expect(backend.calls.filter((call) => call === "GET /api/v1/document-reviews")).toHaveLength(2),
-    );
+    await queue();
+    await user.click(screen.getByRole("button", { name: "Volver a analizar" }));
+    await waitFor(() => expect(backend.calls.filter((call) => call === "GET /api/v1/document-reviews")).toHaveLength(2));
+    expect(body).toEqual({ from_stage: "extraction", person_name: "Administrador", reason: "Volver a analizar el documento por errores detectados en la extracción." });
+    expect(await screen.findByText(/trabajo #12/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Volver a analizar" })).toBeDisabled();
   });
 
-  it("muestra el 409 de extracción en curso en la fila correspondiente", async () => {
+  it("muestra el error de reprocesamiento y permite reintentar", async () => {
     const { user } = renderWith({
       "GET /api/v1/document-reviews": () => envelope([item({})]),
-      "POST /api/v1/certificates/42/reprocess": () =>
-        errorEnvelope("reprocess_in_progress", "Este PDF ya tiene una extracción en curso", 409),
+      "POST /api/v1/certificates/42/reprocess": () => errorEnvelope("internal_error", "Falló la extracción", 500),
     });
+    await queue();
+    await user.click(screen.getByRole("button", { name: "Volver a analizar" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Falló la extracción");
+    expect(screen.getByRole("button", { name: "Volver a analizar" })).toBeEnabled();
+  });
 
-    const row = within(await queue()).getByRole("listitem", { name: "CM-42" });
-    await user.type(within(row).getByLabelText("Persona responsable"), "Ana López");
-    await user.type(within(row).getByLabelText("Motivo del reprocesamiento"), "Reintento");
-    await user.click(within(row).getByRole("button", { name: "Reprocesar PDF" }));
-
-    const refreshedRow = within(await queue()).getByRole("listitem", { name: "CM-42" });
-    expect(await within(refreshedRow).findByRole("alert")).toHaveTextContent(
-      "Este PDF ya tiene una extracción en curso",
-    );
+  it("actualiza la cola sin enviar solicitudes de reprocesamiento", async () => {
+    const { backend, user } = renderWith({
+      "GET /api/v1/document-reviews": () => envelope([item({})]),
+    });
+    await queue();
+    await user.click(screen.getByRole("button", { name: "Actualizar revisiones" }));
+    await waitFor(() => expect(backend.calls.filter((call) => call === "GET /api/v1/document-reviews")).toHaveLength(2));
+    expect(backend.calls.some((call) => call.includes("/reprocess"))).toBe(false);
   });
 
   it("muestra el error con reintento y abre el acta en Validación", async () => {

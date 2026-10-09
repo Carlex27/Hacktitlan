@@ -30,7 +30,7 @@ PDF -> extracción/OCR -> normalización -> validación -> motor de reglas
 | Empaquetado Python | PyInstaller | Sidecar autocontenido para Windows |
 | Instalador | Tauri Bundler (MSI/NSIS) | Una sola instalación |
 
-La aplicación base tiene como objetivo equipos Windows con 8 GB de RAM y CPU,
+La aplicación base tiene como objetivo equipos Windows, sin un presupuesto fijo de RAM,
 sin requerir GPU. OCR e IA local se distribuyen como paquetes opcionales que el
 instalador o la propia aplicación pueden descargar después de comprobar memoria,
 procesador, GPU y espacio disponible. Los requisitos completos están en
@@ -124,7 +124,7 @@ nunca convierte `unknown` en `false`.
 Registra regla, operador, umbral, valor observado, evidencia y resultado. Esto
 permite reconstruir por qué se eligió o descartó cada rama.
 
-Cada producto debe conservar exactamente tres candidatos válidos antes de la
+Cada producto debe conservar de uno a tres candidatos válidos antes de la
 selección humana. La selección y la aprobación son eventos distintos e
 inmutables. Cada paso enlaza sólo su evidencia específica para que el frontend
 pueda abrir el PDF en la página y región correspondientes. Los requisitos están
@@ -193,7 +193,7 @@ documentos generados.
 - `classification_runs`: entrada, versión, resultado y estado.
 - `classification_results`: tipo de producto, fracción, NICO y descripción por
   producto para cada ejecución.
-- `classification_candidates`: tres opciones válidas, ordenadas y explicadas
+- `classification_candidates`: hasta tres opciones válidas, ordenadas y explicadas
   para cada producto y ejecución.
 - `classification_selections`: selección auditada, persona, motivo, equipo y
   fecha, separada de la aprobación.

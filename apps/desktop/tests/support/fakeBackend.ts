@@ -80,6 +80,7 @@ export const healthyRoutes: Record<string, RouteHandler> = {
   "GET /api/v1/health/ready": () =>
     envelope({ status: "ready", database: "available", storage: "available" }),
   "GET /api/v1/document-reviews": () => envelope([]),
+  "GET /api/v1/certificates": () => envelope([]),
   // Documento 10: el que devuelven las cargas simuladas de las pruebas.
   "GET /api/v1/documents/10/file": () => pdfResponse(),
 };

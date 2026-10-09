@@ -2,6 +2,16 @@
 
 Estas reglas aplican a todo el proyecto.
 
+## Prioridad actual: UI web
+
+- Primero construir y validar la UI y sus flujos en el navegador, incluyendo
+  la integración con el backend, accesibilidad y estados de carga y error.
+- Aunque el frontend viva en `apps/desktop`, por el momento el entorno de
+  desarrollo y validación es web.
+- Posponer Tauri, empaquetado, integración nativa y validaciones de escritorio
+  hasta que el usuario indique retomar esa etapa. No condicionar la entrega de
+  cambios de UI a verificaciones de Tauri ni señalar su ausencia como pendiente.
+
 ## Arquitectura por componentes
 
 - Toda interfaz debe construirse mediante componentes React pequeños,
@@ -64,6 +74,52 @@ Estas reglas aplican a todo el proyecto.
 - Preservar evidencia, valores originales y valores normalizados.
 - Un dato ausente nunca se convierte en cero ni en `false`.
 - Ejecutar pruebas relevantes y validaciones estáticas antes de entregar.
-- No instalar nuevas skills de agente para trabajar en este repositorio. No
-  agregar dependencias del proyecto sin justificar su necesidad y registrarlas
+- Instalar nuevas skills de agente sólo cuando el usuario lo solicite
+  explícitamente. Una petición de diseño, desarrollo o recomendación no autoriza
+  instalaciones. Instalar únicamente las skills solicitadas, preferentemente
+  en la carpeta personal de Codex, sin agregar otras skills ni herramientas
+  opcionales como parte de la instalación.
+- No agregar dependencias del proyecto sin justificar su necesidad y registrarlas
   mediante el administrador de paquetes correspondiente.
+
+## Planeación y diseño UX/UI con skills
+
+- Antes de diseñar o modificar UI, leer `PRODUCT.md`, `DESIGN.md` y
+  `docs/FINESSE_DESIGN_REFERENCE.md`. Finesse UI 1.0 es la referencia visual
+  elegida por el usuario; su extracción es parcial y no autoriza una migración
+  automática. Distinguir reglas observadas, adaptaciones del proyecto y valores
+  pendientes de inspección. No inventar tokens de Figma ni sustituir los tokens
+  actuales por estimaciones de capturas.
+
+- Usar Impeccable y UI UX Pro Max en tareas de planeación, diseño, revisión o
+  mejora de interfaces según el alcance. Leer su `SKILL.md` y sólo las referencias
+  necesarias. No aplicarlas a cambios exclusivamente de backend.
+- Las instrucciones explícitas del usuario y estas reglas prevalecen sobre
+  recomendaciones de las skills. No ampliar el alcance por una recomendación.
+- Antes de un rediseño, revisar la interfaz y los componentes existentes;
+  identificar usuario, tarea principal, orden del flujo, información necesaria
+  y problemas observables. Preguntar sólo por datos que cambien la propuesta.
+- Impeccable guía el análisis del flujo, arquitectura de información, jerarquía,
+  textos y crítica de la interfaz; también refina la propuesta implementada.
+- UI UX Pro Max aporta consultas de patrones, accesibilidad, tipografía, color,
+  densidad y recomendaciones para React, Tailwind y shadcn/ui. Adaptar los
+  resultados al producto y verificar su pertinencia antes de adoptarlos.
+- Mantener una sola propuesta y un solo sistema visual: consultar primero el
+  contexto del producto y el diseño existente, luego las recomendaciones
+  necesarias y finalmente revisar con Impeccable. Resolver contradicciones
+  priorizando la tarea del usuario, accesibilidad y consistencia existente.
+- Durante planeación, entregar flujos, organización o prototipos según lo
+  solicitado; no modificar la UI hasta que el usuario pida implementar.
+- Registrar contexto del producto en `PRODUCT.md` y decisiones visuales en
+  `DESIGN.md` cuando el alcance requiera documentación de diseño. Reutilizar los
+  archivos existentes; no generar otro sistema de diseño paralelo ni persistir
+  propuestas automáticas sin revisar. Distinguir supuestos de decisiones acordadas.
+- Reutilizar los componentes y tokens existentes. Priorizar legibilidad,
+  navegación por teclado y claridad de datos; añadir animaciones o recursos
+  decorativos sólo si ayudan a la tarea o el usuario los solicita.
+- Validar en navegador los cambios implementados: flujo principal, estados
+  `loading`, `empty`, `success`, `needs_review` y `error`, foco, contraste, zoom
+  y tamaños de pantalla relevantes. Ejecutar pruebas y validaciones estáticas
+  acordes al cambio; declarar qué no pudo comprobarse.
+- La instalación de las skills no autoriza activar hooks, instalar extensiones,
+  añadir dependencias ni cambiar configuraciones ajenas al trabajo solicitado.

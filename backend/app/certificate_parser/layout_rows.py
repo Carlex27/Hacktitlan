@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-from backend.app.certificate_parser.vocabulary import match_column_semantic, detect_scale_exponent
+from backend.app.certificate_parser.vocabulary import match_column_semantic, detect_scale_exponent, DITTO_TOKENS
 from backend.app.domain.document import PageLayout, TextBlock
 from backend.app.certificate_parser.measurement_units import dimension_value
 
@@ -35,7 +35,7 @@ def recover_rows(page: PageLayout) -> tuple[list[dict], dict[str, int]]:
         anchors = []
         for block in page.blocks:
             bx, by = center(block)
-            if by <= column.block.bbox.bottom or by > page.height * .8:
+            if by <= column.block.bbox.bottom:
                 continue
             if abs(bx - x) > max((column.block.bbox.x1 - column.block.bbox.x0) / 2, page.width * .018):
                 continue
@@ -48,8 +48,17 @@ def recover_rows(page: PageLayout) -> tuple[list[dict], dict[str, int]]:
                 anchors = mixed
             unique = []
             for block, token in anchors:
-                if not any(abs(center(block)[1] - center(previous)[1]) < min(block.bbox.bottom - block.bbox.top, previous.bbox.bottom - previous.bbox.top) * .4 for previous, _ in unique):
+                b = block.bbox
+                duplicate = next((index for index, (previous, prior_token) in enumerate(unique)
+                    if prior_token == token
+                    and min(b.bottom, previous.bbox.bottom) - max(b.top, previous.bbox.top)
+                        >= min(b.bottom - b.top, previous.bbox.bottom - previous.bbox.top) * .5
+                    and min(b.x1, previous.bbox.x1) - max(b.x0, previous.bbox.x0)
+                        >= min(b.x1 - b.x0, previous.bbox.x1 - previous.bbox.x0) * .5), None)
+                if duplicate is None:
                     unique.append((block, token))
+                elif b.bottom - b.top < unique[duplicate][0].bbox.bottom - unique[duplicate][0].bbox.top:
+                    unique[duplicate] = (block, token)
             anchors = unique
             candidates.append((column, anchors))
     if not candidates:
@@ -96,6 +105,13 @@ def recover_rows(page: PageLayout) -> tuple[list[dict], dict[str, int]]:
         after = center(anchors[index + 1][0])[1] if index + 1 < len(anchors) else y + (y - before)
         low, high = (before + y) / 2, (after + y) / 2
         row = {'product_id': identifier, 'chemistry': {}, 'evidence': []}
+        if any(re.search(r'\bpack\s*no\b', column.block.text, re.I)
+               and abs(center(column.block)[0] - center(id_column.block)[0]) < page.width * .018
+               for column in header_columns):
+            row['label_no'] = identifier
+            row['evidence'].append({'page': page.page_number, 'field_path': 'label_no',
+                                    'bbox': anchor.bbox.as_dict(), 'source_text': anchor.text,
+                                    'confidence': anchor.confidence})
         for key, column in selected.items():
             if key == 'product_id':
                 values = [anchor]
@@ -113,7 +129,7 @@ def recover_rows(page: PageLayout) -> tuple[list[dict], dict[str, int]]:
                     if identifiers:
                         values = identifiers
                 if column.category in {'dimension', 'mechanical', 'chemistry'}:
-                    values = [b for b in values if re.fullmatch(r'[\d.,]+|["〃]|COIL|C|ROLLO|[\d.,]+[xX×*][\d.,]+[xX×*]C', b.text.strip(), re.I)
+                    values = [b for b in values if b.text.strip() in DITTO_TOKENS or re.fullmatch(r'[\d.,]+|COIL|C|ROLLO|[\d.,]+[xX×*][\d.,]+[xX×*]C', b.text.strip(), re.I)
                               or (key in {'thickness_mm', 'width_mm', 'length_m'} and dimension_value(b.text, column.block.text) is not None)]
                 values.sort(key=lambda b: (abs(center(b)[1] - y), abs(center(b)[0] - x)))
             if not values:
@@ -139,7 +155,6 @@ def recover_rows(page: PageLayout) -> tuple[list[dict], dict[str, int]]:
             else:
                 row[key] = text
             row['evidence'].append({'page': page.page_number, 'field_path': f'composition_pct.{key}' if column.category == 'chemistry' else key, 'bbox': value.bbox.as_dict(), 'source_text': value.text, 'confidence': value.confidence})
-        if len(row) > 3:
-            row['dimension_headers'] = {key: column.block.text for key, column in selected.items() if column.category == 'dimension'}
-            rows.append(row)
+        row['dimension_headers'] = {key: column.block.text for key, column in selected.items() if column.category == 'dimension'}
+        rows.append(row)
     return rows, scales

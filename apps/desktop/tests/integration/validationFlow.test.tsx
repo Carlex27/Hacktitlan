@@ -3,7 +3,6 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
 import { App } from "@/app";
-import { es } from "@/lib/i18n";
 import {
   createFakeBackend,
   createFakeCertificate,
@@ -62,17 +61,11 @@ describe("Flujo de revisión y validación de acta", () => {
     // Iniciar en Documentos
     expect(await screen.findByRole("heading", { name: /importar actas de molino/i })).toBeInTheDocument();
 
-    // Navegar a Validación haciendo clic en el botón de la barra lateral
-    const validationNavBtn = screen.getByRole("button", { name: "Validación" });
-    await user.click(validationNavBtn);
-
-    // Sin acta seleccionada aún, muestra estado vacío o sin datos
-    expect(screen.getByText("Seleccione un acta para consultar su información.")).toBeInTheDocument();
-
-    // Regresar a Documentos mediante el botón de migas de pan
-    const backBtn = screen.getByTitle("Regresar");
-    await user.click(backBtn);
+    await user.click(screen.getByRole("button", { name: "Historial de actas" }));
+    expect(await screen.findByText("No hay actas guardadas")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Carga y revisión" }));
     expect(await screen.findByRole("heading", { name: /importar actas de molino/i })).toBeInTheDocument();
+
   });
 
   it("renderiza datos extraídos reales de la API en la vista de validación", async () => {
@@ -124,13 +117,17 @@ describe("Flujo de revisión y validación de acta", () => {
     expect(screen.getByText("CM-2024-001")).toBeInTheDocument();
     expect(screen.getByText("EN 10025-2")).toBeInTheDocument();
 
+    await user.click(screen.getByRole("button", { name: "Extraído" }));
+    await user.click(screen.getByRole("button", { name: "Colada: C-9876" }));
+    await user.click(screen.getByRole("button", { name: "Ver detalle: PL-001" }));
+
     // Composición química real
     expect(screen.getByText("0.18%")).toBeInTheDocument();
     expect(screen.getByText("1.25%")).toBeInTheDocument();
 
     // Propiedades mecánicas reales
-    expect(screen.getByText("310 MPa")).toBeInTheDocument();
-    expect(screen.getByText("450 MPa")).toBeInTheDocument();
+    expect(screen.getAllByText("310 MPa").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("450 MPa").length).toBeGreaterThan(0);
 
     // Cambiar a pestaña Validación
     const tabsNav = screen.getByRole("navigation", { name: "Secciones de validación" });
@@ -141,17 +138,12 @@ describe("Flujo de revisión y validación de acta", () => {
     const tariffMatches = await screen.findAllByText("7208.51.01");
     expect(tariffMatches.length).toBeGreaterThanOrEqual(1);
 
-    const ruleMatches = screen.getAllByText("RULE_DIMENSIONS");
-    expect(ruleMatches.length).toBeGreaterThanOrEqual(1);
-
-    const explanationMatches = screen.getAllByText("Espesor de 12.70 mm supera el umbral de 10 mm.");
-    expect(explanationMatches.length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByRole("heading", { name: "Justificación de la clasificación" })).not.toBeInTheDocument();
 
     // Proceso de dictamen en la barra inferior
+    await user.click(screen.getByRole("button", { name: "Dictamen de clasificación" }));
     const footer = screen.getByRole("contentinfo");
-    await user.type(within(footer).getByPlaceholderText(es.approval.personPlaceholder), "Ing. Supervisor");
-    await user.type(within(footer).getByPlaceholderText(es.approval.reasonPlaceholder), "Aprobado tras cotejo documental");
-    await user.click(within(footer).getByRole("button", { name: /aprobar/i }));
+    await user.click(within(footer).getByRole("button", { name: /confirmar acta/i }));
 
     await waitFor(() => {
       expect(backend.calls).toContain("POST /api/v1/classification-runs/101/approve");

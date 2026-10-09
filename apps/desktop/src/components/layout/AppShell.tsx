@@ -1,5 +1,6 @@
 import type { ComponentType, ReactNode } from "react";
-import { ArrowLeft, Bell, FileCheck, Search } from "lucide-react";
+import { ArrowLeft, FileCheck } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 import { es } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -34,64 +35,51 @@ export function AppShell({
   const canGoBack = breadcrumbs.length > 1;
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-app-canvas font-sans text-slate-800 text-[13px] antialiased">
+    <div className="fixed inset-0 flex h-dvh w-full overflow-clip bg-app-canvas font-sans text-slate-800 text-[13px] antialiased">
       {/* Left Sidebar */}
-      <aside className="w-[72px] bg-sidebar-bg text-slate-400 flex flex-col items-center py-3 justify-between shrink-0 z-20">
-        <div className="flex flex-col items-center w-full gap-4">
+      <aside className="w-20 lg:w-60 border-r border-sidebar-border bg-sidebar text-sidebar-foreground flex flex-col items-center py-4 shrink-0 z-20 overflow-y-auto overscroll-y-contain">
+        <div className="flex flex-col items-center w-full gap-6">
           {/* App Logo */}
           <div
-            className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-500/30"
+            className="flex min-h-10 items-center gap-3 px-3 lg:w-full lg:px-5"
             title={es.app.title}
           >
-            <FileCheck aria-hidden="true" className="w-5 h-5" />
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+              <FileCheck aria-hidden="true" className="size-5" />
+            </span>
+            <span className="hidden text-sm leading-5 font-semibold lg:block">{es.app.title}</span>
           </div>
 
           {/* Navigation Icons */}
-          <nav className="flex flex-col items-center w-full gap-1.5 pt-1" aria-label="Navegación principal">
+          <nav className="flex flex-col items-center w-full gap-2 px-2 lg:px-3" aria-label={es.nav.label}>
             {items.map((item) => {
               const Icon = item.icon;
               const isActive = item.id === activeId;
 
-              if (item.disabled) {
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    disabled
-                    aria-disabled="true"
-                    title={`${item.label} (${es.nav.comingSoon})`}
-                    className="w-full flex flex-col items-center py-2.5 text-slate-600 cursor-not-allowed opacity-50 select-none"
-                  >
-                    <Icon aria-hidden="true" className="w-5 h-5 mb-1" />
-                    <span className="text-[10px] font-medium tracking-tight">{item.label}</span>
-                  </button>
-                );
-              }
-
               return (
-                <button
+                <Button
                   key={item.id}
                   type="button"
+                  variant="ghost"
+                  disabled={item.disabled}
                   aria-current={isActive ? "page" : undefined}
                   onClick={() => onNavigate(item.id)}
-                  title={item.label}
+                  title={item.disabled ? `${item.label} (${es.nav.comingSoon})` : item.label}
                   className={cn(
-                    "w-full flex flex-col items-center py-2.5 transition-colors select-none",
+                    "h-auto min-h-11 w-full flex-col gap-1 whitespace-normal px-1 py-3 text-xs leading-4 lg:flex-row lg:justify-start lg:gap-3 lg:px-3 lg:text-sm lg:leading-5 focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-sidebar-primary focus-visible:outline-offset-2",
                     isActive
-                      ? "text-blue-400 border-l-[3px] border-blue-500 bg-sidebar-hover font-semibold"
-                      : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60",
+                      ? "bg-sidebar-primary text-sidebar-primary-foreground font-semibold hover:bg-sidebar-primary hover:text-sidebar-primary-foreground"
+                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                   )}
                 >
-                  <Icon aria-hidden="true" className="w-5 h-5 mb-1" />
-                  <span className="text-[10px] font-medium tracking-tight">{item.label}</span>
-                </button>
+                  <Icon aria-hidden="true" className="size-5" />
+                  <span className="text-center lg:text-left">{item.label}</span>
+                </Button>
               );
             })}
           </nav>
         </div>
 
-        {/* Note: User profile removed per PRODUCT_DECISIONS (no user accounts) */}
-        <div className="w-full h-8" aria-hidden="true" />
       </aside>
 
       {/* Main Content Area */}
@@ -106,6 +94,7 @@ export function AppShell({
                 onClick={breadcrumbs[0]?.onClick}
                 className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-700"
                 title={es.header.back}
+                aria-label={es.header.back}
               >
                 <ArrowLeft aria-hidden="true" className="w-4 h-4" />
               </button>
@@ -136,30 +125,6 @@ export function AppShell({
             })}
           </nav>
 
-          {/* Search & Header Actions (disabled to avoid deceiving users) */}
-          <div className="flex items-center gap-3">
-            {/* Search Bar (Disabled) */}
-            <div className="relative w-72" title={es.header.searchTooltip}>
-              <Search aria-hidden="true" className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
-              <input
-                disabled
-                className="w-full bg-slate-100/70 text-xs pl-9 pr-3 py-1.5 rounded-md border border-slate-200 cursor-not-allowed text-slate-400 placeholder:text-slate-400 select-none"
-                placeholder={es.header.searchPlaceholder}
-                type="text"
-              />
-            </div>
-
-            {/* Notification Bell (Disabled) */}
-            <button
-              type="button"
-              disabled
-              aria-disabled="true"
-              className="p-1.5 text-slate-400 cursor-not-allowed rounded-full select-none"
-              title={es.header.notificationsTooltip}
-            >
-              <Bell aria-hidden="true" className="w-5 h-5" />
-            </button>
-          </div>
         </header>
 
         {/* Content Slot */}

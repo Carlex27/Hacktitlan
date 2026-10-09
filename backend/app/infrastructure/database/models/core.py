@@ -196,6 +196,7 @@ class Observation(TimestampMixin, Base):
     field_path: Mapped[str] = mapped_column(String(500), nullable=False, index=True)
     raw_value_json: Mapped[Any | None] = mapped_column(JSON)
     normalized_value_json: Mapped[Any | None] = mapped_column(JSON)
+    verification_json: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     unit: Mapped[str | None] = mapped_column(String(50))
     confidence: Mapped[float | None] = mapped_column(Float)
     page_number: Mapped[int | None] = mapped_column(Integer)

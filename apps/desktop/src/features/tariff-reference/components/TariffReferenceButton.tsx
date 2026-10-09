@@ -1,4 +1,5 @@
 import { BookOpenIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 import type { SourceReference } from "@/features/classification-results";
 import { es } from "@/lib/i18n";
@@ -15,8 +16,9 @@ export function TariffReferenceButton({ reference, displayCode, onOpen }: Tariff
   if (reference === null) return null;
 
   return (
-    <button
+    <Button
       type="button"
+      variant="outline"
       aria-label={es.tariffReference.showInLigie(displayCode)}
       title={es.tariffReference.showInLigie(displayCode)}
       onClick={(event) => {
@@ -25,10 +27,10 @@ export function TariffReferenceButton({ reference, displayCode, onOpen }: Tariff
         event.stopPropagation();
         onOpen(reference, displayCode);
       }}
-      className="inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium text-blue-700 hover:bg-blue-50 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+      className="min-h-10 text-sm"
     >
       <BookOpenIcon aria-hidden="true" className="size-3" />
       {es.tariffReference.showInLigieShort}
-    </button>
+    </Button>
   );
 }

@@ -30,6 +30,16 @@ function job(overrides: Partial<JobDto> = {}): JobDto {
   };
 }
 
+it("retira sólo las cargas del acta borrada y conserva las otras", () => {
+  const deleted = { ...createImportItem("a", "borrar.pdf"), certificateId: 42 };
+  const duplicate = { ...deleted, id: "b" };
+  const other = { ...createImportItem("c", "conservar.pdf"), certificateId: 43 };
+  const uploading = createImportItem("d", "subiendo.pdf");
+  expect(importReducer([deleted, duplicate, other, uploading], {
+    type: "certificate_deleted", certificateId: 42,
+  })).toEqual([other, uploading]);
+});
+
 describe("phaseToStatus", () => {
   it.each<[ImportPhase, string]>([
     ["uploading", "loading"],
@@ -102,6 +112,12 @@ describe("describeItem", () => {
 });
 
 describe("partitionPdfFiles", () => {
+  it("acepta XLSX y rechaza formatos Excel antiguos o con macros", () => {
+    const workbook = new File([""], "ACTA.XLSX");
+    const legacy = new File([""], "acta.xls");
+    const macros = new File([""], "acta.xlsm");
+    expect(partitionPdfFiles([workbook, legacy, macros])).toEqual({ accepted: [workbook], rejected: [legacy, macros] });
+  });
   it("acepta PDF por tipo o extensión y separa el resto", () => {
     const byType = new File([""], "acta", { type: "application/pdf" });
     const byExt = new File([""], "ACTA.PDF");

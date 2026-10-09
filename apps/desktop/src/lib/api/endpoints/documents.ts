@@ -1,5 +1,5 @@
 import type { ApiClient, RequestOptions } from "../client";
-import type { JobDto, UploadDocumentDto } from "../dto";
+import type { ActorReasonDto, JobDto, UploadDocumentDto } from "../dto";
 
 export async function uploadDocument(api: ApiClient, file: File, options?: RequestOptions) {
   const form = new FormData();
@@ -9,4 +9,8 @@ export async function uploadDocument(api: ApiClient, file: File, options?: Reque
 
 export async function getJob(api: ApiClient, jobId: number, options?: RequestOptions) {
   return (await api.get<JobDto>(`/api/v1/jobs/${jobId}`, options)).data;
+}
+
+export async function archiveDocument(api: ApiClient, documentId: number, request: ActorReasonDto & { archived: boolean }) {
+  await api.post<unknown>(`/api/v1/documents/${documentId}/archive`, request);
 }

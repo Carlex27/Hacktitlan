@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
@@ -50,13 +51,21 @@ class ReviewService:
         unit: str | None,
         person_name: str,
         reason: str,
+        accept_verification: bool = False,
     ) -> Observation:
         person_name, reason = self._require_actor_reason(person_name, reason)
-        previous = session.get(Observation, observation_id)
+        previous = session.get(Observation, observation_id, with_for_update=True)
         if previous is None:
             raise NotFoundError("Observación", observation_id)
         if not previous.is_current:
             raise ConflictError("observation_superseded", "La observación ya fue reemplazada")
+        verification = previous.verification_json if accept_verification else None
+        if accept_verification:
+            if not verification or verification.get("status") != "discrepancy":
+                raise ConflictError("verification_unavailable", "No hay una propuesta verificable para este campo")
+            normalized_value = verification["normalized_value"]
+            raw_value = verification["raw_value"]
+            unit = verification["unit"]
         self._validate_normalized(previous.field_path, normalized_value)
         previous.is_current = False
         replacement = Observation(
@@ -68,9 +77,10 @@ class ReviewService:
             normalized_value_json=normalized_value,
             unit=unit,
             confidence=1.0,
-            page_number=previous.page_number,
-            bbox_json=previous.bbox_json,
-            source_text="correccion_manual",
+            page_number=verification["page_number"] if verification else previous.page_number,
+            bbox_json=verification["bbox"] if verification else previous.bbox_json,
+            source_text=(verification["source_text"] + " | " + verification["header_text"])
+                if verification else "correccion_manual",
             inherited=False,
             supersedes_id=previous.id,
             is_current=True,
@@ -203,12 +213,28 @@ class ReviewService:
         if run is None:
             raise NotFoundError("Ejecución de clasificación", run_id)
         current = ApprovalStatus(run.approval_status)
+        if target is ApprovalStatus.DRAFT and current is ApprovalStatus.DRAFT:
+            return run
         if target is ApprovalStatus.APPROVED:
             results = session.scalars(
                 select(ClassificationResult).where(
                     ClassificationResult.classification_run_id == run.id
                 )
             ).all()
+            products = session.scalars(
+                select(Product).where(Product.certificate_id == run.certificate_id)
+            ).all()
+            heat_ids = set(session.scalars(
+                select(Heat.id).where(Heat.certificate_id == run.certificate_id)
+            ).all())
+            if (
+                {result.product_id for result in results} != {product.id for product in products}
+                or not heat_ids.issubset({product.heat_id for product in products})
+            ):
+                raise ConflictError(
+                    "classification_incomplete",
+                    "No se puede aprobar el acta sin autorizar la fracción y el NICO de todos los productos de cada colada",
+                )
             selected_result_ids = set(session.scalars(
                 select(ClassificationSelection.classification_result_id)
                 .where(ClassificationSelection.classification_result_id.in_(
@@ -232,29 +258,28 @@ class ReviewService:
                 if selected_candidate_id is not None:
                     candidate = session.get(ClassificationCandidate, selected_candidate_id)
                     if candidate is not None:
-                        missing = list((candidate.details_json or {}).get("missing_fields") or [])
                         conflicts = list((candidate.details_json or {}).get("conflicts") or [])
-                        if missing or conflicts:
+                        if conflicts:
                             raise ConflictError(
                                 "classification_incomplete",
-                                "No se puede aprobar una opción con datos obligatorios faltantes o contradicciones",
+                                "No se puede aprobar una opción con contradicciones",
                             )
-                        unverified_factor = session.scalar(
+                        blocking_factor = session.scalar(
                             select(CandidateFactor.id).where(
                                 CandidateFactor.candidate_id == candidate.id,
                                 CandidateFactor.required_for_selection.is_(True),
-                                CandidateFactor.outcome != "matched",
+                                CandidateFactor.outcome.in_(["not_matched", "conflict"]),
                             ).limit(1)
                         )
-                        if unverified_factor is not None:
+                        if blocking_factor is not None:
                             raise ConflictError(
                                 "classification_incomplete",
-                                "No se puede aprobar una opción con condiciones normativas sin verificar",
+                                "No se puede aprobar una opción con condiciones normativas contradictorias",
                             )
         allowed = {
             ApprovalStatus.DRAFT: {ApprovalStatus.NEEDS_REVIEW, ApprovalStatus.APPROVED, ApprovalStatus.REJECTED},
-            ApprovalStatus.NEEDS_REVIEW: {ApprovalStatus.APPROVED, ApprovalStatus.REJECTED},
-            ApprovalStatus.REJECTED: {ApprovalStatus.NEEDS_REVIEW, ApprovalStatus.APPROVED},
+            ApprovalStatus.NEEDS_REVIEW: {ApprovalStatus.DRAFT, ApprovalStatus.APPROVED, ApprovalStatus.REJECTED},
+            ApprovalStatus.REJECTED: {ApprovalStatus.DRAFT, ApprovalStatus.NEEDS_REVIEW, ApprovalStatus.APPROVED},
             ApprovalStatus.APPROVED: {ApprovalStatus.REJECTED},
         }
         if target not in allowed[current]:
@@ -284,6 +309,69 @@ class ReviewService:
         )
         return run
 
+    def select_manual_classification(
+        self, session: Session, *, result_id: int, fraction: str, nico: str,
+        person_name: str, reason: str,
+    ) -> ClassificationSelection:
+        self._require_actor_reason(person_name, reason)
+        if not re.fullmatch(r"[0-9]{8}", fraction) or not re.fullmatch(r"[0-9]{2}", nico):
+            raise ApplicationError("invalid_tariff_code", "Fracción de 8 dígitos y NICO de 2 dígitos requeridos")
+        result = session.scalar(select(ClassificationResult).where(ClassificationResult.id == result_id).with_for_update())
+        if result is None:
+            raise NotFoundError("Resultado de clasificación", result_id)
+        run = session.get(ClassificationRun, result.classification_run_id)
+        if run is not None and run.approval_status == "approved":
+            raise ConflictError("run_already_approved", "No se puede modificar una ejecución aprobada")
+        candidate = session.scalar(select(ClassificationCandidate).where(
+            ClassificationCandidate.classification_result_id == result_id,
+            ClassificationCandidate.fraction == fraction, ClassificationCandidate.nico == nico,
+        ))
+        if candidate is None:
+            rank = session.scalar(select(func.max(ClassificationCandidate.rank)).where(
+                ClassificationCandidate.classification_result_id == result_id)) or 0
+            candidate = ClassificationCandidate(
+                classification_result_id=result_id, rank=rank + 1, fraction=fraction, nico=nico,
+                description="Clasificación capturada manualmente", support_level="conditional",
+                details_json={"manual": True, "explanation": reason},
+            )
+            session.add(candidate)
+            session.flush()
+        return self.select_classification_candidate(
+            session, result_id=result_id, candidate_id=candidate.id,
+            person_name=person_name, reason=reason,
+        )
+
+    def clear_classification_selection(
+        self, session: Session, *, result_id: int, person_name: str, reason: str,
+    ) -> ClassificationResult:
+        person_name, reason = self._require_actor_reason(person_name, reason)
+        result = session.get(ClassificationResult, result_id, with_for_update=True)
+        if result is None:
+            raise NotFoundError("Resultado de clasificación", result_id)
+        run = session.get(ClassificationRun, result.classification_run_id)
+        if run is not None and run.approval_status == ApprovalStatus.APPROVED.value:
+            raise ConflictError("run_already_approved", "No se puede modificar una ejecución aprobada")
+        details = dict(result.details_json or {})
+        if details.get("selection_cleared"):
+            return result
+        previous = session.scalar(select(ClassificationSelection).where(
+            ClassificationSelection.classification_result_id == result.id,
+        ).order_by(ClassificationSelection.id.desc()).limit(1))
+        if previous is None:
+            return result
+        details["deselections"] = [*details.get("deselections", []), {
+            "selection_id": previous.id, "person_name": person_name,
+            "reason": reason, "workstation_name": self.settings.workstation_name,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }]
+        details.update({"selection_cleared": True, "selection_required": True})
+        details.pop("selected_candidate_id", None)
+        result.details_json = details
+        result.fraction = result.nico = result.description = None
+        result.outcome = "needs_review"
+        session.flush()
+        return result
+
     def select_classification_candidate(
         self,
         session: Session,
@@ -302,6 +390,9 @@ class ReviewService:
         if result is None:
             raise NotFoundError("Resultado de clasificación", result_id)
         candidate = session.get(ClassificationCandidate, candidate_id)
+        run = session.get(ClassificationRun, result.classification_run_id)
+        if run is not None and run.approval_status == ApprovalStatus.APPROVED.value:
+            raise ConflictError("run_already_approved", "No se puede modificar una ejecución aprobada")
         if candidate is None or candidate.classification_result_id != result.id:
             raise ConflictError(
                 "candidate_result_mismatch",
@@ -327,10 +418,14 @@ class ReviewService:
             .where(ClassificationCandidate.classification_result_id == result.id)
             .order_by(ClassificationCandidate.rank)
         ).all()
-        if len(candidates) != 3 or [item.rank for item in candidates] != [1, 2, 3]:
+        suggestions = [item for item in candidates if not (item.details_json or {}).get("manual")]
+        if not (candidate.details_json or {}).get("manual") and (
+            not 1 <= len(suggestions) <= 3
+            or [item.rank for item in suggestions] != list(range(1, len(suggestions) + 1))
+        ):
             raise ConflictError(
-                "three_valid_candidates_required",
-                "La selección requiere exactamente tres opciones válidas",
+                "valid_candidates_required",
+                "La selección requiere de una a tres opciones válidas y ordenadas",
             )
         previous = session.scalar(
             select(ClassificationSelection)
@@ -354,6 +449,7 @@ class ReviewService:
         details = dict(result.details_json or {})
         details.update({
             "selected_candidate_id": candidate.id,
+            "selection_cleared": False,
             "selection_required": False,
         })
         result.details_json = details

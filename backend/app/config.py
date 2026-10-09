@@ -5,6 +5,7 @@ from __future__ import annotations
 from functools import lru_cache
 import socket
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -49,6 +50,30 @@ class Settings(BaseSettings):
     ocr_min_confidence: float = Field(default=0.50, ge=0, le=1)
     ocr_cpu_threads: int = Field(default=4, ge=1, le=16)
     ocr_max_page_dimension: int = Field(default=2000, ge=500, le=8000)
+    ollama_enabled: bool = False
+    ollama_base_url: str = "http://127.0.0.1:11434"
+    ollama_model: str = "qwen3.5:4b"
+    ollama_timeout_seconds: float = Field(default=60, gt=0, le=300)
+    ollama_max_page_chars: int = Field(default=24000, ge=1000, le=100000)
+
+    @field_validator("ollama_base_url")
+    @classmethod
+    def local_ollama_url(cls, value: str) -> str:
+        parts = urlsplit(value)
+        if (parts.scheme != "http" or parts.hostname not in {"localhost", "127.0.0.1", "::1"}
+                or parts.username or parts.password or parts.path not in {"", "/"}
+                or parts.query or parts.fragment):
+            raise ValueError("ollama_base_url debe ser una URL HTTP de loopback sin ruta ni credenciales")
+        _ = parts.port  # Validate malformed ports before making requests.
+        return value.rstrip("/")
+
+    @field_validator("ollama_model")
+    @classmethod
+    def local_ollama_model(cls, value: str) -> str:
+        value = value.strip()
+        if not value or "cloud" in value.lower() or "/" in value or any(c.isspace() for c in value):
+            raise ValueError("ollama_model debe nombrar un modelo local, sin sufijo cloud")
+        return value
     demo_notice: str = "DEMOSTRACIÓN — SIN VALIDEZ ADUANERA"
 
     @field_validator("ocr_device")

@@ -114,7 +114,12 @@ def test_xlsx_upload_real_worker_provenance_and_download(processing_settings: Se
         assert "DocumentUploadEnvelope" in spec["components"]["schemas"]
 
 
-def test_upload_worker_and_persistence_complete_flow(processing_settings: Settings):
+@pytest.mark.parametrize("classification_fails", [False, True])
+def test_upload_worker_and_persistence_complete_flow(processing_settings: Settings, monkeypatch, classification_fails):
+    if classification_fails:
+        def unavailable(*args, **kwargs):
+            raise RuntimeError("Catálogo no disponible")
+        monkeypatch.setattr("backend.app.application.worker.ClassificationService.classify_certificate", unavailable)
     raw = json.loads(FIXTURE.read_text(encoding="utf-8"))
     normalized = CertificateExtractionService.normalize_known_payload(raw)
     extraction = {
@@ -145,12 +150,24 @@ def test_upload_worker_and_persistence_complete_flow(processing_settings: Settin
         certificate = client.get(
             f"/api/v1/certificates/{created['certificate_id']}"
         ).json()["data"]
+        runs = client.get(f"/api/v1/certificates/{created['certificate_id']}/classification-runs").json()["data"]
+        if classification_fails:
+            assert runs == []
+            assert job["result"]["classification_run_id"] is None
+            assert job["error_code"] == "automatic_classification_failed"
+            assert job["error_message"] == "Catálogo no disponible"
+        else:
+            assert len(runs) == 1
+            classification = client.get(f"/api/v1/classification-runs/{runs[0]['id']}").json()["data"]
+            assert job["result"]["classification_run_id"] == runs[0]["id"]
+            assert {entry["product_id"] for entry in classification["results"]} == {entry["id"] for entry in certificate["products"]}
+            assert all(1 <= len(entry["candidates"]) <= 3 for entry in classification["results"])
         duplicate_response = client.post(
             "/api/v1/documents",
             files={"file": ("renamed.pdf", b"%PDF-1.7\nfixture", "application/pdf")},
         )
 
-    assert job["status"] == "succeeded"
+    assert job["status"] == ("needs_review" if classification_fails else "succeeded")
     assert job["progress"] == 100
     assert job["result"]["adapter"] == "test-known-layout"
     assert certificate["certificate_no"] == "E02511200001"
@@ -193,3 +210,68 @@ def test_incomplete_format_finishes_as_needs_review(processing_settings: Setting
     assert job["status"] == "needs_review"
     assert job["result"]["detection"]["confidence"] == 0.55
     assert certificate["products"] == []
+
+
+def test_worker_persists_local_assistance_and_review_state(processing_settings):
+    from unittest.mock import MagicMock
+    from sqlalchemy import select
+    from backend.app.certificate_parser.adapters import AdapterRegistry
+    from backend.app.domain.document import BoundingBox, DocumentLayout, PageLayout, PageSource, TextBlock
+    from backend.app.infrastructure.database.models import Document, ExtractionRun
+
+    reader = MagicMock()
+    reader.read.return_value = DocumentLayout("unknown.pdf", "hash", (
+        PageLayout(1, 600, 800, 0, PageSource.DIGITAL, (
+            TextBlock(1, "MILL TEST CERTIFICATE", BoundingBox(0, 0, 100, 20)),
+        )),
+    ))
+    assistant = MagicMock()
+    assistant.settings.ollama_model = "qwen3.5:4b"
+    assistant.extract.return_value = CertificateExtractionService.normalize_known_payload(
+        json.loads(FIXTURE.read_text(encoding="utf-8")))
+    extractor = CertificateExtractionService(reader, AdapterRegistry(), ollama_extractor=assistant)
+    sessions = create_session_factory(processing_settings)
+    storage = FileStorage(processing_settings.storage_root, processing_settings.max_pdf_bytes)
+    with TestClient(create_app(processing_settings)) as client:
+        created = upload(client, b"%PDF-1.7\nollama-proposal")
+        assert Worker(processing_settings, sessions, storage, extractor=extractor).run_once()
+        job = client.get(f"/api/v1/jobs/{created['job_id']}").json()["data"]
+        certificate = client.get(f"/api/v1/certificates/{created['certificate_id']}").json()["data"]
+    assert job["status"] == "needs_review"
+    assert job["result"]["adapter"] == "ollama_local"
+    assert certificate["products"]
+    with sessions() as session:
+        document = session.get(Document, created["document_id"])
+        run = session.scalar(select(ExtractionRun).where(ExtractionRun.document_id == document.id))
+        assert document.metadata_json["llm_assistance"]["model"] == "qwen3.5:4b"
+        assert run.detection_json["llm_assistance"]["status"] == "needs_review"
+        assert run.normalized_json == assistant.extract.return_value
+
+
+@pytest.mark.parametrize("has_issue_date", [True, False])
+def test_generic_metadata_persists_description_and_never_uses_delivery_as_issue(processing_settings, has_issue_date):
+    from sqlalchemy import select
+    from backend.tests.unit.test_real_mill_ocr_layouts import read_snapshot
+    from backend.app.certificate_parser.generic_extractor import GenericCertificateExtractor
+    from backend.app.infrastructure.database.models import ExtractionRun
+
+    normalized = GenericCertificateExtractor().extract(read_snapshot(3)).certificate
+    normalized["document"]["delivery_date_raw"] = "2026-06-30"
+    if not has_issue_date:
+        normalized["document"]["issue_date_raw"] = None
+    extraction = {"status": "needs_review", "adapter": "generic_layout_extractor", "certificate": normalized,
+                  "document": {"file_name": "molino-3.pdf", "sha256": "fixture", "page_count": 1}}
+    sessions = create_session_factory(processing_settings)
+    storage = FileStorage(processing_settings.storage_root, processing_settings.max_pdf_bytes)
+    with TestClient(create_app(processing_settings)) as client:
+        created = upload(client, b"%PDF-1.7\nmetadata")
+        assert Worker(processing_settings, sessions, storage, extractor=StaticExtractor(extraction)).run_once()
+        certificate = client.get(f"/api/v1/certificates/{created['certificate_id']}").json()["data"]
+    assert certificate["certificate_date"] == ("2026-06-12" if has_issue_date else None)
+    assert certificate["product_name"] == "HOT ROLLED SHEET-COIL (MILL EDGE)"
+    assert certificate["manufacturer"] == "CHINA STEEL CORPORATION"
+    assert len(certificate["products"]) == 11
+    with sessions() as session:
+        run = session.scalar(select(ExtractionRun).where(ExtractionRun.document_id == created["document_id"]))
+        assert "ABOUT" in run.normalized_json["document"]["shipping_date_raw"]
+        assert run.normalized_json["document"]["field_evidence"]["product_name"]

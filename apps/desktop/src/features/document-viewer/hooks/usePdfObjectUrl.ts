@@ -5,7 +5,7 @@ import { isAbortError, useApiClient } from "@/lib/api";
 export type PdfObjectUrlState =
   | { status: "idle" }
   | { status: "loading" }
-  | { status: "ready"; objectUrl: string }
+  | { status: "ready"; objectUrl: string; isPdf: boolean }
   | { status: "error"; error: unknown };
 
 interface Loaded {
@@ -33,8 +33,8 @@ export function usePdfObjectUrl(filePath: string | null): { state: PdfObjectUrlS
       .getBlob(filePath, { signal: controller.signal })
       .then((blob) => {
         if (controller.signal.aborted) return;
-        objectUrl = URL.createObjectURL(new Blob([blob], { type: "application/pdf" }));
-        setLoaded({ key, state: { status: "ready", objectUrl } });
+        objectUrl = URL.createObjectURL(blob);
+        setLoaded({ key, state: { status: "ready", objectUrl, isPdf: blob.type.split(";")[0] === "application/pdf" } });
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted || isAbortError(error)) return;

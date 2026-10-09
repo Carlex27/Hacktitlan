@@ -27,7 +27,187 @@ Aplicar la regla como administrador con
 
 ## Validación
 
+### Eliminar un acta completa durante pruebas
+
+Aplicar `uv run alembic upgrade head` con la cuenta migradora y reiniciar la API.
+La migración `0009_certificate_deletion` concede `DELETE` a `hacktitlan_app`
+en las tablas del acta; no cambia permisos de reglas ni respaldos.
+
+Con `HACKTITLAN_ENVIRONMENT=development` o `test`, usar
+`DELETE /api/v1/certificates/{certificate_id}` desde `/docs` o un cliente HTTP.
+No recibe cuerpo, persona ni motivo. Consultar el contrato generado en
+`/openapi.json` y la operación en Swagger; devuelve los identificadores del
+acta y documento eliminados y `deleted: true`.
+
+El borrado es definitivo: elimina documento, extracción, trabajos, coladas,
+rollos, química, observaciones, correcciones, clasificaciones, selecciones,
+aprobaciones, evidencias y archivos propios. También elimina las exportaciones
+que incluyen el acta, incluso reportes con varias actas, y sus trabajos.
+Conserva otras actas/revisiones, fabricantes, reglas y respaldos existentes.
+Las revisiones posteriores pierden únicamente el enlace a la revisión borrada.
+Los archivos compartidos por otros documentos o exportaciones se conservan.
+El mismo PDF/XLSX puede cargarse de nuevo como un acta nueva.
+
+En otros entornos responde 403 (`certificate_deletion_disabled`); si no existe,
+404 (`not_found`); con trabajos o exportaciones en ejecución, 409
+(`certificate_in_use`). Los trabajos en cola se eliminan junto con el acta.
+El borrado bloquea brevemente escrituras mientras comprueba y elimina los datos.
+Un fallo antes del commit revierte la base y restaura los archivos movidos.
+Los archivos se retiran primero a `storage/.tmp` y se destruyen tras el commit;
+una interrupción del proceso en ese intervalo puede dejar archivos allí y
+requiere revisión manual. No elimina copias en respaldos.
+
+La clasificación se ejecuta aun con baja confianza de extracción o incidencias
+documentales. Se conservan las advertencias, los datos faltantes y las sugerencias
+para revisión del personal; las incidencias bloqueantes mantienen el resultado
+en `needs_review`, sin aprobarlo automáticamente. Después de actualizar el worker,
+reclasificar las actas existentes para generar una nueva ejecución con sugerencias.
+
+
+Una ejecución aprobada conserva sus fracciones y NICO: `/api/v1/classification-results/{result_id}/select`
+rechaza tanto sugerencias como capturas manuales con HTTP 409 (`run_already_approved`).
+En actas abiertas, `POST /api/v1/classification-results/{result_id}/deselect` recibe
+persona y motivo, retira la selección vigente y devuelve el rollo a `needs_review`.
+Conserva las selecciones previas y registra la retirada en los detalles del resultado.
+Las actas aprobadas rechazan también esta operación con 409.
+
+### Extracción y verificación por campo con Ollama local
+
+El worker puede consultar Ollama instalado en la misma computadora del backend.
+La interfaz web no se conecta directamente al motor. No se agregan endpoints ni
+dependencias Python; se utiliza la API HTTP local con la biblioteca estándar.
+Aplicar `uv run alembic upgrade head` (migración `0008_field_verification`) y
+reiniciar API y worker después de actualizar el código.
+
+1. Instalar Ollama y descargar el modelo, por ejemplo `ollama pull qwen3.5:4b`.
+2. Agregar a `.env`:
+
+   ```dotenv
+   HACKTITLAN_OLLAMA_ENABLED=true
+   HACKTITLAN_OLLAMA_BASE_URL=http://127.0.0.1:11434
+   HACKTITLAN_OLLAMA_MODEL=qwen3.5:4b
+   HACKTITLAN_OLLAMA_TIMEOUT_SECONDS=60
+   HACKTITLAN_OLLAMA_MAX_PAGE_CHARS=24000
+   ```
+
+3. Mantener Ollama en ejecución y reiniciar el worker. El nombre configurado debe
+   coincidir con un modelo local descargado (`ollama list`). Cambiarlo no descarga
+   el modelo automáticamente. Desactivar con `HACKTITLAN_OLLAMA_ENABLED=false`.
+4. Desactivar funciones cloud en Ollama (`OLLAMA_NO_CLOUD=1` en el entorno del
+   proceso Ollama y reiniciarlo). Esta variable pertenece a Ollama, no al backend.
+
+Sólo se admiten servidores HTTP de loopback y nombres de modelos sin `cloud`.
+Las solicitudes no usan proxies del entorno ni siguen redirecciones.
+Después de leer el PDF y completar OCR, los adaptadores conocidos y la
+extracción genérica envían sus observaciones a la verificación por campo. XLSX
+y páginas que todavía requieren OCR no utilizan el modelo. Cada sección de
+página incluye datos originales y normalizados, rollo/colada, texto, tablas,
+coordenadas e identificadores. El esquema limita campos y citas a los enviados;
+el backend rechaza respuestas incompletas, duplicadas y asociaciones no
+comprobables. En modo texto exige evidencia literal. Si el modelo declara
+capacidad `vision`, hay un PDF disponible y la página procede de OCR, la
+verificación adjunta un recorte original con fila y encabezados; puede proponer
+una lectura distinta del OCR, conservando ambas y la región citada. Las consultas
+se dividen por rollo. Un fallo de renderizado vuelve a texto y deja `visual_error`.
+
+Si no existe certificado extraído, una propuesta validada se persiste con
+adaptador `ollama_local` y estado `needs_review`, y pasa también por verificación
+por campo (resumen en `llm_assistance.verification`). Si ya existe un certificado,
+se conserva y cada observación guarda su comparación en
+`observations.verification_json`: `matches`, `discrepancy`, `not_verifiable` o
+`error`. Se guardan valor literal, propuesta normalizada, unidad, página, celda
+o bloque, encabezado, coordenadas y modelo. La comparación del backend prevalece
+sobre la opinión del modelo: `13` bajo `C 10^-4` equivale a `0.0013 %`, aunque
+la extracción original haya obtenido `0.13 %`.
+
+Las propuestas comprobables cubren química con escala explícita y ancho/espesor
+con unidades explícitas. Los demás campos se muestran como no verificables
+mientras no tengan una regla segura de normalización y evidencia. Una celda
+debe pertenecer a la columna citada y al rollo identificado por su encabezado.
+La química de tablas sólo por colada requiere esa identificación; una colada
+compartida no justifica usar la celda de otro rollo. Los bloques deben quedar
+dentro de las coordenadas originales del campo. Las coordenadas de las celdas
+son las del `TableRegion` disponible, sin inferir cajas individuales.
+
+El resumen queda en `llm_assistance` de `documents.metadata_json` y
+`extraction_runs.detection_json`; los campos quedan también en
+`extraction_runs.normalized_json`. Discrepancias, campos no verificables o errores
+producen `needs_review`. Se conservan verificaciones químicas por rollo aun cuando
+sus porcentajes coincidan. No se sustituyen datos ni se aprueba por una coincidencia.
+
+Cuando faltan dimensiones o elementos con encabezado/escala reconocible, se
+intenta recuperación parcial por rollo (`llm_assistance.partial_recovery`). El
+valor ausente sigue ausente: se guarda una propuesta en la observación para
+aceptarla mediante la corrección auditada. Se registran errores por página y
+rollo. No se reemplaza una propuesta visual existente por una recuperación textual.
+Si varias páginas proponen valores distintos, el campo queda no verificable.
+
+Lecturas OCR independientes y superpuestas de la misma celda pueden producir
+una discrepancia con modelo `PaddleOCR`, incluso con Ollama desactivado. En
+MOLINO 3, 39/0.39 se conserva y 33/0.33 se propone con su fuente y escala. Es una
+corrección por revisar contra el PDF, no una selección automática de verdad.
+La ausencia de texto permite consulta visual sólo si el rollo y el encabezado
+delimitan una región. Una celda vacía o un símbolo sin origen comprobable queda
+pendiente. `ocr_page_rotations` conserva orientación para los recortes visuales.
+
+Para evaluar archivos reales sin crear actas ni aprobaciones en la base:
+
+```powershell
+uv run python scripts/evaluate_certificate_extraction.py "ruta/acta.pdf" --output tmp/evaluations/reporte.json --layouts tmp/evaluations/layouts
+```
+
+Se pueden pasar varios PDF. Agregar `--with-llm` para evaluar también Ollama.
+El informe guarda resultado, evidencia, cantidad de productos y duración por
+archivo; las capturas opcionales permiten reproducir los fallos del parser.
+Un resultado `needs_review` con datos incompletos no equivale a extracción correcta
+de todo el documento. Las pruebas de los cuatro PDF no cubren todos los formatos
+posibles. El requisito de 8 GB de RAM fue retirado por el usuario; el consumo se
+evalúa según el modelo y el equipo disponible, sin un presupuesto fijo.
+
+En Extraído, abrir el detalle del rollo y Datos extraídos principales. La columna
+Verificación local muestra el estado, la propuesta y las citas. Ver evidencia
+abre la página del PDF; no resalta una celda. Revisar propuesta permite aceptar
+una discrepancia con persona y motivo mediante el endpoint de correcciones
+existente y `accept_verification=true`. El servidor usa la propuesta guardada,
+preserva el dato anterior y registra auditoría; rechaza campos reemplazados o
+sin propuesta válida. Recalcular las sugerencias después de corregir sus datos.
+Los contratos se consultan en `/openapi.json` y `/docs`.
+
+Ante un fallo, falta del modelo, JSON inválido o evidencia no comprobable se
+conserva el resultado original y se registra una advertencia y el tipo de error
+en la verificación y su resumen. El límite de entrada aplica al JSON de campos
+y fuentes de cada sección; si se supera se marca esa sección como error sin
+truncarla. Las demás secciones verificadas se conservan.
+No se envían imágenes ni se intenta corregir OCR ilegible. El timeout aplica a
+las operaciones HTTP por página; la cancelación se comprueba antes y después
+de cada solicitud, por lo que una solicitud en curso puede tardar en terminar.
+
+Pruebas sin instalar Ollama:
+
+```powershell
+uv run pytest backend/tests/unit/test_ollama_extraction.py backend/tests/unit/test_ollama_verification.py backend/tests/unit/test_certificate_extraction_service.py -q
+```
+
+La calidad y latencia reales requieren evaluar PDF revisados manualmente con el
+modelo instalado y el hardware objetivo antes de activar el flujo en producción.
+
+La aprobación del acta exige una selección humana de fracción y NICO para cada
+producto de cada colada. La ejecución debe cubrir todos los productos actuales
+del acta y cada colada debe tener productos incluidos; una cobertura incompleta
+se rechaza con `classification_incomplete` (409), sin cambiar el estado del acta.
+
 ### Progreso de procesamiento
+
+Después de guardar una extracción con productos, el worker genera una ejecución
+de clasificación con hasta tres sugerencias de fracción y NICO por rollo.
+Las opciones condicionales conservan sus datos faltantes y requieren revisión;
+la selección humana y la aprobación siguen siendo pasos separados. El resultado
+del trabajo incluye `classification_run_id`, consultable mediante los endpoints
+de clasificación existentes. Si falla esta etapa, la extracción se conserva y
+el trabajo termina en `needs_review` con `error_code=automatic_classification_failed`
+y el motivo en `error_message`. Reiniciar el worker tras actualizar el código.
+Las actas existentes pueden generar sus sugerencias mediante el endpoint de
+reclasificación documentado en OpenAPI, sin volver a extraer el PDF.
 
 El recibo de subida incluye `job_id`. Su avance se consulta en
 `GET /api/v1/jobs/{job_id}`; el contrato tipado `JobEnvelope` se genera en
@@ -132,6 +312,30 @@ Invoke-RestMethod http://127.0.0.1:8765/api/v1/health/ready
 Las pruebas de integración requieren una base migrada llamada exactamente
 `hacktitlan_test` y la variable `HACKTITLAN_TEST_DATABASE_URL`. No apuntar estas
 pruebas a producción.
+
+## Reiniciar datos para pruebas locales
+
+Detener la API y el worker antes de ejecutar, desde la raíz del proyecto:
+
+```powershell
+.\scripts\reset-database.ps1 -DatabaseName hackaitlac
+```
+
+Usar el nombre exacto de la base configurada en `HACKTITLAN_DATABASE_URL`;
+`hackaitlac` es el nombre de la instalación local actual. También se puede ejecutar
+`uv run python -m backend.app.operations.reset_database --confirm-database hackaitlac`.
+Después, volver a iniciar `scripts/run-api.ps1` y `scripts/run-worker.ps1`
+y actualizar la aplicación para limpiar las selecciones anteriores.
+
+El comando borra los registros de las tablas del esquema `public` y reinicia sus
+identificadores en una transacción. Conserva `alembic_version` y `rule_sets`,
+el esquema, los permisos, los archivos originales y los respaldos en disco.
+Así se pueden volver a importar los mismos documentos. El borrado de registros
+es irreversible; no genera un respaldo automático. Sólo admite PostgreSQL en
+loopback con entorno `development` o `test`, exige confirmar el nombre de la base
+y aborta si hay trabajos `running`, tablas ocupadas o relaciones externas que
+impidan vaciarla. El usuario de conexión necesita permisos de `TRUNCATE` y de
+reinicio de secuencias; la cuenta de aplicación habitual no los tiene.
 
 ## Respaldo y restauración
 
@@ -291,3 +495,25 @@ se aplican una vez, por elemento: `×1000` o `/1000` implica dividir por 1000;
 `10^-3` implica multiplicar por 0.001; `ppm` se convierte a porcentaje multiplicando
 por 0.0001. Se admiten potencias con superíndices. Nunca se deduce una escala
 por el tamaño del número. Los datos ambiguos requieren revisión humana.
+
+### Revisión web y borradores
+
+La UI organiza carga y revisión en una sección e historial en otra. El historial utiliza los filtros declarados en OpenAPI de `GET /api/v1/certificates`, con paginación y filtros en el servidor. Fracción y NICO se consultan sobre los códigos que el backend conserva en resultados de clasificación; no se buscan dentro de candidatos todavía no seleccionados.
+
+`POST /api/v1/classification-runs/{run_id}/draft` guarda una ejecución pendiente o rechazada como borrador con persona y motivo, conserva las selecciones y registra la transición. Guardar un borrador que ya es borrador es idempotente. Una ejecución aprobada no puede volver a borrador. Reiniciar la API al desplegar esta ruta. Consultar su contrato y errores en `/openapi.json` o `/docs`.
+
+El procesamiento continúa al cambiar de sección en la web; el historial permite recuperar los datos persistidos. Los campos de auditoría aún no enviados no se guardan al navegar. El borrador no aprueba ni valida condiciones pendientes.
+
+Las actas sin ejecuciones pueden solicitar su clasificación desde la UI mediante `POST /api/v1/certificates/{certificate_id}/reclassify`; el contrato tipado y el recibo del trabajo están en OpenAPI. No se repite la extracción. El worker debe estar activo para terminar el trabajo.
+
+La acción “Descartar del historial” utiliza el archivo lógico existente (`POST /api/v1/documents/{document_id}/archive`) con persona y motivo. No elimina datos ni originales. La misma vista permite restaurar el documento antes de salir; fuera de ella, un operador puede restaurarlo con esa ruta y `archived=false`, según el contrato de `/docs`.
+
+### Captura manual de clasificación
+
+Aplicar `uv run alembic upgrade head` (migración `0007_manual_classification`) y reiniciar la API si no usa recarga automática. La migración permite conservar capturas manuales junto a las sugerencias originales; no elimina registros. Un downgrade falla si existen rangos superiores a tres, para evitar perder auditoría.
+
+El contrato vigente se consulta en `/openapi.json` y `/docs`: `/api/v1/classification-results/{result_id}/select` acepta un candidato existente o una fracción/NICO manuales, junto a persona y motivo. La captura manual valida formato y conserva la justificación y selecciones anteriores; no consulta automáticamente la vigencia normativa del código. Las ejecuciones aprobadas rechazan cambios manuales.
+
+En la web, el dictamen envía persona Administrador y un motivo fijo sin campos editables. Es una identificación operativa compartida, no una cuenta autenticada ni una firma individual. La captura manual conserva su justificación escrita. El historial de auditoría permanece en el backend aunque se retire la pestaña del detalle del acta.
+
+La confirmación del acta (`POST /api/v1/classification-runs/{run_id}/approve`) cierra la revisión humana registrada mediante las selecciones de cada rollo. Exige cobertura completa de productos y coladas, selección, fracción y NICO; conserva datos faltantes y factores desconocidos del motor, y bloquea contradicciones. El cliente envía persona y motivo fijos por decisión del usuario.

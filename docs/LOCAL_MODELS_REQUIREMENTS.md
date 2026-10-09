@@ -4,12 +4,12 @@
 
 La aplicación base debe poder instalarse y operar en un equipo Windows con:
 
-- 8 GB de RAM;
+- memoria suficiente para los modelos seleccionados, sin un presupuesto fijo de RAM;
 - procesador x64 moderno con un desempeño razonable;
 - ejecución por CPU, sin requerir GPU dedicada;
 - espacio suficiente para la aplicación, documentos y base de trabajo local.
 
-El objetivo de 8 GB corresponde a importación de PDF digitales, reglas
+La aplicación base incluye importación de PDF digitales, reglas
 deterministas, consulta, revisión y exportación. Los trabajos pesados deben
 ejecutarse en segundo plano y limitar concurrencia para no agotar la memoria.
 
@@ -109,12 +109,13 @@ Sin paquetes instalados, la aplicación debe:
 No debe simular OCR, convertir datos ausentes en cero ni afirmar que un
 documento fue procesado cuando falta el modelo requerido.
 
-## 7. Perfil para 8 GB de RAM
+## 7. Uso de recursos según el equipo disponible
 
-En el equipo mínimo se aplicarán estas restricciones:
+El usuario retiró el requisito de 8 GB de RAM. Se mantienen estas medidas de
+gestión de recursos, ajustadas al equipo disponible:
 
 - procesamiento secuencial de páginas y documentos;
-- modelos OCR ligeros y ejecución por CPU;
+- modelos OCR elegidos por calidad y compatibilidad con CPU o GPU;
 - liberación del modelo cuando termine el trabajo o tras un periodo de
   inactividad;
 - límites de resolución y lotes configurados para evitar intercambio excesivo a
@@ -122,6 +123,5 @@ En el equipo mínimo se aplicarán estas restricciones:
 - el paquete generativo no se considerará parte del funcionamiento mínimo.
 
 La selección del modelo generativo se realizará después de medir candidatos con
-el corpus real. No se prometerá compatibilidad con 8 GB hasta verificar consumo,
-velocidad y calidad en el equipo objetivo.
-
+el corpus real. Se verificarán consumo, velocidad y calidad en el equipo
+disponible, sin condicionar la elección a un límite de 8 GB.

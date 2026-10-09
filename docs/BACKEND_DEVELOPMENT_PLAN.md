@@ -42,7 +42,8 @@ reemplazar la normalización determinista existente.
   [política de versiones soportadas](https://www.postgresql.org/support/versioning/).
 - Sin Docker, nube, Redis, Celery ni cuentas de usuario en la primera versión.
 - API limitada a la interfaz Tailscale en operación; sin modo offline.
-- Equipo mínimo: 8 GB de RAM y CPU sin GPU dedicada.
+- Sin presupuesto fijo de RAM; la selección de modelos depende de calidad y
+  capacidad del equipo disponible. La aplicación base puede operar por CPU.
 
 ## Etapas
 
@@ -144,7 +145,7 @@ de cinco años ya se midió en desarrollo; la aceptación del servidor sigue pen
 - Verificar paginación y filtros sobre ese volumen, que sólo resultados
   aprobados entren en reportes oficiales y que toda salida conserve la marca de
   demostración.
-- Verificación en Windows 11 x64 con 8 GB de RAM.
+- Verificación en Windows 11 x64 con el hardware disponible, sin límite fijo de RAM.
 
 ## Supuestos cerrados
 
@@ -157,3 +158,192 @@ de cinco años ya se midió en desarrollo; la aceptación del servidor sigue pen
 - Respaldo 7 diarios, 4 semanales y 12 mensuales con segunda copia configurable.
 - Este archivo fue creado antes del primer cambio de implementación y conserva
   el plan aprobado completo.
+
+
+## Plan de extracción y verificación con evidencia — 8 de octubre de 2026
+
+Implementación iniciada: primera entrega estructural y verificación visual opcional.
+Alcance: recuperar información
+presente en el documento y detectar lecturas incorrectas sin inventar valores.
+No garantizar extracción completa cuando el documento omite un dato o es ilegible.
+Reutilizar OCR, normalización, observaciones, correcciones y trabajos actuales.
+No cambiar reglas de clasificación ni aprobación como parte de esta mejora.
+
+Avance de esta entrega:
+- Metadatos generales en todas las páginas, etiquetas y notas, con evidencia;
+  emisión, embarque y entrega separados; valores contradictorios quedan ausentes.
+- Símbolos explícitos de repetición adicionales; filas identificadas se conservan
+  aunque estén vacías; no se hereda química entre coladas ni datos entre tablas.
+- Fecha de emisión en inglés normalizada y eliminación del fallback de entrega.
+- Consultas de verificación por rollo; modelos con visión reciben un recorte del
+  PDF original con fila y encabezados. La respuesta sólo crea una propuesta.
+- Pruebas unitarias/golden: 437 pasan. Integración de procesamiento y persistencia:
+  8 pasan, incluyendo MOLINO 3 desde una captura OCR y separación de fechas.
+- Prueba visual real de carbono de MOLINO 3 con qwen3.5:4b: admite imágenes,
+  pero devuelve not_verifiable; todavía no se cumple la salida 39/33 de fase 4.
+  No se corrigió el certificado guardado ni se declaró exactitud completa.
+
+Pendiente: corpus completamente revisado, recuperación parcial selectiva de
+metadatos/identidades/celdas sin evidencia, reconciliación de lecturas OCR,
+alineación de páginas reorientadas, evaluación visual y presupuesto de memoria.
+Aceptar proveedores nuevos no implica poder completar datos omitidos o ilegibles.
+
+Segunda entrega implementada: recuperación parcial de dimensiones/química como
+propuestas citadas, regiones visuales para celdas sin texto OCR, comparación de
+lecturas OCR contradictorias y agrupación de cajas superpuestas de una misma
+identidad. El caso 39/33 ahora tiene propuesta 0.33 revisable por la API, aunque
+el LLM visual por sí solo no había resuelto la celda. Se ejecutaron los cuatro
+PDF reales y se recuperaron 6/1/11/6 rollos; MOLINO 4 reveló un duplicado que se
+reparó y volvió a probar. No se garantiza la exactitud de todos los campos.
+El evaluador reproducible es scripts/evaluate_certificate_extraction.py.
+Metadatos/identidades ambiguas y la evaluación completa por campo siguen
+requiriendo el corpus revisado y la revisión humana descritos en estas fases.
+
+### Diagnóstico confirmado
+
+- MOLINO 3 contiene una tabla rasterizada: no entrega texto con pdfplumber.
+- La extracción actual conserva 11 rollos, pero pierde dimensiones después de
+  la primera fila y lee el carbono de 1FN43 como 39 donde la revisión visual
+  y el JSON anterior indican 33. La escala del encabezado debe verificarse.
+- Se debe confirmar visualmente el identificador de la otra colada: 3VL99/BVL99.
+  No convertir una lectura ambigua en una identidad definitiva.
+- El extractor genérico contempla comillas de repetición; hay que reparar su
+  comportamiento ante símbolos perdidos, celdas vacías y pérdida de continuidad.
+- El LLM actual recibe texto y tablas del OCR, no píxeles. Cuando ya existe un
+  certificado, sólo verifica; no ejecuta la extracción alternativa.
+- En el diagnóstico inicial, la configuración del proyecto tenía Ollama deshabilitado. La
+  configuración efectiva del worker aún debe comprobarse; no confundirla con
+  la del proceso API ni con que el modelo esté instalado. Esta entrega activa
+  HACKTITLAN_OLLAMA_ENABLED en el .env local; el worker en ejecución requiere reinicio.
+- La persistencia admite delivery_date_raw como alternativa para certificate_date.
+  Fecha de emisión y fecha de embarque deben mantenerse separadas.
+- Los fixtures/JSON anteriores ayudan, pero no prueban la calidad del OCR real.
+  No sustituir el PDF por un fixture para declarar éxito de extracción.
+
+### 1. Referencia verificada y medición inicial
+
+Revisar visualmente MOLINO 1–4, empezando por MOLINO 3. Completar el corpus
+existente con valores esperados, página/región, campo, rollo/colada y escalas.
+El JSON anterior es un borrador de referencia; confirmar cada campo crítico
+contra el PDF. Guardar resultados del pipeline real y compararlos con esa
+referencia, incluyendo omisiones, errores y asociaciones incorrectas.
+
+Salida: inventario revisado de datos disponibles y medición inicial por campo.
+Para MOLINO 3: 11 rollos; dos coladas con identidad comprobada; 1.800 mm y
+895 mm en las filas sustentadas por repetición; carbono de 1FN43 de 0.33 %
+si se confirma 33 con escala 10^-2; totales declarados de 11 y 80,320 kg.
+Verificar emisión JUN. 12, 2026 separadamente del embarque aproximado
+ON/ABOUT JUN. 28, 2026. No normalizar una fecha aproximada como exacta.
+
+### 2. Reparar lectura estructural y normalización determinista
+
+Trabajar en generic_extractor, layout_rows, vocabulary, mill_certificate y
+persistence según los fallos reproducidos. Mantener filas, columnas, encabezados,
+unidades y contexto de página; refinar sólo las regiones problemáticas.
+
+- Resolver repetición únicamente ante símbolo explícito comprobado, en la misma
+  columna y con un origen válido. No rellenar vacíos por proximidad.
+- Mantener cadenas de origen para herencia; no trasladar química entre coladas
+  sin evidencia, aunque las dimensiones puedan repetirse entre ellas.
+- Buscar fabricante, fechas y descripción en encabezados, notas y pie, mediante
+  etiquetas y relaciones espaciales; distinguir cliente de fabricante.
+- Conservar HOT ROLLED SHEET-COIL (MILL EDGE) como descripción original y
+  normalizar sólo los atributos sustentados por ese texto.
+- Separar emisión, embarque y entrega. Retirar el fallback que presenta entrega
+  como fecha del acta; revisar compatibilidad y registros anteriores antes de
+  cualquier corrección, sin migración masiva silenciosa.
+- Mantener Decimal, escalas originales y null para ausencias. No elegir un valor
+  por parecer más plausible para el grado del acero.
+
+Salida: pruebas sintéticas y del corpus pasan; cada valor heredado conserva
+el símbolo y su origen. Los documentos ya correctos no sufren regresiones.
+
+### 3. Asistencia LLM selectiva para extracción parcial
+
+Comprobar configuración efectiva del worker, disponibilidad y modelo local.
+Registrar si hubo asistencia, modelo, versión de instrucciones, duración y
+motivo de activación; usar metadata y logs actuales antes de crear endpoints.
+
+Activar recuperación para campos faltantes, símbolos/identidades ambiguos,
+encabezados sin escala, contradicciones y regiones no mapeadas, aun si el parser
+ya produjo un certificado. Dividir por región/rollo para no exceder el contexto;
+no truncar silenciosamente ni enviar siempre la página completa.
+
+La salida debe citar campo, valor literal, identidad y fuente/encabezado. El
+backend comprueba referencias, asociación y unidades antes de normalizar.
+Reutilizar schemas y verificaciones existentes. Una respuesta inválida, timeout
+u Ollama no disponible conserva el resultado inicial y declara needs_review.
+
+Salida: un certificado parcial recibe propuestas verificables sin duplicar
+rollos, reemplazar datos buenos ni perder cancelación y progreso del trabajo.
+
+### 4. Segunda lectura visual de campos críticos
+
+Verificar primero si el modelo instalado admite imágenes y si su ejecución
+cabe en el equipo disponible; no cambiar modelos ni instalar dependencias
+sin justificarlo. Si no es viable, mantener segunda lectura OCR y revisión humana.
+
+Enviar recortes que incluyan celda, encabezado/escala e identidad del rollo o
+colada. Mantener transformación de coordenadas al PDF original. Para metadatos,
+incluir su etiqueta y contexto. No usar recortes de números aislados.
+
+Comparar lectura OCR y visual en química, dimensiones, identificadores y fechas.
+La coincidencia sobre el mismo texto OCR no cuenta como verificación visual.
+El LLM no decide por votación ni por su propia confianza. Lecturas distintas,
+como 39/33, generan propuesta de corrección y revisión; no sobrescriben valores.
+
+Salida: el caso 39/33 queda detectado con evidencia y el valor correcto puede
+aceptarse mediante una corrección auditada. Nunca aplicar una cifra contradictoria
+sólo porque el modelo la afirmó. Medir latencia/memoria antes de fijar límites.
+
+### 5. Integración con revisión humana y API
+
+Reutilizar observaciones, verification_json, correcciones y visor actuales.
+Presentar extraído, propuesta, valor normalizado y evidencia del campo; explicar
+faltante, discrepancia, fallo técnico y pendiente de revisión por separado.
+Si hacen falta datos de emisión/embarque o procedencia que el contrato actual
+no representa, revisar app.py, schemas.py y OpenAPI generado antes de extenderlo;
+actualizar DTO, persistencia, migración y pruebas en el mismo cambio.
+
+Revisar PRODUCT.md, DESIGN.md y FINESSE_DESIGN_REFERENCE.md antes de implementar
+los cambios visuales. Mantener componentes y textos centralizados. Aprobar un
+rollo/acta registra la revisión humana según el flujo acordado; no convierte
+un campo desconocido en un dato verificado ni borra discrepancias o evidencia.
+Una corrección posterior que afecte clasificación exige una nueva ejecución;
+no modificar el snapshot de una ejecución cerrada.
+
+Salida: aceptación/rechazo de propuestas funciona, conserva historial y permite
+regenerar clasificación. Validar loading, empty, success, needs_review, error,
+teclado y pantallas relevantes en navegador.
+
+### 6. Pruebas y puesta en uso
+
+Ampliar tests existentes de generic_extractor, mill_certificate, OCR real,
+ollama_extraction, ollama_verification, calidad, persistencia y procesamiento.
+
+- Casos: 33/39, 3/B, comillas encadenadas y sin origen, cambio de colada, celdas
+  vacías, encabezados multinivel, química repetida y escalas 10^-2/10^-3/10^-4.
+- Metadatos en notas, fabricante frente a cliente, emisión frente a embarque,
+  fechas aproximadas, varias páginas y filas reordenadas.
+- Respuestas LLM malformadas, citas inexistentes, asociación equivocada,
+  duplicados, texto documental con instrucciones, límites, timeout y cancelación.
+- Flujo real: importar PDF → detectar discrepancia → aceptar corrección →
+  reclasificar → confirmar rollos → cerrar acta. No dar por probado este flujo
+  usando sólo fixtures o mocks del modelo.
+
+Criterios de entrega: en el corpus revisado, todos los campos críticos tienen
+valor correcto con evidencia o quedan explícitamente pendientes; ningún valor
+erróneo del corpus se acepta silenciosamente, ni se inventan campos ausentes.
+MOLINO 3 conserva sus 11 rollos y asociaciones, dimensiones comprobables,
+química/escalas verificadas y metadatos separados. Los cuatro PDFs pasan sus
+comparaciones; registrar resultados y límites fuera del corpus, sin prometer
+precisión universal ni presentar quality_score como probabilidad de acierto.
+
+Reprocesar primero una copia de prueba de MOLINO 3, comparar revisiones y medir
+llamadas al LLM, latencia y memoria. Reprocesar datos del usuario sólo dentro del
+alcance autorizado, con revisión nueva y conservación de correcciones humanas;
+no sobrescribir selecciones o actas cerradas. Documentar operación en el runbook
+y resultados reales en BACKEND_IMPLEMENTATION_STATUS.md.
+
+Orden de ejecución: referencia → reparación determinista → recuperación LLM
+parcial → segunda lectura visual → revisión integrada → pruebas reales.

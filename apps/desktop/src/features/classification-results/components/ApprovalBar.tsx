@@ -1,53 +1,44 @@
-import { Check, MessageSquare, User, X } from "lucide-react";
+import { Check, X } from "lucide-react";
 import { useId, useState } from "react";
 
+import { LoadErrorAlert } from "@/components/feedback";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import { describeApiError, type ClassificationRunDto } from "@/lib/api";
+import { describeApiError, type CertificateDetailDto, type ClassificationRunDto } from "@/lib/api";
 import { es } from "@/lib/i18n";
 
 import { useRunApproval } from "../hooks/useRunApproval";
+import { approvalCoverage } from "../model";
 
 export interface ApprovalBarProps {
   run: ClassificationRunDto | null;
+  certificate: CertificateDetailDto | null;
+  isLoading?: boolean;
+  loadError?: unknown;
   onDecisionComplete?: () => void;
 }
 
-export function ApprovalBar({ run, onDecisionComplete }: ApprovalBarProps) {
-  const { approveRun, rejectRun, isSubmitting, error, clearError } = useRunApproval();
-  const [personName, setPersonName] = useState("");
-  const [reason, setReason] = useState("");
-  const [validationErrors, setValidationErrors] = useState<{ person?: string; reason?: string }>({});
+export function ApprovalBar({ run, certificate, isLoading = false, loadError = null, onDecisionComplete }: ApprovalBarProps) {
+  const { approveRun, rejectRun, saveDraft, isSubmitting, error, clearError } = useRunApproval();
+  const personName = es.approval.defaultPerson;
+  const reason = es.approval.defaultReason;
+  const [draftSaved, setDraftSaved] = useState(false);
+  const coverageId = useId();
 
-  const personInputId = useId();
-  const reasonInputId = useId();
-  const personErrId = useId();
-  const reasonErrId = useId();
-
-  if (!run) return null;
-
-  function validate(): boolean {
-    const errs: { person?: string; reason?: string } = {};
-    if (personName.trim().length < 2) {
-      errs.person = es.approval.personRequired;
-    }
-    if (reason.trim().length < 3) {
-      errs.reason = es.approval.reasonRequired;
-    }
-    setValidationErrors(errs);
-    return Object.keys(errs).length === 0;
+  if (!run) {
+    if (loadError) return <LoadErrorAlert title={es.classification.loadError} error={loadError} />;
+    return <p role="status">{isLoading ? es.approval.coverageLoading : es.classification.noRunsTitle}</p>;
   }
+  const coverage = approvalCoverage(certificate, run);
+  const canApprove = !isLoading && !loadError && coverage?.complete === true && run.approval_status !== "approved";
 
   async function handleApprove() {
-    if (!run) return;
+    if (!run || !canApprove) return;
     clearError();
-    if (!validate()) return;
     try {
       await approveRun(run.id, personName.trim(), reason.trim());
-      setReason("");
       onDecisionComplete?.();
     } catch {
       // error is handled in hook
@@ -57,116 +48,75 @@ export function ApprovalBar({ run, onDecisionComplete }: ApprovalBarProps) {
   async function handleReject() {
     if (!run) return;
     clearError();
-    if (!validate()) return;
     try {
       await rejectRun(run.id, personName.trim(), reason.trim());
-      setReason("");
       onDecisionComplete?.();
     } catch {
       // error is handled in hook
     }
   }
 
+  async function handleDraft() {
+    if (!run) return;
+    clearError();
+    setDraftSaved(false);
+    try {
+      await saveDraft(run.id, personName.trim(), reason.trim());
+      setDraftSaved(true);
+      onDecisionComplete?.();
+    } catch { /* El hook muestra el error. */ }
+  }
+
   const isApproved = run.approval_status === "approved";
   const isRejected = run.approval_status === "rejected";
 
   return (
-    <footer className="bg-white border-t border-slate-200 px-4 py-2.5 flex flex-col gap-2 shrink-0">
+    <footer className="bg-background rounded-lg border border-border p-4 sm:p-6 flex flex-col gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h3 className="text-base leading-6 font-semibold">{es.approval.barTitle}</h3>
+        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+          {run.results.length > 1 && <span>{es.approval.appliesToAllProducts(run.results.length)}</span>}
+          <span>{es.approval.statusBadge}</span>
+          <Badge variant={isApproved ? "default" : isRejected ? "destructive" : "outline"}>{es.workspace.status[run.approval_status]}</Badge>
+        </div>
+      </div>
+      {!isApproved && <div id={coverageId} role="status" className="text-sm text-foreground">
+        {isLoading ? es.approval.coverageLoading : loadError || !coverage ? es.approval.coverageUnavailable
+          : coverage.complete ? es.approval.coverageReady : es.approval.coveragePending}
+        {!isLoading && !loadError && coverage && !coverage.complete && <details className="mt-2">
+          <summary className="min-h-10 cursor-pointer py-2 font-medium focus-visible:outline-2 focus-visible:outline-primary">{es.approval.pendingProducts}</summary>
+          <div className="max-h-24 overflow-y-auto break-words rounded-sm focus-visible:outline-2 focus-visible:outline-ring" tabIndex={0} aria-label={es.approval.pendingProducts}>
+          {coverage.pendingHeats.length > 0 && <p>{es.approval.pendingHeats}: {coverage.pendingHeats.map((heat) => heat.heat_no ?? `#${heat.id}`).join(", ")}</p>}
+          {coverage.pendingProducts.length > 0 && <p>{es.approval.pendingProducts}: {coverage.pendingProducts.map((product) => product.product_identifier ?? `#${product.id}`).join(", ")}</p>}
+          {coverage.pendingConditions.map(({ product, hasConflicts, factors }) => <div key={product.id} className="mt-3">
+            <p className="font-medium">{product.product_identifier ?? `#${product.id}`}</p>
+            {hasConflicts && <p>{es.approval.conflictingData}</p>}
+            {factors.map((factor) => <p key={factor.id}>{factor.explanation || factor.rule_code} · {es.workspace.factorStatus[factor.outcome]}</p>)}
+          </div>)}
+          </div>
+        </details>}
+      </div>}
+      {draftSaved && <p role="status" className="text-sm text-success-foreground">{es.workspace.draftSaved}</p>}
       {error && (
-        <Alert variant="destructive" role="alert" className="py-2 text-xs">
-          <AlertTitle className="text-xs font-semibold">Error al dictaminar</AlertTitle>
-          <AlertDescription className="text-xs">{describeApiError(error)}</AlertDescription>
+        <Alert variant="destructive" role="alert">
+          <AlertTitle>{es.approval.errorTitle}</AlertTitle>
+          <AlertDescription>{describeApiError(error)}</AlertDescription>
         </Alert>
       )}
 
-      {run.results.length > 1 && (
-        <p className="text-[11px] text-slate-500">
-          {es.approval.appliesToAllProducts(run.results.length)}
-        </p>
-      )}
-
       <div className="flex flex-wrap items-center justify-between gap-3">
-        {/* Input fields for Person & Reason (Audit Requirement) */}
-        <div className="flex flex-1 flex-wrap items-start gap-3 min-w-0 sm:min-w-[320px]">
-          {/* Person Input */}
-          <div className="relative min-w-[10rem] flex-1 sm:max-w-xs">
-            <User aria-hidden="true" className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" />
-            <Input
-              id={personInputId}
-              value={personName}
-              onChange={(e) => {
-                setPersonName(e.target.value);
-                if (validationErrors.person) {
-                  setValidationErrors((v) => {
-                    const next = { ...v };
-                    delete next.person;
-                    return next;
-                  });
-                }
-              }}
-              placeholder={es.approval.personPlaceholder}
-              disabled={isSubmitting}
-              aria-invalid={Boolean(validationErrors.person)}
-              aria-describedby={validationErrors.person ? personErrId : undefined}
-              className="h-8 text-xs pl-8 bg-white"
-            />
-            {validationErrors.person && (
-              <p id={personErrId} role="alert" className="text-[10px] text-red-600 mt-0.5">
-                {validationErrors.person}
-              </p>
-            )}
-          </div>
-
-          {/* Reason / Comments Input */}
-          <div className="relative min-w-[10rem] flex-1">
-            <MessageSquare aria-hidden="true" className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" />
-            <Input
-              id={reasonInputId}
-              value={reason}
-              onChange={(e) => {
-                setReason(e.target.value);
-                if (validationErrors.reason) {
-                  setValidationErrors((v) => {
-                    const next = { ...v };
-                    delete next.reason;
-                    return next;
-                  });
-                }
-              }}
-              placeholder={es.approval.reasonPlaceholder}
-              disabled={isSubmitting}
-              aria-invalid={Boolean(validationErrors.reason)}
-              aria-describedby={validationErrors.reason ? reasonErrId : undefined}
-              className="h-8 text-xs pl-8 bg-white"
-            />
-            {validationErrors.reason && (
-              <p id={reasonErrId} role="alert" className="text-[10px] text-red-600 mt-0.5">
-                {validationErrors.reason}
-              </p>
-            )}
-          </div>
-        </div>
-
         {/* Status Badge & Actions */}
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-1.5 text-xs text-slate-500 mr-2">
-            <span>{es.approval.statusBadge}</span>
-            <Badge
-              variant={isApproved ? "default" : isRejected ? "destructive" : "outline"}
-              className="text-[10px]"
-            >
-              {run.approval_status}
-            </Badge>
-          </div>
+        <div className="flex flex-wrap items-center gap-2 self-end">
 
+          <Button className="min-h-10" type="button" variant="outline" onClick={handleDraft} disabled={isSubmitting || isApproved}>{es.workspace.draft}</Button>
           {/* Reject Button */}
           <Button
             type="button"
-            variant="outline"
+            variant="destructive"
             size="sm"
             onClick={handleReject}
             disabled={isSubmitting}
-            className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 h-8 text-xs"
+            className="min-h-10 text-sm"
           >
             {isSubmitting ? (
               <Spinner className="w-3.5 h-3.5 mr-1" />
@@ -181,8 +131,9 @@ export function ApprovalBar({ run, onDecisionComplete }: ApprovalBarProps) {
             type="button"
             size="sm"
             onClick={handleApprove}
-            disabled={isSubmitting}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white h-8 text-xs"
+            disabled={isSubmitting || !canApprove}
+            aria-describedby={!isApproved ? coverageId : undefined}
+            className="min-h-10 text-sm"
           >
             {isSubmitting ? (
               <Spinner className="w-3.5 h-3.5 mr-1" />

@@ -14,7 +14,7 @@ export interface CertificateSummaryProps {
 export function CertificateSummary({ certificate, isLoading = false }: CertificateSummaryProps) {
   if (isLoading) {
     return (
-      <div className="bg-white p-3.5 rounded-lg border border-slate-200 shadow-sm space-y-3">
+      <div className="bg-background p-5 rounded-xl border border-border space-y-3">
         <div className="flex justify-between items-center">
           <Skeleton className="h-4 w-36" />
           <Skeleton className="h-4 w-16" />
@@ -31,11 +31,11 @@ export function CertificateSummary({ certificate, isLoading = false }: Certifica
 
   if (!certificate) {
     return (
-      <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
+      <div className="bg-background p-4 rounded-xl border border-border">
         <Empty>
           <EmptyHeader>
             <EmptyMedia variant="icon">
-              <FileText aria-hidden="true" className="w-6 h-6 text-slate-400" />
+              <FileText aria-hidden="true" className="w-6 h-6 text-muted-foreground" />
             </EmptyMedia>
             <EmptyTitle>{es.certificateReview.summaryTitle}</EmptyTitle>
             <EmptyDescription>{es.certificateReview.noCertificateSelected}</EmptyDescription>
@@ -49,81 +49,76 @@ export function CertificateSummary({ certificate, isLoading = false }: Certifica
     certificate.heats
       .map((h) => h.heat_no)
       .filter(Boolean)
-      .join(", ") || "Sin registrar";
+      .join(", ") || es.workspace.unknown;
 
   return (
     <section
-      className="bg-white p-3.5 rounded-lg border border-slate-200 shadow-sm"
+      className="bg-background p-5 rounded-xl border border-border"
       aria-labelledby="cert-summary-title"
     >
-      <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
-        <h3 id="cert-summary-title" className="font-bold text-slate-800 text-[13px]">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4 border-b border-border pb-4">
+        <h3 id="cert-summary-title" className="font-semibold text-foreground text-lg leading-7">
           {es.certificateReview.summaryTitle}
         </h3>
         <Badge variant={certificate.approval_status === "approved" ? "default" : "outline"}>
-          {certificate.approval_status}
+          {es.workspace.status[certificate.approval_status]}
         </Badge>
       </div>
 
-      <div className="grid grid-cols-2 gap-x-5 gap-y-2.5 text-xs">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 text-sm leading-6">
         <div>
-          <span className="block text-[11px] font-medium text-slate-500 mb-0.5">
+          <span className="block text-sm font-medium text-muted-foreground mb-1">
             {es.certificateReview.fields.manufacturer}
           </span>
-          <div className="font-medium text-slate-800 bg-slate-50/70 border border-slate-200 rounded px-2.5 py-1.5 truncate">
-            {certificate.manufacturer ?? "Sin dato"}
+          <div className="font-medium text-foreground break-words">
+            {certificate.manufacturer ?? es.workspace.unknown}
           </div>
         </div>
 
         <div>
-          <span className="block text-[11px] font-medium text-slate-500 mb-0.5">
+          <span className="block text-sm font-medium text-muted-foreground mb-1">
             {es.certificateReview.fields.certificateNo}
           </span>
-          <div className="font-medium text-slate-800 bg-slate-50/70 border border-slate-200 rounded px-2.5 py-1.5 truncate">
-            {certificate.certificate_no ?? "Sin dato"}
+          <div className="font-medium text-foreground break-words">
+            {certificate.certificate_no ?? es.workspace.unknown}
           </div>
         </div>
 
         <div>
-          <span className="block text-[11px] font-medium text-slate-500 mb-0.5">
+          <span className="block text-sm font-medium text-muted-foreground mb-1">
             {es.certificateReview.fields.certificateDate}
           </span>
-          <div className="font-medium text-slate-800 bg-slate-50/70 border border-slate-200 rounded px-2.5 py-1.5">
-            {certificate.certificate_date ?? "Sin dato"}
+          <div className="font-medium text-foreground">
+            {certificate.certificate_date ?? es.workspace.unknown}
           </div>
         </div>
 
         <div>
-          <span className="block text-[11px] font-medium text-slate-500 mb-0.5">
+          <span className="block text-sm font-medium text-muted-foreground mb-1">
             {es.certificateReview.fields.standard}
           </span>
-          <div className="font-medium text-slate-800 bg-slate-50/70 border border-slate-200 rounded px-2.5 py-1.5 truncate">
-            {certificate.standard ?? "Sin dato"}
+          <div className="font-medium text-foreground break-words">
+            {certificate.standard ?? es.workspace.unknown}
           </div>
         </div>
 
         <div>
-          <span className="block text-[11px] font-medium text-slate-500 mb-0.5">
+          <span className="block text-sm font-medium text-muted-foreground mb-1">
             {es.certificateReview.fields.productName}
           </span>
-          <div className="font-medium text-slate-800 bg-slate-50/70 border border-slate-200 rounded px-2.5 py-1.5 truncate">
-            {certificate.product_name ?? "Sin dato"}
+          <div className="font-medium text-foreground break-words">
+            {certificate.product_name ?? es.workspace.unknown}
           </div>
         </div>
 
         <div>
-          <span className="block text-[11px] font-medium text-slate-500 mb-0.5">Coladas registradas</span>
-          <div className="font-medium text-slate-800 bg-slate-50/70 border border-slate-200 rounded px-2.5 py-1.5 truncate">
+          <span className="block text-sm font-medium text-muted-foreground mb-1">{es.workspace.registeredHeats}</span>
+          <div className="font-medium text-foreground break-words">
             {heatsText}
           </div>
         </div>
       </div>
 
-      {certificate.demo_notice && (
-        <p className="mt-2 text-[10.5px] text-amber-700 bg-amber-50/80 border border-amber-200 rounded px-2 py-1">
-          {certificate.demo_notice}
-        </p>
-      )}
     </section>
   );
 }

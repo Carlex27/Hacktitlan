@@ -1,6 +1,12 @@
 import type { ApprovalStatusDto } from "./classification";
 import type { JsonValue } from "./common";
 
+export interface CertificateDeletionDto {
+  certificate_id: number;
+  document_id: number;
+  deleted: true;
+}
+
 export interface CertificateHeatDto {
   id: number;
   heat_no: string | null;
@@ -23,6 +29,7 @@ export interface CertificateProductDto {
 }
 
 export interface CertificateObservationDto {
+  verification?: FieldVerificationDto | null;
   id: number;
   heat_id: number | null;
   product_id: number | null;
@@ -37,6 +44,22 @@ export interface CertificateObservationDto {
   inherited: boolean;
   supersedes_id: number | null;
   is_current: boolean;
+}
+
+export interface FieldVerificationDto {
+  status: "matches" | "discrepancy" | "not_verifiable" | "error";
+  model: string;
+  raw_value: string | null;
+  normalized_value: number | null;
+  unit: string | null;
+  page_number: number | null;
+  bbox: Record<string, number> | null;
+  source_id: string | null;
+  source_text: string | null;
+  header_id: string | null;
+  header_text: string | null;
+  header_bbox: Record<string, number> | null;
+  error_code: string | null;
 }
 
 export interface CertificateChemicalCompositionDto {

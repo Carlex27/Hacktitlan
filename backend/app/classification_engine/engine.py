@@ -109,6 +109,8 @@ class Chapter72ClassificationEngine:
         steps.extend(family_steps)
         missing.update(family_missing)
         if family is None:
+            if facts.coated is None:
+                missing.add("coated")
             heading_candidates = self._heading_candidates(facts, family_candidates)
             return self._result(
                 ClassificationOutcome.NEEDS_REVIEW,
@@ -865,13 +867,13 @@ class Chapter72ClassificationEngine:
             missing=missing,
             facts=facts,
         )
-        if outcome is ClassificationOutcome.CLASSIFIED and len(ranked_candidates) != 3:
+        if outcome is ClassificationOutcome.CLASSIFIED and not ranked_candidates:
             outcome = ClassificationOutcome.NEEDS_REVIEW
-            missing.add("three_valid_candidates")
+            missing.add("valid_candidates")
             steps.append(Decision(
-                "chapter72.candidates.exactly_three",
+                "chapter72.candidates.available",
                 StepOutcome.MISSING,
-                "La revisión requiere exactamente tres opciones válidas de fracción y NICO.",
+                "La revisión requiere al menos una opción válida de fracción y NICO (máximo tres).",
                 {"valid_candidate_count": len(ranked_candidates)},
             ))
         return ClassificationDecision(
@@ -900,7 +902,20 @@ class Chapter72ClassificationEngine:
         discarded: list[DiscardedCandidate] = []
         if fraction is not None and nico is not None:
             pairs.append((-100, fraction, nico, "fully_supported" if not missing else "conditional"))
-        for raw_index, raw in enumerate(raw_candidates):
+        expanded_candidates = list(raw_candidates)
+        for heading in raw_candidates:
+            if len(heading) != 4:
+                continue
+            for family in ("non_alloy", "stainless", "other_alloy"):
+                for coated in ((False, True) if facts.coated is None else (facts.coated,)):
+                    branch_facts = replace(facts, coated=coated)
+                    if self._heading(branch_facts, family) != heading:
+                        continue
+                    branch_fraction, branch_nico, _, branch_candidates, _ = self._flat_rolled_branch(branch_facts, family)
+                    if branch_fraction:
+                        expanded_candidates.append(f"{branch_fraction}{branch_nico}" if branch_nico else branch_fraction)
+                    expanded_candidates.extend(code for code in branch_candidates if len(code) in (8, 10))
+        for raw_index, raw in enumerate(expanded_candidates):
             compact = raw.replace(".", "").replace("-", "")
             if fraction is not None and len(compact) == 2 and compact.isdigit():
                 compatible, qualifier_priority = self._candidate_compatibility(

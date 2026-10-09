@@ -26,6 +26,19 @@ const RUN_SUMMARY = {
   created_at: "2024-05-16T10:00:00Z",
 };
 
+/** La evidencia se consulta desde las condiciones del candidato. */
+function withFactorEvidence(run: ClassificationRunDto): ClassificationRunDto {
+  return { ...run, results: run.results.map((result) => ({ ...result,
+    candidates: result.candidates.map((candidate) => ({ ...candidate,
+      factors: result.steps.map((step) => ({
+        id: step.id, sequence: step.sequence, rule_code: step.rule_code,
+        outcome: "matched" as const, operator: null, expected: {}, observed: {}, unit: null,
+        explanation: step.rule_code, required_for_selection: false, evidence_links: step.evidence_links,
+      })),
+    })),
+  })) };
+}
+
 /** Responde con error las primeras `failures` llamadas y después con `ok`. */
 function failingThen(failures: number, ok: () => Response): RouteHandler {
   let calls = 0;
@@ -44,7 +57,7 @@ function backendWith(routes: Record<string, RouteHandler>, run: ClassificationRu
       envelope({ document_id: 10, certificate_id: 42, job_id: null, duplicate: false }, 200),
     "GET /api/v1/certificates/42": () => envelope(createFakeCertificate({ id: 42 })),
     "GET /api/v1/certificates/42/classification-runs": () => envelope([RUN_SUMMARY]),
-    "GET /api/v1/classification-runs/101": () => envelope(run),
+    "GET /api/v1/classification-runs/101": () => envelope(withFactorEvidence(run)),
     ...routes,
   });
 }
@@ -63,7 +76,7 @@ async function openTab(user: ReturnType<typeof userEvent.setup>, name: string) {
 }
 
 describe("Validación: todos los productos de la ejecución", () => {
-  it("permite revisar cada producto y muestra el historial de todos", async () => {
+  it("permite revisar cada producto y mantiene el dictamen de toda la ejecución", async () => {
     const base = createFakeClassificationRun();
     const first = base.results[0] as ClassificationResultDto;
     const secondSelection = { id: 402, candidate_id: 311, supersedes_selection_id: null, person_name: "Luis Gómez", reason: "Revisión de bobina", workstation_name: "Estación 2", created_at: "2024-05-17T09:00:00Z" };
@@ -89,20 +102,22 @@ describe("Validación: todos los productos de la ejecución", () => {
     const selector = await screen.findByRole("region", { name: /productos clasificados \(2\)/i });
     const productButtons = within(selector).getAllByRole("button");
     expect(productButtons).toHaveLength(2);
+    expect(within(productButtons[0] as HTMLElement).getByText("Confirmado")).toBeInTheDocument();
+    expect(within(productButtons[0] as HTMLElement).queryByText("Extraído")).not.toBeInTheDocument();
+    expect(within(productButtons[1] as HTMLElement).getByText("Requiere revisión")).toBeInTheDocument();
     expect(productButtons[0]).toHaveAttribute("aria-pressed", "true");
     expect(screen.queryByText("Segundo producto")).not.toBeInTheDocument();
 
     await user.click(within(selector).getByRole("button", { name: /producto 2 · bobina laminada en frío/i }));
     expect(productButtons[1]).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByText("Segundo producto")).toBeInTheDocument();
+    expect(screen.getAllByText("Segundo producto").length).toBeGreaterThan(0);
     // Un dato ausente no se presenta como cero ni vacío.
     expect(within(selector).getByText("Sin determinar")).toBeInTheDocument();
 
+    await openTab(user, "Dictamen de clasificación");
     expect(screen.getByText(/el dictamen aplica a los 2 productos/i)).toBeInTheDocument();
 
-    await openTab(user, "Historial");
-    expect(screen.getByText("María Pérez")).toBeInTheDocument();
-    expect(screen.getByText("Luis Gómez")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Historial" })).not.toBeInTheDocument();
   });
 });
 
@@ -125,7 +140,7 @@ describe("Validación: las fallas se muestran, no se esconden", () => {
     expect(await screen.findByText("Fabricante Recuperado")).toBeInTheDocument();
   });
 
-  it("muestra el error de la clasificación en Validación e Historial", async () => {
+  it("muestra el error de la clasificación y permite reintentar", async () => {
     const backend = backendWith({
       "GET /api/v1/certificates/42/classification-runs": failingThen(1, () => envelope([RUN_SUMMARY])),
     });
@@ -137,11 +152,10 @@ describe("Validación: las fallas se muestran, no se esconden", () => {
     expect(alert).toHaveTextContent("No se pudo cargar la clasificación");
     expect(screen.queryByText("Sin ejecuciones de clasificación")).not.toBeInTheDocument();
 
-    await openTab(user, "Historial");
     expect(screen.getByRole("alert")).toHaveTextContent("No se pudo cargar la clasificación");
 
     await user.click(within(screen.getByRole("alert")).getByRole("button", { name: "Reintentar" }));
-    expect(await screen.findByText("María Pérez")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Motor de Clasificación" })).toBeInTheDocument();
   });
 });
 
@@ -154,6 +168,7 @@ describe("Validación: evidencia", () => {
     const user = await openValidation(backend);
     await openTab(user, "Validación");
 
+    await user.click(await screen.findByText("RULE_DIMENSIONS · Cumple"));
     const [evidenceButton] = await screen.findAllByRole("button", { name: /ver evidencia/i });
     expect(evidenceButton).toBeDefined();
     await user.click(evidenceButton as HTMLElement);
@@ -200,9 +215,10 @@ describe("Validación: evidencia", () => {
     const user = await openValidation(backend);
     await openTab(user, "Validación");
 
-    const checklist = (await screen.findByRole("heading", { name: "Evaluación de reglas", level: 4 })).closest("section");
-    expect(checklist).not.toBeNull();
-    const buttons = within(checklist as HTMLElement).getAllByRole("button", { name: /ver evidencia/i });
+    await screen.findByRole("heading", { name: "Motor de Clasificación" });
+    await user.click(screen.getByText(step.rule_code + " · Cumple"));
+    await user.click(screen.getByText("RULE_WIDTH · Cumple"));
+    const buttons = screen.getAllByRole("button", { name: /ver evidencia/i });
     await user.click(buttons[0] as HTMLElement);
     await user.click(buttons[1] as HTMLElement);
 

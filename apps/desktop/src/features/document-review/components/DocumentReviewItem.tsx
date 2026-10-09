@@ -5,28 +5,23 @@ import type { DocumentReviewQueueItemDto } from "@/lib/api";
 import { es } from "@/lib/i18n";
 
 import { reviewItemStatus } from "../model/reviewItem";
-import { ReprocessForm } from "./ReprocessForm";
+import { useDocumentReprocess } from "../hooks/useDocumentReprocess";
 
 export interface DocumentReviewItemProps {
   item: DocumentReviewQueueItemDto;
-  /** Hay una solicitud de reprocesamiento en curso (de esta u otra acta). */
-  busy: boolean;
-  isSubmitting: boolean;
-  reprocessError: unknown;
-  onReprocess(personName: string, reason: string): Promise<boolean>;
+  onReprocessed: () => void;
   onReview?: (certificateId: number, documentId: number) => void;
 }
 
 export function DocumentReviewItem({
   item,
-  busy,
-  isSubmitting,
-  reprocessError,
-  onReprocess,
+  onReprocessed,
   onReview,
 }: DocumentReviewItemProps) {
   const label = es.documentReview.certificateLabel(item.certificate_no, item.certificate_id);
   const headingId = `review-item-${item.certificate_id}`;
+  const reprocess = useDocumentReprocess(item.certificate_id, onReprocessed);
+  const hasErrors = item.blocking_issues_count > 0 || item.document_status === "error";
 
   return (
     <li aria-labelledby={headingId} data-status={reviewItemStatus(item)} className="flex flex-col gap-2 py-3">
@@ -34,6 +29,13 @@ export function DocumentReviewItem({
         <span id={headingId} className="font-semibold text-slate-800">{label}</span>
         <Badge variant="outline">{es.documentReview.revision(item.revision_number)}</Badge>
         <ProcessingStatusBadge status={reviewItemStatus(item)} />
+        {hasErrors && (
+          <Button type="button" variant="outline" className="min-h-10"
+            disabled={!item.can_reprocess || item.active_job_id !== null || reprocess.submitting || reprocess.queued}
+            aria-busy={reprocess.submitting} onClick={() => void reprocess.start()}>
+            {reprocess.submitting ? es.documentReview.processing : es.documentReview.reanalyze}
+          </Button>
+        )}
         {onReview && (
           <Button
             type="button"
@@ -72,15 +74,9 @@ export function DocumentReviewItem({
         <p role="status" className="text-[11px] text-slate-600">{es.documentReview.activeJob(item.active_job_id)}</p>
       )}
 
-      {reprocessError !== null && reprocessError !== undefined && (
-        <LoadErrorAlert title={es.documentReview.reprocessError} error={reprocessError} />
-      )}
+      {reprocess.queued && <p role="status" className="text-sm text-muted-foreground">{es.documentReview.reanalyzeQueued}</p>}
+      {reprocess.error !== null && <LoadErrorAlert title={es.documentReview.reprocessError} error={reprocess.error} />}
 
-      <ReprocessForm
-        disabled={!item.can_reprocess || busy}
-        isSubmitting={isSubmitting}
-        onSubmit={onReprocess}
-      />
     </li>
   );
 }

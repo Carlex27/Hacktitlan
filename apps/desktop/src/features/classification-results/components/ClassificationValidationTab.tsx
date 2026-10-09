@@ -1,18 +1,20 @@
 import { useState } from "react";
 
 import { LoadErrorAlert } from "@/components/feedback";
-import type { ClassificationRunDto } from "@/lib/api";
+import type { CertificateProductDto, ClassificationRunDto } from "@/lib/api";
 import { es } from "@/lib/i18n";
 
-import { extractReviewIndicators, findActiveResult, type TariffActionRenderer } from "../model";
+import { findActiveResult, type TariffActionRenderer } from "../model";
 import { CandidateList } from "./CandidateList";
 import { ClassificationEngineCard } from "./ClassificationEngineCard";
-import { DecisionChecklist } from "./DecisionChecklist";
 import { ResultSelector } from "./ResultSelector";
-import { ReviewIndicators } from "./ReviewIndicators";
+import { ManualClassificationForm } from "./ManualClassificationForm";
 
 export interface ClassificationValidationTabProps {
   run: ClassificationRunDto | null;
+  products?: readonly CertificateProductDto[];
+  resultId?: number;
+  initialCandidateId?: number | null;
   isLoading?: boolean;
   /** Falla al cargar la ejecución; tiene prioridad sobre el estado vacío. */
   error?: unknown;
@@ -24,6 +26,9 @@ export interface ClassificationValidationTabProps {
 
 export function ClassificationValidationTab({
   run,
+  products = [],
+  resultId,
+  initialCandidateId,
   isLoading,
   error = null,
   onViewEvidence,
@@ -39,15 +44,15 @@ export function ClassificationValidationTab({
   }
 
   const results = run?.results ?? [];
-  const activeResult = findActiveResult(results, selectedResultId);
+  const activeResult = findActiveResult(results, resultId ?? selectedResultId);
   // La selección vigente la determina el backend (considera reemplazos).
   const currentSelection = activeResult?.current_selection ?? null;
-  const reviewIndicators = extractReviewIndicators(activeResult);
 
   return (
     <>
-      {results.length > 1 && (
+      {resultId === undefined && results.length > 1 && (
         <ResultSelector
+          products={products}
           results={results}
           activeResultId={activeResult?.id ?? null}
           onSelect={setSelectedResultId}
@@ -62,19 +67,22 @@ export function ClassificationValidationTab({
         {...(renderTariffAction ? { renderTariffAction } : {})}
       />
 
-      {activeResult && (
+      {!isLoading && activeResult && (
         <section
           aria-labelledby="candidates-heading"
-          className="bg-white p-3.5 rounded-lg border border-slate-200 shadow-sm flex flex-col gap-2"
+          className="bg-background p-5 rounded-xl border border-border flex flex-col gap-2"
         >
-          <h4 id="candidates-heading" className="font-bold text-slate-800 text-xs">
+          <h4 id="candidates-heading" className="font-semibold text-foreground text-lg leading-7">
             {es.classification.candidatesTitle}
           </h4>
           {/* `key` reinicia el formulario al cambiar de producto. */}
           <CandidateList
-            key={activeResult.id}
+            key={`${activeResult.id}:${currentSelection?.id ?? "none"}:${initialCandidateId ?? "current"}`}
+            onViewEvidence={onViewEvidence}
             resultId={activeResult.id}
-            candidates={activeResult.candidates}
+            disabled={run?.approval_status === "approved"}
+            initialCandidateId={initialCandidateId ?? null}
+            candidates={activeResult.candidates.filter((candidate) => candidate.details.manual !== true)}
             selectedCandidateId={currentSelection?.candidate_id ?? null}
             onCandidateSelected={onReloadRun}
             {...(renderTariffAction ? { renderTariffAction } : {})}
@@ -82,27 +90,8 @@ export function ClassificationValidationTab({
         </section>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-        <section
-          aria-labelledby="steps-heading"
-          className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm flex flex-col gap-2"
-        >
-          <h4 id="steps-heading" className="font-bold text-slate-800 text-xs">
-            {es.classification.stepsTitle}
-          </h4>
-          <DecisionChecklist steps={activeResult?.steps ?? []} onViewEvidence={onViewEvidence} />
-        </section>
-
-        <section
-          aria-labelledby="risks-heading"
-          className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm flex flex-col gap-2"
-        >
-          <h4 id="risks-heading" className="font-bold text-slate-800 text-xs">
-            {es.classification.riskTitle}
-          </h4>
-          <ReviewIndicators indicators={reviewIndicators} />
-        </section>
-      </div>
+      {!isLoading && activeResult && <ManualClassificationForm key={activeResult.id} result={activeResult}
+        disabled={run?.approval_status === "approved"} onSaved={onReloadRun} />}
     </>
   );
 }

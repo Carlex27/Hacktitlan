@@ -22,7 +22,7 @@ METADATA_LABELS: dict[str, tuple[str, ...]] = {
         "证书编号", "证明书号", "质保书号",
     ),
     "supplier": (
-        "mill", "manufacturer", "supplier", "maker", "producer", "fabricante",
+        "manufacturer", "supplier", "maker", "producer", "fabricante",
         "proveedor", "planta", "molino", "制造厂", "生产厂", "制造者",
     ),
     "standard": (
@@ -30,12 +30,14 @@ METADATA_LABELS: dict[str, tuple[str, ...]] = {
         "grado", "calidad", "标准", "牌号", "执行标准",
     ),
     "issue_date": (
-        "issue date", "date of issue", "delivery date", "date", "fecha de emision",
-        "fecha", "fecha de entrega", "日期", "签发日期", "出厂日期",
+        "issue date", "date of issue", "fecha de emision", "fecha del acta", "签发日期",
     ),
+    "shipping_date": ("shipping date", "shipment date", "fecha de embarque", "交运日期"),
+    "delivery_date": ("delivery date", "fecha de entrega", "出厂日期"),
+    "product_name": ("product description", "product name", "descripcion del producto", "producto declarado"),
     "customer": (
         "customer", "consignee", "buyer", "purchaser", "cliente", "destinatario",
-        "comprador", "订货单位", "收货单位",
+        "comprador", "订货单位", "收货单位", "客户名称", "客戶名稱",
     ),
 }
 
@@ -113,7 +115,7 @@ MECHANICAL_LABELS: dict[str, tuple[str, ...]] = {
     "hardness_hrb": ("hardness", "dureza", "硬度", "rb", "hrb"),
 }
 
-DITTO_TOKENS = {'"', "''", "〃", "同上", "ditto", "do"}
+DITTO_TOKENS = {'"', "''", "〃", "同上", "ditto", "do", "“", "”", "″"}
 
 
 def detect_scale_exponent(header_text: str) -> int | None:

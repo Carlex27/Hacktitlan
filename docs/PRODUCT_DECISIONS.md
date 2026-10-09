@@ -100,9 +100,10 @@ piloto para ajustar almacenamiento y rendimiento.
 ## 9. Plataforma
 
 - La plataforma objetivo es Windows 11 de 64 bits.
-- La aplicación base debe funcionar con 8 GB de RAM y CPU sin GPU dedicada.
+- Se retira el objetivo de funcionar con 8 GB de RAM por instrucción del usuario.
+  No hay un presupuesto fijo de RAM; los modelos se eligen por calidad y
+  capacidad del equipo disponible. La aplicación base puede operar sin GPU dedicada.
 - Cuando exista GPU dedicada compatible se utilizará preferentemente conforme a
   `LOCAL_MODELS_REQUIREMENTS.md`.
 - Windows 10, Windows ARM y otros sistemas operativos quedan fuera del alcance
   inicial.
-

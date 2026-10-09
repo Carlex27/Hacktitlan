@@ -24,10 +24,10 @@ export function ImportQueue({ items, onClearFinished, onReview }: ImportQueuePro
   const hasFinished = items.some((item) => isTerminalPhase(item.phase));
 
   return (
-    <Card>
+    <Card className="rounded-xl border-border shadow-none">
       <CardHeader>
         <CardTitle>
-          <h3>{es.certificateImport.queue.title}</h3>
+          <h3 className="text-lg leading-7 font-semibold">{es.certificateImport.queue.title}</h3>
         </CardTitle>
         {hasFinished && (
           <CardAction>

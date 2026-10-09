@@ -1,12 +1,12 @@
-import { BarChart3, FileText, History, Settings, ShieldCheck } from "lucide-react";
+import { FileText, History } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { AppShell, type BreadcrumbItem, type NavItem } from "@/components/layout";
-import { useCertificateImport } from "@/features/certificate-import";
+import { ProcessingNotice, useCertificateImport } from "@/features/certificate-import";
 import { ConnectionGate } from "@/features/connection-status";
 import type { ApiClient } from "@/lib/api";
 import { es } from "@/lib/i18n";
-import { DocumentsPage, ValidationPage } from "@/pages";
+import { DocumentsPage, HistoryPage, ValidationPage } from "@/pages";
 
 import { AppProviders } from "./providers/AppProviders";
 
@@ -16,70 +16,62 @@ export interface AppProps {
 
 const NAV_ITEMS: readonly NavItem[] = [
   { id: "documents", label: es.nav.documents, icon: FileText },
-  { id: "validation", label: es.nav.validation, icon: ShieldCheck },
-  { id: "history", label: es.nav.history, icon: History, disabled: true },
-  { id: "reports", label: es.nav.reports, icon: BarChart3, disabled: true },
-  { id: "settings", label: es.nav.settings, icon: Settings, disabled: true },
+  { id: "history", label: es.nav.history, icon: History },
 ];
 
 function AppContent() {
-  const [currentNav, setCurrentNav] = useState<"documents" | "validation">("documents");
+  const [currentNav, setCurrentNav] = useState<"documents" | "history">("documents");
   const [selectedCertificateId, setSelectedCertificateId] = useState<number | null>(null);
   const [selectedDocumentId, setSelectedDocumentId] = useState<number | null>(null);
+  const [deleted, setDeleted] = useState(false);
 
-  const { items, addFiles, clearFinished } = useCertificateImport();
+  const { items, addFiles, clearFinished, removeCertificate } = useCertificateImport();
 
   const handleReview = (certificateId: number, documentId?: number | null) => {
+    setDeleted(false);
     setSelectedCertificateId(certificateId);
     setSelectedDocumentId(documentId ?? null);
-    setCurrentNav("validation");
+
   };
 
-  const breadcrumbs: readonly BreadcrumbItem[] = useMemo(() => {
-    if (currentNav === "documents") {
-      return [{ label: es.nav.documents }];
-    }
-
-    const backToDocs = () => setCurrentNav("documents");
-    if (selectedCertificateId !== null) {
-      return [
-        { label: es.nav.documents, onClick: backToDocs },
-        { label: `${es.header.millCertificate} #${selectedCertificateId}` },
-      ];
-    }
-
-    return [
-      { label: es.nav.documents, onClick: backToDocs },
-      { label: es.nav.validation },
-    ];
-  }, [currentNav, selectedCertificateId]);
+  const backToList = () => { setSelectedCertificateId(null); setSelectedDocumentId(null); };
+  const breadcrumbs: readonly BreadcrumbItem[] = useMemo(() => selectedCertificateId === null
+    ? [{ label: currentNav === "documents" ? es.nav.documents : es.nav.history }]
+    : [{ label: currentNav === "documents" ? es.nav.documents : es.nav.history,
+         onClick: () => { setSelectedCertificateId(null); setSelectedDocumentId(null); } },
+       { label: `${es.header.millCertificate} #${selectedCertificateId}` }], [currentNav, selectedCertificateId]);
 
   return (
     <AppShell
       items={NAV_ITEMS}
       activeId={currentNav}
       onNavigate={(id) => {
-        if (id === "documents" || id === "validation") {
+        if (id === "documents" || id === "history") {
           setCurrentNav(id);
+          setDeleted(false);
+          backToList();
         }
       }}
       breadcrumbs={breadcrumbs}
     >
       <ConnectionGate>
-        {currentNav === "documents" ? (
+        <div className="flex min-w-0 flex-1 flex-col">
+        <ProcessingNotice items={items} />
+        {deleted && <p role="status" className="px-6 py-3 text-sm">{es.certificateDeletion.success}</p>}
+        {selectedCertificateId !== null ? (
+          <ValidationPage key={`${selectedCertificateId}:${items.find((item) => item.certificateId === selectedCertificateId)?.phase ?? "saved"}`} certificateId={selectedCertificateId} documentId={selectedDocumentId} onBack={backToList}
+            onDeleted={() => { removeCertificate(selectedCertificateId); setDeleted(true); backToList(); }} />
+        ) : currentNav === "documents" ? (
           <DocumentsPage
             items={items}
-            selectedDocumentId={selectedDocumentId}
             onAddFiles={addFiles}
             onClearFinished={clearFinished}
             onReview={handleReview}
           />
         ) : (
-          <ValidationPage
-            certificateId={selectedCertificateId}
-            documentId={selectedDocumentId}
-          />
+          <HistoryPage onReview={handleReview} />
         )}
+        </div>
       </ConnectionGate>
 
     </AppShell>

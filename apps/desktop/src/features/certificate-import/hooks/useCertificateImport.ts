@@ -22,6 +22,7 @@ export interface CertificateImport {
   items: readonly ImportItem[];
   addFiles(files: readonly File[]): void;
   clearFinished(): void;
+  removeCertificate(certificateId: number): void;
 }
 
 function delay(ms: number, signal: AbortSignal): Promise<void> {
@@ -93,6 +94,7 @@ export function useCertificateImport({
   );
 
   const clearFinished = useCallback(() => dispatch({ type: "finished_cleared" }), []);
+  const removeCertificate = useCallback((certificateId: number) => dispatch({ type: "certificate_deleted", certificateId }), []);
 
-  return { items, addFiles, clearFinished };
+  return { items, addFiles, clearFinished, removeCertificate };
 }

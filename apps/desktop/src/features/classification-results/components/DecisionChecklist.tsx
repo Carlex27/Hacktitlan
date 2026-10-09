@@ -1,11 +1,10 @@
-import { ExternalLink } from "lucide-react";
-
 import { ProcessingStatusBadge } from "@/components/feedback";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import type { DecisionStepDto } from "@/lib/api";
 import { es } from "@/lib/i18n";
 
 import { outcomeToProcessingStatus } from "../model";
+import { FactorEvidenceButton } from "./FactorEvidenceButton";
 
 export interface DecisionChecklistProps {
   steps: readonly DecisionStepDto[];
@@ -17,8 +16,8 @@ export function DecisionChecklist({ steps, onViewEvidence }: DecisionChecklistPr
     return (
       <Empty className="py-4">
         <EmptyHeader>
-          <EmptyTitle className="text-xs">{es.classification.noSteps}</EmptyTitle>
-          <EmptyDescription className="text-[11px]">
+          <EmptyTitle className="text-sm">{es.classification.noSteps}</EmptyTitle>
+          <EmptyDescription className="text-sm">
             No se han registrado pasos de evaluación.
           </EmptyDescription>
         </EmptyHeader>
@@ -34,10 +33,10 @@ export function DecisionChecklist({ steps, onViewEvidence }: DecisionChecklistPr
         return (
           <div
             key={step.id}
-            className="bg-white border border-slate-200 rounded-lg p-2.5 text-xs space-y-1.5"
+            className="border-b border-border py-4 text-sm space-y-3 last:border-0"
           >
-            <div className="flex items-start justify-between gap-2">
-              <span className="min-w-0 font-mono font-bold text-slate-800 text-[11px] break-all">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <span className="min-w-0 font-medium text-foreground text-sm leading-6 break-words">
                 {step.rule_code}
               </span>
               <span className="shrink-0">
@@ -46,24 +45,14 @@ export function DecisionChecklist({ steps, onViewEvidence }: DecisionChecklistPr
             </div>
 
             {step.explanation && (
-              <p className="text-[11px] text-slate-600 leading-relaxed">
+              <p className="text-sm text-muted-foreground leading-relaxed">
                 {step.explanation}
               </p>
             )}
 
-            {step.evidence_links.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 pt-1 border-t border-slate-100">
-                {step.evidence_links.map((link) => (
-                  <button
-                    key={link.id}
-                    type="button"
-                    onClick={() => onViewEvidence?.(link.id)}
-                    className="inline-flex items-center gap-1 text-[10px] text-blue-600 hover:text-blue-800 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200 hover:border-blue-300"
-                  >
-                    <span>{es.classification.evidenceLink}</span>
-                    <ExternalLink aria-hidden="true" className="w-2.5 h-2.5" />
-                  </button>
-                ))}
+            {step.evidence_links.length > 0 && onViewEvidence && (
+              <div className="flex flex-wrap gap-1.5 pt-1 border-t border-border">
+                <FactorEvidenceButton links={step.evidence_links} onOpen={onViewEvidence} />
               </div>
             )}
           </div>

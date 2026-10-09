@@ -30,7 +30,7 @@ export function RunSelectionHistory({
   }
 
   if (isLoading) {
-    return <Skeleton className="h-24 w-full" />;
+    return <div role="status" aria-label={es.processingStatus.loading}><Skeleton className="h-24 w-full" /></div>;
   }
 
   const results = run?.results ?? [];
@@ -38,19 +38,19 @@ export function RunSelectionHistory({
   return (
     <section
       aria-labelledby="history-heading"
-      className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-3.5 shadow-sm"
+      className="flex flex-col gap-3 rounded-xl border border-border bg-background p-5"
     >
-      <h4 id="history-heading" className="text-xs font-bold text-slate-800">
+      <h4 id="history-heading" className="text-lg leading-7 font-semibold text-foreground">
         {es.classification.selectionsTitle}
       </h4>
-      {results.length <= 1 ? (
+      {results.length <= 1 || results.every((result) => result.selections.length === 0) ? (
         <SelectionHistory selections={results[0]?.selections ?? []} />
       ) : (
         results.map((result, index) => {
           const headingId = `history-result-${result.id}`;
           return (
-            <section key={result.id} aria-labelledby={headingId} className="flex flex-col gap-2">
-              <h5 id={headingId} className="text-[11px] font-semibold text-slate-700">
+            <section key={result.id} aria-labelledby={headingId} className="flex flex-col gap-3 border-t border-border pt-4">
+              <h5 id={headingId} className="text-sm font-semibold text-foreground">
                 {es.classification.productHistoryHeading(
                   es.classification.productLabel(index + 1, result.product_type),
                 )}

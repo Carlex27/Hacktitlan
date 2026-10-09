@@ -94,6 +94,10 @@ class GenericCertificateExtractor:
                 "supplier": metadata.get("supplier"),
                 "customer": metadata.get("customer"),
                 "issue_date_raw": metadata.get("issue_date"),
+                "shipping_date_raw": metadata.get("shipping_date"),
+                "delivery_date_raw": metadata.get("delivery_date"),
+                "product_name": metadata.get("product_name"),
+                "field_evidence": metadata.get("field_evidence", {}),
             },
             "standard": metadata.get("standard"),
             "chemistry_scales": tables_data.get("chemistry_scales", {}),
@@ -110,7 +114,14 @@ class GenericCertificateExtractor:
         try:
             previous = {}
             previous_chemistry = {}
+            previous_heat = None
+            previous_scope = None
             for row in product_rows:
+                if row.get("table_scope") != previous_scope:
+                    previous = {}
+                    previous_chemistry = {}
+                    previous_heat = None
+                previous_scope = row.get("table_scope")
                 for key in ("heat_no", "thickness_mm", "width_mm", "length_raw"):
                     value = row.get(key)
                     if _is_ditto(str(value)):
@@ -119,12 +130,16 @@ class GenericCertificateExtractor:
                         else:
                             value = previous[key]
                     previous[key] = value if row.get(key) is not None else None
+                current_heat = previous.get("heat_no")
+                if current_heat is None or current_heat != previous_heat:
+                    previous_chemistry = {}
                 for element, value in list(row.get("chemistry", {}).items()):
                     if _is_ditto(str(value)) and previous_chemistry.get(element) is None:
                         del row["chemistry"][element]
                     elif not _is_ditto(str(value)):
                         previous_chemistry[element] = value
                 previous_chemistry = {element: previous_chemistry.get(element) for element in row.get("chemistry", {})}
+                previous_heat = current_heat
             normalized = normalize_certificate(raw_payload)
             for product, row in zip(normalized["products"], product_rows):
                 product["raw_values"] = row.get("raw_values", {})
@@ -166,58 +181,10 @@ class GenericCertificateExtractor:
                 reasons=[f"Fallo de validación canónica: {exc}"],
             )
 
-    def _extract_metadata(self, document: DocumentLayout) -> dict[str, str | None]:
-        metadata: dict[str, str | None] = {
-            "certificate_no": None,
-            "supplier": None,
-            "standard": None,
-            "issue_date": None,
-            "customer": None,
-        }
-        if not document.pages:
-            return metadata
+    def _extract_metadata(self, document: DocumentLayout) -> dict:
+        from backend.app.certificate_parser.metadata import extract_metadata
 
-        page1 = document.pages[0]
-        # Look through blocks on top half of page 1
-        blocks = [b for b in page1.blocks if b.bbox.top <= page1.height * 0.45 and b.text.strip()]
-        text_lines = [b.text.strip() for b in blocks if b.text.strip()]
-
-        for i, line in enumerate(text_lines):
-            clean_line = normalize_term(line)
-            for meta_key, aliases in METADATA_LABELS.items():
-                if metadata[meta_key] is not None:
-                    continue
-                for alias in aliases:
-                    if re.search(r"(?<!\w)" + re.escape(alias) + r"(?!\w)", clean_line):
-                        # Extract value after colon or following word
-                        parts = re.split(r"[:：\-]", line, maxsplit=1)
-                        if len(parts) > 1 and parts[1].strip():
-                            metadata[meta_key] = parts[1].strip()
-                        else:
-                            label = blocks[i]
-                            candidates = [b for b in blocks if b is not label and label.bbox.x1 - 5 <= b.bbox.x0 <= label.bbox.x1 + page1.width * .15 and abs((b.bbox.top + b.bbox.bottom - label.bbox.top - label.bbox.bottom) / 2) < max(8, label.bbox.bottom - label.bbox.top) and not any(re.search(r"(?<!\w)" + re.escape(a) + r"(?!\w)", normalize_term(b.text)) for aliases in METADATA_LABELS.values() for a in aliases)]
-                            if candidates:
-                                metadata[meta_key] = min(candidates, key=lambda b: b.bbox.x0 - label.bbox.x1).text.strip().lstrip(":： ")
-                        break
-
-        # Also search tables header cells for metadata if not found
-        for table in page1.tables:
-            for row in table.rows[:3]:
-                for cell_idx, cell in enumerate(row):
-                    if not cell:
-                        continue
-                    clean_cell = normalize_term(cell)
-                    for meta_key, aliases in METADATA_LABELS.items():
-                        if metadata[meta_key] is not None:
-                            continue
-                        for alias in aliases:
-                            if re.search(r"(?<!\w)" + re.escape(alias) + r"(?!\w)", clean_cell):
-                                # Check neighboring cell in table
-                                if cell_idx + 1 < len(row) and row[cell_idx + 1]:
-                                    metadata[meta_key] = str(row[cell_idx + 1]).strip()
-                                break
-
-        return metadata
+        return extract_metadata(document)
 
     def _analyze_table_columns(self, table: TableRegion) -> tuple[int, list[ColumnDefinition]]:
         """Identify header row and column definitions (supports multi-level headers)."""
@@ -285,7 +252,7 @@ class GenericCertificateExtractor:
             geometric_rows, geometric_scales = recover_rows(page)
             if geometric_rows:
                 for raw_row in geometric_rows:
-                    row = {"product_id": raw_row["product_id"], "chemistry": {}, "evidence": raw_row["evidence"], "chemistry_scales": geometric_scales}
+                    row = {"table_scope": (page.page_number, "geometry"), "product_id": raw_row["product_id"], "chemistry": {}, "evidence": raw_row["evidence"], "chemistry_scales": geometric_scales}
                     for key, value in raw_row.items():
                         if key in {"product_id", "evidence", "chemistry", "dimension_headers"}:
                             continue
@@ -317,6 +284,7 @@ class GenericCertificateExtractor:
                         continue
 
                     product_dict: dict[str, Any] = {
+                        "table_scope": (page.page_number, t_idx),
                         "product_id": None,
                         "heat_no": None,
                         "thickness_mm": None,
@@ -345,21 +313,7 @@ class GenericCertificateExtractor:
                             if mapped is not None:
                                 row_mapped_cells.add((page.page_number, t_idx, r_idx * 1000 + col.index))
 
-                    has_material_data = any(
-                        product_dict.get(key) not in (None, "", {})
-                        for key in (
-                            "thickness_mm",
-                            "width_mm",
-                            "length_raw",
-                            "weight_kg",
-                            "chemistry",
-                            "yield_strength_mpa",
-                            "tensile_strength_mpa",
-                            "elongation_pct",
-                            "hardness_hrb",
-                        )
-                    )
-                    if product_dict.get("product_id") and has_material_data:
+                    if product_dict.get("product_id"):
                         rows.append(product_dict)
                         mapped_cell_indices.update(row_mapped_cells)
 

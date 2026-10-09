@@ -4,7 +4,19 @@ from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from backend.app.domain.enums import ProcessingStatus
+from backend.app.domain.enums import ApprovalStatus, ProcessingStatus
+
+
+class CertificateDeletionRead(BaseModel):
+    certificate_id: int
+    document_id: int
+    deleted: Literal[True]
+
+
+class CertificateDeletionEnvelope(BaseModel):
+    data: CertificateDeletionRead
+    meta: dict[str, Any] = Field(default_factory=dict)
+    error: None = None
 
 
 class ActorReason(BaseModel):
@@ -18,6 +30,28 @@ class ActorReason(BaseModel):
         if not value:
             raise ValueError("El valor no puede estar vacío")
         return value
+
+
+class RunDecisionRead(BaseModel):
+    classification_run_id: int
+    approval_status: ApprovalStatus
+
+
+class RunDecisionEnvelope(BaseModel):
+    data: RunDecisionRead
+    meta: dict[str, Any] = Field(default_factory=dict)
+    error: None = None
+
+
+class ReclassificationRead(BaseModel):
+    certificate_id: int
+    job_id: int
+
+
+class ReclassificationEnvelope(BaseModel):
+    data: ReclassificationRead
+    meta: dict[str, Any] = Field(default_factory=dict)
+    error: None = None
 
 
 class DocumentUploadRead(BaseModel):
@@ -79,9 +113,69 @@ class SpreadsheetEnvelope(BaseModel):
 
 
 class CorrectionRequest(ActorReason):
+    accept_verification: bool = False
     raw_value: Any | None = None
     normalized_value: Any | None = None
     unit: str | None = Field(default=None, max_length=50)
+
+
+class FieldVerificationRead(BaseModel):
+    status: Literal["matches", "discrepancy", "not_verifiable", "error"]
+    model: str
+    raw_value: str | None = None
+    normalized_value: float | None = None
+    unit: str | None = None
+    page_number: int | None = None
+    bbox: dict[str, float] | None = None
+    source_id: str | None = None
+    source_text: str | None = None
+    header_id: str | None = None
+    header_text: str | None = None
+    header_bbox: dict[str, float] | None = None
+    error_code: str | None = None
+
+
+class CertificateObservationRead(BaseModel):
+    id: int
+    heat_id: int | None
+    product_id: int | None
+    field_path: str
+    raw_value: Any | None
+    normalized_value: Any | None
+    unit: str | None
+    confidence: float | None
+    page_number: int | None
+    bbox: Any | None
+    source_text: str | None
+    inherited: bool
+    supersedes_id: int | None
+    is_current: bool
+    verification: FieldVerificationRead | None = None
+
+
+class CertificateDetailRead(BaseModel):
+    id: int
+    document_id: int
+    manufacturer: str | None
+    certificate_no: str | None
+    certificate_date: str | None
+    uploaded_at: str
+    revision_number: int
+    previous_revision_id: int | None
+    approval_status: ApprovalStatus
+    standard: str | None
+    product_name: str | None
+    demo_notice: str
+    heats: list[dict[str, Any]]
+    products: list[dict[str, Any]]
+    observations: list[CertificateObservationRead]
+    chemical_compositions: list[dict[str, Any]]
+
+
+class CertificateDetailEnvelope(BaseModel):
+    data: CertificateDetailRead
+    meta: dict[str, Any] = Field(default_factory=dict)
+    error: None = None
 
 
 class ExportRequest(BaseModel):
@@ -118,7 +212,29 @@ class ReclassificationRequest(ActorReason):
 
 
 class CandidateSelectionRequest(ActorReason):
-    candidate_id: int = Field(ge=1)
+    candidate_id: int | None = Field(default=None, ge=1)
+    fraction: str | None = Field(default=None, pattern=r"^[0-9]{8}$")
+    nico: str | None = Field(default=None, pattern=r"^[0-9]{2}$")
+
+    @model_validator(mode="after")
+    def selection_source(self) -> CandidateSelectionRequest:
+        if self.candidate_id is not None:
+            if self.fraction is not None or self.nico is not None:
+                raise ValueError("Enviar candidato o fracción y NICO manuales, no ambos")
+        elif self.fraction is None or self.nico is None:
+            raise ValueError("La captura manual requiere fracción de 8 dígitos y NICO de 2 dígitos")
+        return self
+
+
+class DeselectionRead(BaseModel):
+    classification_result_id: int
+    outcome: Literal["needs_review", "classified", "out_of_scope"]
+
+
+class DeselectionEnvelope(BaseModel):
+    data: DeselectionRead
+    meta: dict[str, Any] = Field(default_factory=dict)
+    error: dict[str, Any] | None = None
 
 
 class ManualObservationRequest(ActorReason):

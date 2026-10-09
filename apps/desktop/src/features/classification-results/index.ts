@@ -1,4 +1,5 @@
 export * from "./model";
+export { ProductTariffSuggestions } from "./components/ProductTariffSuggestions";
 export { useCandidateSelection } from "./hooks/useCandidateSelection";
 export { useClassificationRun } from "./hooks/useClassificationRun";
 export type { UseClassificationRunResult } from "./hooks/useClassificationRun";
@@ -28,3 +29,5 @@ export { ResultSelector } from "./components/ResultSelector";
 export type { ResultSelectorProps } from "./components/ResultSelector";
 export { RunSelectionHistory } from "./components/RunSelectionHistory";
 export type { RunSelectionHistoryProps } from "./components/RunSelectionHistory";
+
+export { ReclassificationForm } from "./components/ReclassificationForm";

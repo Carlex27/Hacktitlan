@@ -1,7 +1,6 @@
 import { ClipboardCheckIcon, RefreshCwIcon } from "lucide-react";
 
 import { LoadErrorAlert } from "@/components/feedback";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
@@ -15,16 +14,16 @@ export interface DocumentReviewQueueProps {
   onReview?: (certificateId: number, documentId: number) => void;
 }
 
-/** Cola de actas con incidencias de calidad y su reprocesamiento. */
+/** Cola de actas con incidencias de calidad. */
 export function DocumentReviewQueue({ onReview }: DocumentReviewQueueProps) {
   const reviews = useDocumentReviews();
-  const { state, reprocess } = reviews;
+  const { state } = reviews;
 
   return (
-    <Card>
+    <Card className="rounded-xl border-border shadow-none">
       <CardHeader>
         <CardTitle>
-          <h3>{es.documentReview.title}</h3>
+          <h3 className="text-lg leading-7 font-semibold">{es.documentReview.title}</h3>
         </CardTitle>
         <CardDescription>{es.documentReview.description}</CardDescription>
         <CardAction>
@@ -41,12 +40,6 @@ export function DocumentReviewQueue({ onReview }: DocumentReviewQueueProps) {
         </CardAction>
       </CardHeader>
       <CardContent className="flex flex-col gap-2">
-        {reprocess.lastResult && (
-          <Alert role="status">
-            <AlertDescription>{es.documentReview.reprocessQueued(reprocess.lastResult.certificate_id)}</AlertDescription>
-          </Alert>
-        )}
-
         {state.status === "loading" && (
           <div role="status" aria-label={es.documentReview.loading} className="flex flex-col gap-2">
             <Skeleton className="h-14 w-full" />
@@ -76,12 +69,7 @@ export function DocumentReviewQueue({ onReview }: DocumentReviewQueueProps) {
               <DocumentReviewItem
                 key={item.certificate_id}
                 item={item}
-                busy={reprocess.pendingCertificateId !== null}
-                isSubmitting={reprocess.pendingCertificateId === item.certificate_id}
-                reprocessError={
-                  reprocess.error?.certificateId === item.certificate_id ? reprocess.error.error : null
-                }
-                onReprocess={(person, reason) => reviews.reprocessCertificate(item.certificate_id, person, reason)}
+                onReprocessed={reviews.reload}
                 {...(onReview ? { onReview } : {})}
               />
             ))}

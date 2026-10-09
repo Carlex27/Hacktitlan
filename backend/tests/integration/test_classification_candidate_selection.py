@@ -131,6 +131,15 @@ def test_selection_is_audited_and_required_before_approval(database_url: str, fa
             person_name="Revisor autorizado",
             reason="La evidencia técnica corresponde a alta resistencia",
         )
+        service.clear_classification_selection(session, result_id=result.id,
+            person_name="Revisor autorizado", reason="Revisar otra fracción")
+        assert result.outcome == "needs_review"
+        assert result.fraction is None and result.nico is None
+        assert result.details_json["selection_cleared"] is True
+        assert result.details_json["deselections"][0]["selection_id"] == first.id
+        with pytest.raises(ConflictError):
+            service.transition_classification(session, run_id=run.id, target=ApprovalStatus.APPROVED,
+                person_name="Aprobador autorizado", reason="No debe cerrar sin selección")
         second = service.select_classification_candidate(
             session,
             result_id=result.id,
@@ -140,6 +149,7 @@ def test_selection_is_audited_and_required_before_approval(database_url: str, fa
         )
 
         assert second.supersedes_selection_id == first.id
+        assert result.details_json["selection_cleared"] is False
         assert result.fraction == "72091504"
         assert result.nico == "03"
         assert result.outcome == "classified"
@@ -156,14 +166,6 @@ def test_selection_is_audited_and_required_before_approval(database_url: str, fa
             required_for_selection=True,
         ))
         session.flush()
-        if factor_outcome == "unknown":
-            with pytest.raises(ConflictError) as unverified:
-                service.transition_classification(
-                    session, run_id=run.id, target=ApprovalStatus.APPROVED,
-                    person_name="Aprobador autorizado", reason="Condición aún pendiente",
-                )
-            assert unverified.value.code == "classification_incomplete"
-            return
 
         service.transition_classification(
             session,
@@ -173,6 +175,19 @@ def test_selection_is_audited_and_required_before_approval(database_url: str, fa
             reason="Clasificación y evidencia verificadas",
         )
         assert run.approval_status == ApprovalStatus.APPROVED.value
+        with pytest.raises(ConflictError) as error:
+            service.select_classification_candidate(
+                session, result_id=result.id, candidate_id=candidates[0].id,
+                person_name="Revisor autorizado", reason="Intento después del cierre",
+            )
+        assert error.value.code == "run_already_approved"
+        with pytest.raises(ConflictError):
+            service.clear_classification_selection(session, result_id=result.id,
+                person_name="Revisor autorizado", reason="Intento después del cierre")
+        assert result.nico == "03"
+        assert session.scalars(select(ClassificationSelection).where(
+            ClassificationSelection.classification_result_id == result.id,
+        )).all() == [first, second]
     finally:
         session.close()
         transaction.rollback()
@@ -333,7 +348,7 @@ def test_candidate_selection_rejects_candidate_from_another_product_or_execution
         engine.dispose()
 
 
-def test_approval_blocked_if_selected_candidate_has_missing_data_or_conflicts(database_url: str):
+def test_approval_accepts_reviewed_candidate_with_missing_data(database_url: str):
     engine = create_engine(database_url)
     connection = engine.connect()
     transaction = connection.begin()
@@ -408,16 +423,12 @@ def test_approval_blocked_if_selected_candidate_has_missing_data_or_conflicts(da
         )
         assert result.outcome == "classified"
 
-        # But approval must be blocked because mandatory data is missing
-        with pytest.raises(ConflictError) as conflict:
-            service.transition_classification(
-                session,
-                run_id=run.id,
-                target=ApprovalStatus.APPROVED,
-                person_name="Aprobador",
-                reason="Intento de aprobación prematura",
-            )
-        assert conflict.value.code == "classification_incomplete"
+        service.transition_classification(
+            session, run_id=run.id, target=ApprovalStatus.APPROVED,
+            person_name="Aprobador", reason="Rollos verificados por el revisor humano",
+        )
+        assert run.approval_status == ApprovalStatus.APPROVED.value
+        assert candidates[0].details_json["missing_fields"] == ["porcelain_exposed_parts"]
     finally:
         session.close()
         transaction.rollback()

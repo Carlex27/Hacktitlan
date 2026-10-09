@@ -7,81 +7,66 @@ import { ApprovalBar } from "@/features/classification-results";
 import { es } from "@/lib/i18n";
 import {
   createFakeBackend,
+  createFakeCertificate,
   createFakeClassificationRun,
   envelope,
   errorEnvelope,
 } from "../../../support/fakeBackend";
 
 describe("ApprovalBar", () => {
-  it("valida persona y motivo obligatorios antes de enviar aprobación", async () => {
+  it("bloquea el acta hasta autorizar todos sus rollos y se habilita tras recargar", async () => {
     const user = userEvent.setup();
     const backend = createFakeBackend();
+    const certificate = createFakeCertificate();
     const run = createFakeClassificationRun();
-
-    render(
-      <AppProviders apiClient={backend.client}>
-        <ApprovalBar run={run} />
-      </AppProviders>,
-    );
-
-    const approveButton = screen.getByRole("button", { name: /aprobar/i });
-    await user.click(approveButton);
-
-    expect(screen.getByText(es.approval.personRequired)).toBeInTheDocument();
-    expect(screen.getByText(es.approval.reasonRequired)).toBeInTheDocument();
+    const pendingRun = { ...run, results: run.results.map((result) => ({ ...result, current_selection: null })) };
+    const { rerender } = render(<AppProviders apiClient={backend.client}><ApprovalBar run={pendingRun} certificate={certificate} /></AppProviders>);
+    const button = screen.getByRole("button", { name: /confirmar acta/i });
+    expect(button).toBeDisabled();
+    expect(screen.getByText(/Coladas pendientes: C-9876/)).toBeInTheDocument();
+    expect(screen.getByText(/Rollos pendientes: PL-001/)).toBeInTheDocument();
+    await user.click(button);
     expect(backend.calls).toHaveLength(0);
+    rerender(<AppProviders apiClient={backend.client}><ApprovalBar run={run} certificate={certificate} /></AppProviders>);
+    expect(button).toBeEnabled();
+    rerender(<AppProviders apiClient={backend.client}><ApprovalBar run={run} certificate={certificate} isLoading /></AppProviders>);
+    expect(button).toBeDisabled();
+    expect(screen.getByText(es.approval.coverageLoading)).toBeInTheDocument();
+    rerender(<AppProviders apiClient={backend.client}><ApprovalBar run={run} certificate={certificate} loadError={new Error("Sin conexión")} /></AppProviders>);
+    expect(button).toBeDisabled();
+    expect(screen.getByText(es.approval.coverageUnavailable)).toBeInTheDocument();
   });
-
-  it("envía aprobación con persona y motivo correctos", async () => {
+  it.each(["approve", "reject", "draft"])("envía %s con auditoría fija y sin campos de captura", async (action) => {
     const user = userEvent.setup();
+    let body: unknown;
+    const backend = createFakeBackend({
+      [`POST /api/v1/classification-runs/101/${action}`]: (init) => {
+        body = JSON.parse(String(init?.body));
+        return envelope({ classification_run_id: 101, approval_status: "draft" });
+      },
+    });
     const onDecisionComplete = vi.fn();
-    const backend = createFakeBackend({
-      "POST /api/v1/classification-runs/101/approve": () =>
-        envelope({ classification_run_id: 101, approval_status: "approved" }),
-    });
-    const run = createFakeClassificationRun({ id: 101 });
-
-    render(
-      <AppProviders apiClient={backend.client}>
-        <ApprovalBar run={run} onDecisionComplete={onDecisionComplete} />
-      </AppProviders>,
-    );
-
-    const personInput = screen.getByPlaceholderText(es.approval.personPlaceholder);
-    const reasonInput = screen.getByPlaceholderText(es.approval.reasonPlaceholder);
-
-    await user.type(personInput, "Ing. Carlos Mendoza");
-    await user.type(reasonInput, "Conforme a norma técnica EN 10025");
-
-    const approveButton = screen.getByRole("button", { name: /aprobar/i });
-    await user.click(approveButton);
-
-    await waitFor(() => {
-      expect(backend.calls).toContain("POST /api/v1/classification-runs/101/approve");
-    });
-    expect(onDecisionComplete).toHaveBeenCalled();
+    render(<AppProviders apiClient={backend.client}><ApprovalBar run={createFakeClassificationRun()} certificate={createFakeCertificate()} onDecisionComplete={onDecisionComplete} /></AppProviders>);
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+    const label = action === "approve" ? "Confirmar acta" : action === "reject" ? "Rechazar" : "Guardar borrador";
+    await user.click(screen.getByRole("button", { name: label }));
+    await waitFor(() => expect(onDecisionComplete).toHaveBeenCalled());
+    expect(body).toEqual({ person_name: es.approval.defaultPerson, reason: es.approval.defaultReason });
   });
-
-  it("muestra error del servidor cuando la aprobación es rechazada por el backend", async () => {
-    const user = userEvent.setup();
-    const backend = createFakeBackend({
-      "POST /api/v1/classification-runs/101/approve": () =>
-        errorEnvelope("missing_fraction", "No se puede aprobar sin fracción arancelaria asignada", 400),
-    });
-    const run = createFakeClassificationRun({ id: 101 });
-
-    render(
-      <AppProviders apiClient={backend.client}>
-        <ApprovalBar run={run} />
-      </AppProviders>,
-    );
-
-    await user.type(screen.getByPlaceholderText(es.approval.personPlaceholder), "Carlos");
-    await user.type(screen.getByPlaceholderText(es.approval.reasonPlaceholder), "Revisión final");
-    await user.click(screen.getByRole("button", { name: /aprobar/i }));
-
-    expect(
-      await screen.findByText("No se puede aprobar sin fracción arancelaria asignada"),
-    ).toBeInTheDocument();
+  it("muestra el error del servidor sin ocultarlo", async () => {
+    const backend = createFakeBackend({ "POST /api/v1/classification-runs/101/approve": () => errorEnvelope("missing_fraction", "Falta fracción", 400) });
+    render(<AppProviders apiClient={backend.client}><ApprovalBar run={createFakeClassificationRun()} certificate={createFakeCertificate()} /></AppProviders>);
+    await userEvent.setup().click(screen.getByRole("button", { name: "Confirmar acta" }));
+    expect(await screen.findByText("Falta fracción")).toBeInTheDocument();
   });
+});
+
+it("explica carga, ausencia de clasificación y error sin mostrar un dictamen vacío", () => {
+  const backend = createFakeBackend();
+  const { rerender } = render(<AppProviders apiClient={backend.client}><ApprovalBar run={null} certificate={null} isLoading /></AppProviders>);
+  expect(screen.getByRole("status")).toHaveTextContent(es.approval.coverageLoading);
+  rerender(<AppProviders apiClient={backend.client}><ApprovalBar run={null} certificate={null} /></AppProviders>);
+  expect(screen.getByRole("status")).toHaveTextContent(es.classification.noRunsTitle);
+  rerender(<AppProviders apiClient={backend.client}><ApprovalBar run={null} certificate={null} loadError={new Error("Fallo de conexión")} /></AppProviders>);
+  expect(screen.getByRole("alert")).toHaveTextContent(es.classification.loadError);
 });

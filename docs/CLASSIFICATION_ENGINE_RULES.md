@@ -69,13 +69,12 @@ su instantánea exacta.
 
 ## Revisión de candidatos
 
-Antes de la aprobación, cada producto debe presentar exactamente tres opciones
-válidas de fracción y NICO. El personal autorizado selecciona una con nombre y
+El motor genera de una a tres opciones válidas de fracción y NICO cuando tiene evidencia suficiente. Como alternativa, una persona puede capturar fracción y NICO con justificación; esa decisión manual no se presenta como una sugerencia validada por el motor. El personal autorizado selecciona una con nombre y
 motivo obligatorios. La selección no equivale a aprobación.
 
 Cada factor de la opción seleccionada debe explicar la regla, el umbral y el
 valor observado. También debe enlazar la página y región exactas del PDF para
-mostrarlas en un visor lateral. Si no existen tres opciones válidas, la
+mostrarlas en un visor lateral. Si no existe ninguna opción válida, la
 ejecución queda en `needs_review`; el motor nunca inventa candidatos.
 
 El contrato completo está en

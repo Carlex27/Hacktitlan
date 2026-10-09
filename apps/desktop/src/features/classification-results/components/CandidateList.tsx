@@ -5,18 +5,20 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
-import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import { Textarea } from "@/components/ui/textarea";
 import { describeApiError, type ClassificationCandidateDto } from "@/lib/api";
 import { es } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
+import { CandidateFactors } from "./CandidateFactors";
 import { useCandidateSelection } from "../hooks/useCandidateSelection";
 import { findCandidateSourceReference, formatTariffCode, type TariffActionRenderer } from "../model";
 
 export interface CandidateListProps {
   resultId: number;
+  disabled?: boolean;
+  initialCandidateId?: number | null;
+  onViewEvidence?: (id: number) => void;
   candidates: readonly ClassificationCandidateDto[];
   selectedCandidateId: number | null;
   onCandidateSelected?: (candidateId: number) => void;
@@ -26,30 +28,26 @@ export interface CandidateListProps {
 
 export function CandidateList({
   resultId,
+  disabled = false,
+  initialCandidateId,
+  onViewEvidence,
   candidates,
   selectedCandidateId,
   onCandidateSelected,
   renderTariffAction,
 }: CandidateListProps) {
-  const { selectCandidate, isSubmitting, error, clearError } = useCandidateSelection();
+  const { selectCandidate, deselect, isSubmitting, error, clearError } = useCandidateSelection();
   const [activeCandidateId, setActiveCandidateId] = useState<number | null>(
-    selectedCandidateId ?? candidates[0]?.id ?? null,
+    initialCandidateId ?? selectedCandidateId ?? candidates[0]?.id ?? null,
   );
-  const [personName, setPersonName] = useState("");
-  const [reason, setReason] = useState("");
-  const [validationErrors, setValidationErrors] = useState<{ person?: string; reason?: string }>({});
-
   const personId = useId();
-  const reasonId = useId();
-  const personErrId = useId();
-  const reasonErrId = useId();
 
   if (candidates.length === 0) {
     return (
       <Empty className="py-4">
         <EmptyHeader>
-          <EmptyTitle className="text-xs">Sin candidatos disponibles</EmptyTitle>
-          <EmptyDescription className="text-[11px]">
+          <EmptyTitle className="text-sm">{es.classification.noCandidatesTitle}</EmptyTitle>
+          <EmptyDescription className="text-sm">
             El clasificador no determinó candidatos para este resultado.
           </EmptyDescription>
         </EmptyHeader>
@@ -61,42 +59,36 @@ export function CandidateList({
     event.preventDefault();
     clearError();
 
-    const errors: { person?: string; reason?: string } = {};
-    if (personName.trim().length < 2) {
-      errors.person = es.approval.personRequired;
-    }
-    if (reason.trim().length < 3) {
-      errors.reason = es.approval.reasonRequired;
-    }
-
-    if (Object.keys(errors).length > 0) {
-      setValidationErrors(errors);
-      return;
-    }
-
-    setValidationErrors({});
-
-    if (activeCandidateId === null) return;
+    if (disabled || activeCandidateId === null) return;
 
     try {
-      await selectCandidate(resultId, activeCandidateId, personName.trim(), reason.trim());
+      await selectCandidate(resultId, activeCandidateId, es.approval.defaultPerson, es.classification.defaultSelectionReason);
       onCandidateSelected?.(activeCandidateId);
     } catch {
       // Error handled by hook
     }
   }
 
+  async function handleDeselect() {
+    if (disabled || isSubmitting || selectedCandidateId === null) return;
+    try {
+      await deselect(resultId, es.approval.defaultPerson, es.classification.deselectionReason);
+      setActiveCandidateId(null);
+      onCandidateSelected?.(selectedCandidateId);
+    } catch { /* El hook muestra el error. */ }
+  }
+
   return (
-    <div className="space-y-3">
+    <div className="space-y-5">
       {error && (
         <Alert variant="destructive">
-          <AlertTitle>Error al seleccionar candidato</AlertTitle>
+          <AlertTitle>{es.classification.selectionError}</AlertTitle>
           <AlertDescription>{describeApiError(error)}</AlertDescription>
         </Alert>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-3">
-        <div className="space-y-1.5" role="radiogroup" aria-label={es.classification.candidatesTitle}>
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <div className="space-y-3" role="radiogroup" aria-label={es.classification.candidatesTitle}>
           {candidates.map((cand) => {
             const isChosen = activeCandidateId === cand.id;
             const code = formatTariffCode(cand.fraction, cand.nico);
@@ -105,33 +97,34 @@ export function CandidateList({
               <label
                 key={cand.id}
                 className={cn(
-                  "flex items-start gap-2.5 p-2 rounded-lg border cursor-pointer transition-all",
+                  "flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition-colors",
                   isChosen
-                    ? "bg-blue-50/70 border-blue-400 ring-1 ring-blue-400"
-                    : "bg-white border-slate-200 hover:bg-slate-50",
+                    ? "bg-accent border-primary ring-1 ring-primary"
+                    : "bg-background border-border hover:bg-muted/40",
                 )}
               >
                 <input
                   type="radio"
-                  name="candidate"
+                  name={`candidate-${personId}`}
                   value={cand.id}
                   checked={isChosen}
+                  disabled={disabled || isSubmitting}
                   onChange={() => setActiveCandidateId(cand.id)}
-                  className="mt-0.5 text-blue-600 focus:ring-blue-500"
+                  className="mt-1 size-4 shrink-0 accent-primary focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2"
                 />
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <span className="font-mono font-bold text-slate-900 text-xs break-all">{code}</span>
-                    <Badge variant={cand.support_level === "fully_supported" ? "default" : "outline"} className="text-[9.5px]">
+                    <span className="tabular-nums font-semibold text-foreground text-base leading-6 break-all">{code}</span>
+                    <Badge variant={cand.support_level === "fully_supported" ? "default" : "outline"} className="text-sm">
                       {es.classification.supportLevel[cand.support_level] ?? cand.support_level}
                     </Badge>
-                    <span className="text-[10px] text-slate-400 font-mono">
+                    <span className="text-sm text-muted-foreground font-mono">
                       {es.classification.rank(cand.rank)}
                     </span>
                     {renderTariffAction?.(findCandidateSourceReference(cand), code)}
                   </div>
                   {cand.description && (
-                    <p className="text-[10.5px] text-slate-600 mt-0.5 line-clamp-2">
+                    <p className="text-sm text-muted-foreground mt-0.5 ">
                       {cand.description}
                     </p>
                   )}
@@ -141,75 +134,17 @@ export function CandidateList({
           })}
         </div>
 
-        {/* Input de Persona y Motivo para auditoría */}
-        <div className="bg-slate-50 border border-slate-200 rounded-lg p-2.5 space-y-2 text-xs">
-          <div>
-            <label htmlFor={personId} className="block text-[11px] font-semibold text-slate-700 mb-0.5">
-              {es.approval.personLabel} <span className="text-red-500">*</span>
-            </label>
-            <Input
-              id={personId}
-              value={personName}
-              onChange={(e) => {
-                setPersonName(e.target.value);
-                if (validationErrors.person) {
-                  setValidationErrors((v) => {
-                    const next = { ...v };
-                    delete next.person;
-                    return next;
-                  });
-                }
-              }}
-              placeholder={es.approval.personPlaceholder}
-              disabled={isSubmitting}
-              aria-invalid={Boolean(validationErrors.person)}
-              aria-describedby={validationErrors.person ? personErrId : undefined}
-              className="h-8 text-xs bg-white"
-            />
-            {validationErrors.person && (
-              <p id={personErrId} role="alert" className="text-[10.5px] text-red-600 mt-0.5">
-                {validationErrors.person}
-              </p>
-            )}
-          </div>
-
-          <div>
-            <label htmlFor={reasonId} className="block text-[11px] font-semibold text-slate-700 mb-0.5">
-              {es.approval.reasonLabel} <span className="text-red-500">*</span>
-            </label>
-            <Textarea
-              id={reasonId}
-              value={reason}
-              onChange={(e) => {
-                setReason(e.target.value);
-                if (validationErrors.reason) {
-                  setValidationErrors((v) => {
-                    const next = { ...v };
-                    delete next.reason;
-                    return next;
-                  });
-                }
-              }}
-              placeholder={es.approval.reasonPlaceholder}
-              disabled={isSubmitting}
-              aria-invalid={Boolean(validationErrors.reason)}
-              aria-describedby={validationErrors.reason ? reasonErrId : undefined}
-              rows={2}
-              className="text-xs bg-white"
-            />
-            {validationErrors.reason && (
-              <p id={reasonErrId} role="alert" className="text-[10.5px] text-red-600 mt-0.5">
-                {validationErrors.reason}
-              </p>
-            )}
-          </div>
-
-          <div className="pt-1 flex justify-end">
+        <CandidateFactors candidate={candidates.find((candidate) => candidate.id === activeCandidateId)}
+          onViewEvidence={onViewEvidence} renderTariffAction={renderTariffAction} />
+        <div className="border-t border-border pt-5 text-sm">
+          <div className="pt-1 flex justify-end gap-2">
+            {selectedCandidateId !== null && <Button type="button" variant="outline" className="min-h-10"
+              disabled={disabled || isSubmitting} onClick={handleDeselect}>{es.classification.deselectCandidateBtn}</Button>}
             <Button
               type="submit"
               size="sm"
-              disabled={isSubmitting || activeCandidateId === null}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              disabled={disabled || isSubmitting || activeCandidateId === null}
+              className="min-h-10"
             >
               {isSubmitting ? <Spinner className="w-3.5 h-3.5 mr-1" /> : <Check className="w-3.5 h-3.5 mr-1" />}
               {es.classification.selectCandidateBtn}

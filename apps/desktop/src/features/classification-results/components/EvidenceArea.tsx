@@ -21,7 +21,7 @@ export function EvidenceArea({ state, onRetry, onClose, onGoToPage, onOpenSource
       return null;
     case "loading":
       return (
-        <div role="status" className="flex items-center gap-2 text-xs text-slate-500">
+        <div role="status" className="flex items-center gap-2 text-sm text-muted-foreground">
           <Spinner aria-hidden="true" />
           {es.evidence.loading}
         </div>

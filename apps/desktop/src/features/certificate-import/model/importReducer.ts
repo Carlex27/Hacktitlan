@@ -13,7 +13,8 @@ export type ImportAction =
   | { type: "uploaded"; id: string; upload: UploadDocumentDto }
   | { type: "job_updated"; id: string; job: JobDto }
   | { type: "failed"; id: string; message: string }
-  | { type: "finished_cleared" };
+  | { type: "finished_cleared" }
+  | { type: "certificate_deleted"; certificateId: number };
 
 function updateItem(
   items: readonly ImportItem[],
@@ -38,5 +39,7 @@ export function importReducer(
       return updateItem(items, action.id, (item) => applyFailure(item, action.message));
     case "finished_cleared":
       return items.filter((item) => !isTerminalPhase(item.phase));
+    case "certificate_deleted":
+      return items.filter((item) => item.certificateId !== action.certificateId);
   }
 }

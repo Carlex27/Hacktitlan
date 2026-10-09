@@ -54,7 +54,7 @@ un libro profesional, autocontenido y relacionado internamente; los detalles se
 encuentran en
 [`docs/EXCEL_EXPORT_REQUIREMENTS.md`](docs/EXCEL_EXPORT_REQUIREMENTS.md).
 
-La aplicación base tiene como objetivo equipos con 8 GB de RAM y sin GPU
+La aplicación base no tiene un presupuesto fijo de RAM y puede operar sin GPU
 dedicada. Los paquetes de OCR e IA local serán descargas opcionales ofrecidas
 durante la instalación o posteriormente, siempre después de comprobar la
 compatibilidad del equipo. La especificación está en

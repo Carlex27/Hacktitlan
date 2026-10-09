@@ -18,6 +18,7 @@ export interface ApiClient {
   /** URL absoluta para rutas relativas del API (p. ej. `file_url`, `detail_url`). */
   url(path: string): string;
   get<T>(path: string, options?: RequestOptions): Promise<ApiEnvelope<T>>;
+  delete<T>(path: string, options?: RequestOptions): Promise<ApiEnvelope<T>>;
   post<T>(path: string, body: unknown, options?: RequestOptions): Promise<ApiEnvelope<T>>;
   postForm<T>(path: string, form: FormData, options?: RequestOptions): Promise<ApiEnvelope<T>>;
   /** Descarga un archivo (p. ej. un PDF). Los errores llegan como `ApiError`. */
@@ -94,6 +95,7 @@ export function createApiClient({
     baseUrl,
     url: (path) => `${baseUrl}${path}`,
     get: (path, options) => request(path, { method: "GET", signal: options?.signal ?? null }),
+    delete: (path, options) => request(path, { method: "DELETE", signal: options?.signal ?? null }),
     post: (path, body, options) =>
       request(path, {
         method: "POST",

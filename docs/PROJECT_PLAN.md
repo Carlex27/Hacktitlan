@@ -34,14 +34,14 @@ documentos incompletos, ilegibles, contradictorios o fuera del capítulo 72.
 
 ### Compatibilidad y modelos locales
 
-- La aplicación base debe funcionar con 8 GB de RAM y sin GPU dedicada.
+- La aplicación base no tiene un presupuesto fijo de RAM y puede operar sin GPU dedicada.
 - Los modelos OCR e IA se distribuyen como paquetes opcionales, no como una
   obligación para instalar la aplicación.
 - El instalador o la configuración permiten descargar paquetes compatibles con
   el equipo, mostrando requisitos, licencia, tamaño y progreso.
 - Sin modelos, los PDF digitales y las funciones deterministas continúan
   disponibles; un documento escaneado queda en `needs_ocr`.
-- El perfil de 8 GB procesa documentos y páginas secuencialmente para controlar
+- El procesamiento de documentos y páginas es secuencial para controlar
   memoria. La IA generativa no forma parte del mínimo garantizado.
 - Si hay una GPU dedicada compatible, OCR e inferencia local deben utilizarla
   preferentemente mediante el backend validado para su fabricante y
@@ -211,7 +211,7 @@ elementos químicos presentes” es necesario, pero no suficiente.
 - Tiempo objetivo inicial: menos de 30 segundos por PDF digital típico y menos
   de 90 segundos por PDF escaneado multipágina, sujeto al hardware y al tamaño.
 - La aplicación base inicia y completa sus flujos deterministas en el equipo
-  objetivo de 8 GB sin requerir GPU ni modelos opcionales.
+  disponible sin requerir GPU ni modelos opcionales.
 - Un paquete incompatible no se descarga y la aplicación explica el requisito
   incumplido sin bloquear las funciones base.
 - En equipos con GPU compatible, una prueba de diagnóstico confirma que el

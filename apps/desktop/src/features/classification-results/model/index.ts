@@ -11,3 +11,5 @@ export {
   readSourceReference,
 } from "./sourceReference";
 export type { SourceReference } from "./sourceReference";
+export { formatFactorValue } from "./formatFactorValue";
+export { approvalCoverage } from "./approvalCoverage";

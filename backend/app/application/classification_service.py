@@ -162,30 +162,6 @@ class ClassificationService:
                 )
             ]
             has_blocking = any(i["severity"] == "blocking" for i in prod_issues)
-            if has_blocking:
-                session.add(
-                    ClassificationResult(
-                        classification_run_id=run.id,
-                        product_id=product.id,
-                        product_type=facts.form,
-                        fraction=None,
-                        nico=None,
-                        description=None,
-                        outcome="needs_review",
-                        details_json={
-                            "missing_fields": [],
-                            "candidates": [],
-                            "valid_candidate_count": 0,
-                            "selection_required": False,
-                            "quality_issues": prod_issues,
-                            "quality_score": quality_report.quality_score,
-                            "document_quality_status": quality_report.status,
-                            "discarded_candidates": [],
-                        },
-                    )
-                )
-                continue
-
             decision = self.engine.classify(facts)
 
             result = ClassificationResult(
@@ -195,12 +171,12 @@ class ClassificationService:
                 fraction=decision.fraction,
                 nico=decision.nico,
                 description=decision.description,
-                outcome=decision.outcome.value,
+                outcome="needs_review" if has_blocking else decision.outcome.value,
                 details_json={
                     "missing_fields": list(decision.missing_fields),
                     "candidates": list(decision.candidates),
                     "valid_candidate_count": len(decision.ranked_candidates),
-                    "selection_required": len(decision.ranked_candidates) == 3,
+                    "selection_required": bool(decision.ranked_candidates),
                     "quality_issues": prod_issues,
                     "quality_score": quality_report.quality_score,
                     "document_quality_status": quality_report.status,

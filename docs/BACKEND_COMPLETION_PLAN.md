@@ -33,7 +33,7 @@ Ya existen:
 OCR quedó parcialmente terminado. El código y el instalador existen, pero aún
 faltan completar la descarga controlada de modelos, ejecutar pruebas reales con
 los documentos proporcionados, calibrar geometría y medir consumo en el equipo
-objetivo de 8 GB.
+disponible, sin un presupuesto fijo de RAM.
 
 ## 3. Orden obligatorio
 
@@ -130,7 +130,7 @@ validación del corpus real incorporados.
 ### Objetivo
 
 Terminar el componente OCR opcional sin afectar la aplicación base. CPU debe
-funcionar en equipos con 8 GB; una GPU NVIDIA compatible debe usarse cuando la
+funcionar en el equipo disponible; una GPU NVIDIA compatible debe usarse cuando la
 prueba local confirme CUDA.
 
 ### Trabajo de instalación
@@ -151,7 +151,7 @@ prueba local confirme CUDA.
 - Registrar dispositivo solicitado, dispositivo efectivo, versión y tiempo.
 - Reintentar una vez por CPU cuando falle GPU.
 - Limitar hilos, tamaño de lote, resolución y páginas concurrentes.
-- Procesar páginas secuencialmente con 8 GB de RAM.
+- Procesar páginas secuencialmente para controlar el uso de recursos.
 - Liberar modelos después del trabajo o por inactividad.
 - Informar progreso por página mediante el trabajo PostgreSQL.
 - Permitir cancelación segura entre páginas.
@@ -272,7 +272,7 @@ por datos disponibles en las actas.
 - Añadirlos primero al contrato y revisión manual; después a los parsers.
 - Evaluar todas las ramas compatibles y conservar motivos de descarte.
 - Garantizar tres opciones sólo cuando existan tres opciones legalmente posibles.
-- Mantener `needs_review` con menos de tres; nunca completar por similitud.
+- Mantener `needs_review` cuando falten datos o candidatos válidos; admitir de una a tres opciones sin completar por similitud.
 - Versionar reglas, catálogo, fuentes y pruebas de frontera juntos.
 - Prohibir edición de un conjunto aprobado; cualquier cambio crea otra versión.
 - Añadir comparación entre versiones antes de reclasificar históricos.
@@ -385,7 +385,7 @@ clientes sólo acceden a archivos administrados por identificador.
 - Soportar instalación, reparación, actualización y desinstalación.
 - Preservar base, PDF y respaldos durante una actualización.
 - Probar una actualización desde la versión anterior.
-- Probar equipo CPU de 8 GB y equipo NVIDIA compatible.
+- Probar el equipo CPU disponible y equipo NVIDIA compatible.
 - Documentar instalación del equipo principal y conexión del secundario.
 
 ### Criterio de salida
@@ -401,7 +401,7 @@ El backend v1 queda terminado cuando se cumplen todos estos puntos:
 - todos los tests unitarios, integración, frontera, golden y restauración pasan;
 - los cuatro ejemplos producen resultados reproducibles;
 - un PDF desconocido termina procesado parcialmente o en revisión explícita;
-- OCR CPU funciona con 8 GB y GPU vuelve a CPU cuando falla;
+- OCR CPU funciona en el equipo disponible y GPU vuelve a CPU cuando falla;
 - cada candidato conserva explicación y evidencia independientes;
 - selección y aprobación requieren persona y motivo;
 - reportes oficiales incluyen sólo resultados aprobados;
@@ -438,7 +438,7 @@ Este trabajo inicia sólo después del cierre del backend v1.
 - construir corpus de formatos reales y casos adversos;
 - comparar modelos por precisión de campos, RAM, VRAM, velocidad y licencia;
 - probar cuantización en CPU y GPU;
-- definir tamaño máximo para 8 GB y perfiles superiores;
+- definir tamaños de modelo según calidad y recursos del equipo disponible;
 - rechazar modelos que inventen valores o no puedan citar evidencia;
 - versionar modelo, prompt, parámetros y salida en cada ejecución.
 

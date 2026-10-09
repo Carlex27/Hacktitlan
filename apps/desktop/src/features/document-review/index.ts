@@ -5,6 +5,6 @@ export type { DocumentReviewQueueProps } from "./components/DocumentReviewQueue"
 export { ReprocessForm } from "./components/ReprocessForm";
 export type { ReprocessFormProps } from "./components/ReprocessForm";
 export { useDocumentReviews } from "./hooks/useDocumentReviews";
-export type { DocumentReviews, DocumentReviewsState, ReprocessState } from "./hooks/useDocumentReviews";
+export type { DocumentReviews, DocumentReviewsState } from "./hooks/useDocumentReviews";
 export { reviewItemStatus, validateReprocessForm } from "./model/reviewItem";
 export type { ReprocessFormErrors } from "./model/reviewItem";

@@ -54,12 +54,12 @@ def test_missing_alloy_elements_never_become_zero():
 
 def test_cold_rolled_coil_between_one_and_three_mm():
     result = Chapter72ClassificationEngine().classify(facts())
-    assert result.outcome is ClassificationOutcome.NEEDS_REVIEW
+    assert result.outcome is ClassificationOutcome.CLASSIFIED
     assert result.fraction == "72091601"
     assert result.nico == "99"
     assert result.description == "Los demás."
     assert len(result.ranked_candidates) == 1
-    assert "three_valid_candidates" in result.missing_fields
+    assert "three_valid_candidates" not in result.missing_fields
 
 
 def test_high_strength_boundary_is_inclusive():
@@ -86,7 +86,7 @@ def test_electrolytic_zinc_both_sides():
             coated=True,
         )
     )
-    assert result.outcome is ClassificationOutcome.NEEDS_REVIEW
+    assert result.outcome is ClassificationOutcome.CLASSIFIED
     assert result.fraction == "72103002"
     assert result.nico == "01"
 

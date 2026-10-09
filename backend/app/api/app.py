@@ -20,12 +20,15 @@ from sqlalchemy import Date, and_, cast, exists, func, select, text, tuple_
 from sqlalchemy.orm import Session, sessionmaker
 
 from backend.app.api.schemas import (
+    CertificateDeletionEnvelope,
     ActorReason,
     ArchiveRequest,
     CandidateDetailEnvelope,
     CandidateSelectionEnvelope,
     CandidateSelectionRequest,
+    DeselectionEnvelope,
     CorrectionRequest,
+    CertificateDetailEnvelope,
     DocumentQualityReportEnvelope,
     DocumentReviewQueueEnvelope,
     DocumentUploadEnvelope,
@@ -37,10 +40,13 @@ from backend.app.api.schemas import (
     JobEnvelope,
     ManualObservationRequest,
     ReclassificationRequest,
+    ReclassificationEnvelope,
     ReprocessEnvelope,
     ReprocessRequest,
+    RunDecisionEnvelope,
 )
 from backend.app.application.document_quality_service import DocumentQualityService
+from backend.app.application.certificate_deletion import delete_certificate
 from backend.app.application.document_service import DocumentService, decode_cursor, encode_cursor
 
 from backend.app.application.review_service import ReviewService
@@ -182,7 +188,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
-        allow_methods=["GET", "POST"],
+        allow_methods=["GET", "POST", "DELETE"],
         allow_headers=["Content-Type", "X-Request-ID"],
         expose_headers=["X-Request-ID", "Content-Disposition"],
     )
@@ -341,7 +347,22 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             },
         )
 
-    @app.get("/api/v1/certificates/{certificate_id}")
+    @app.delete(
+        "/api/v1/certificates/{certificate_id}",
+        response_model=CertificateDeletionEnvelope,
+        description="Eliminación definitiva para development/test, sin persona ni motivo. "
+                    "Borra documento, datos asociados y exportaciones que lo incluyen; "
+                    "conserva archivos compartidos y otras revisiones.",
+        responses={
+            403: {"model": ErrorEnvelope, "description": "certificate_deletion_disabled"},
+            404: {"model": ErrorEnvelope, "description": "not_found"},
+            409: {"model": ErrorEnvelope, "description": "certificate_in_use: trabajo en ejecución"},
+        },
+    )
+    def remove_certificate(certificate_id: int, session: DbSession):
+        return ok(delete_certificate(session, settings, storage, certificate_id))
+
+    @app.get("/api/v1/certificates/{certificate_id}", response_model=CertificateDetailEnvelope)
     def certificate_detail(certificate_id: int, session: DbSession):
         certificate = DocumentService.get_certificate(session, certificate_id)
         manufacturer = session.get(Manufacturer, certificate.manufacturer_id) if certificate.manufacturer_id else None
@@ -376,6 +397,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "bbox": o.bbox_json, "source_text": o.source_text,
                 "inherited": o.inherited, "supersedes_id": o.supersedes_id,
                 "is_current": o.is_current,
+                "verification": o.verification_json,
             } for o in observations],
             "chemical_compositions": [{
                 "id": c.id, "heat_id": c.heat_id, "product_id": c.product_id,
@@ -842,6 +864,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             unit=payload.unit,
             person_name=payload.person_name,
             reason=payload.reason,
+            accept_verification=payload.accept_verification,
         )
         return ok({"observation_id": observation.id, "supersedes_id": observation.supersedes_id})
 
@@ -876,6 +899,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return ok({"classification_run_id": run.id, "approval_status": run.approval_status})
 
     @app.post(
+        "/api/v1/classification-runs/{run_id}/draft",
+        response_model=RunDecisionEnvelope,
+        responses={
+            404: {"model": ErrorEnvelope, "description": "Ejecución no encontrada"},
+            409: {"model": ErrorEnvelope, "description": "Una ejecución aprobada no puede convertirse en borrador"},
+        },
+    )
+    def save_draft(run_id: int, payload: ActorReason, session: DbSession):
+        return transition(run_id, ApprovalStatus.DRAFT, payload, session)
+
+    @app.post(
         "/api/v1/classification-runs/{run_id}/approve",
         responses={
             200: {"model": Envelope, "description": "Ejecución de clasificación aprobada"},
@@ -884,6 +918,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         },
     )
     def approve(run_id: int, payload: ActorReason, session: DbSession):
+        """Cierra la revisión humana de todos los rollos. Requiere selección,
+        fracción y NICO por producto y cobertura de las coladas. Conserva datos
+        desconocidos del motor; bloquea contradicciones del candidato elegido.
+        """
         return transition(run_id, ApprovalStatus.APPROVED, payload, session)
 
     @app.post("/api/v1/classification-runs/{run_id}/reject")
@@ -903,13 +941,23 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         payload: CandidateSelectionRequest,
         session: DbSession,
     ):
-        selection = ReviewService(settings).select_classification_candidate(
-            session,
-            result_id=result_id,
-            candidate_id=payload.candidate_id,
-            person_name=payload.person_name,
-            reason=payload.reason,
-        )
+        """Elige un candidato o registra fracción/NICO manuales. Una ejecución
+        aprobada rechaza ambas formas de edición con 409. La captura manual
+        valida formato, no validez normativa; queda como candidato conditional
+        con details.manual=true, sin sustituir las sugerencias del motor.
+        """
+        service = ReviewService(settings)
+        if payload.candidate_id is not None:
+            selection = service.select_classification_candidate(
+                session, result_id=result_id, candidate_id=payload.candidate_id,
+                person_name=payload.person_name, reason=payload.reason,
+            )
+        else:
+            assert payload.fraction is not None and payload.nico is not None
+            selection = service.select_manual_classification(
+                session, result_id=result_id, fraction=payload.fraction, nico=payload.nico,
+                person_name=payload.person_name, reason=payload.reason,
+            )
         candidate = session.get(ClassificationCandidate, selection.candidate_id)
         assert candidate is not None
         return ok({
@@ -924,7 +972,22 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "created_at": selection.created_at.isoformat(),
         })
 
-    @app.post("/api/v1/certificates/{certificate_id}/reclassify", status_code=status.HTTP_202_ACCEPTED)
+    @app.post(
+        "/api/v1/classification-results/{result_id}/deselect",
+        response_model=DeselectionEnvelope,
+        responses={404: {"model": ErrorEnvelope}, 409: {"model": ErrorEnvelope}},
+    )
+    def deselect_classification_candidate(result_id: int, payload: ActorReason, session: DbSession):
+        """Retira la selección humana y devuelve el rollo a needs_review.
+        Conserva candidatos, selecciones anteriores y auditoría de la retirada.
+        Una ejecución aprobada rechaza la operación con run_already_approved (409).
+        """
+        result = ReviewService(settings).clear_classification_selection(
+            session, result_id=result_id, person_name=payload.person_name, reason=payload.reason,
+        )
+        return ok({"classification_result_id": result.id, "outcome": result.outcome})
+
+    @app.post("/api/v1/certificates/{certificate_id}/reclassify", status_code=status.HTTP_202_ACCEPTED, response_model=ReclassificationEnvelope)
     def reclassify_certificate(
         certificate_id: int,
         payload: ReclassificationRequest,
@@ -1071,11 +1134,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "created_at": selection.created_at.isoformat(),
             })
         current_selection_by_result: dict[int, dict[str, Any] | None] = {}
-        for r_id in result_ids:
+        for result in results:
+            r_id = result.id
             r_sels = selections_by_result.get(r_id, [])
             superseded_ids = {s["supersedes_selection_id"] for s in r_sels if s["supersedes_selection_id"] is not None}
             active_sels = [s for s in r_sels if s["id"] not in superseded_ids]
-            current_selection_by_result[r_id] = active_sels[-1] if active_sels else (r_sels[-1] if r_sels else None)
+            current_selection_by_result[r_id] = None if (result.details_json or {}).get("selection_cleared") else (
+                active_sels[-1] if active_sels else (r_sels[-1] if r_sels else None)
+            )
         steps = session.scalars(
             select(DecisionStep)
             .where(DecisionStep.classification_result_id.in_(result_ids))

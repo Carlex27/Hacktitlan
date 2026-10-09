@@ -3,6 +3,7 @@ import { useState } from "react";
 import {
   approveClassificationRun,
   rejectClassificationRun,
+  saveClassificationDraft,
   useApiClient,
   type ApiError,
   type RunApprovalResultDto,
@@ -11,6 +12,7 @@ import {
 export interface UseRunApprovalResult {
   approveRun(runId: number, personName: string, reason: string): Promise<RunApprovalResultDto>;
   rejectRun(runId: number, personName: string, reason: string): Promise<RunApprovalResultDto>;
+  saveDraft(runId: number, personName: string, reason: string): Promise<RunApprovalResultDto>;
   isSubmitting: boolean;
   error: ApiError | null;
   clearError(): void;
@@ -63,9 +65,22 @@ export function useRunApproval(): UseRunApprovalResult {
     }
   }
 
+  async function saveDraft(runId: number, personName: string, reason: string) {
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      return await saveClassificationDraft(api, runId, { person_name: personName, reason });
+    } catch (err) {
+      setError(err as ApiError);
+      throw err;
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   function clearError() {
     setError(null);
   }
 
-  return { approveRun, rejectRun, isSubmitting, error, clearError };
+  return { approveRun, rejectRun, saveDraft, isSubmitting, error, clearError };
 }

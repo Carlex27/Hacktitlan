@@ -196,3 +196,68 @@ def test_generic_extractor_parses_decimal_comma_and_thousands_separator():
     assert product["thickness_mm"] == 6.35
     assert product["width_mm"] == 1500.0
     assert product["mechanical_properties"]["yield_strength_mpa"] == 280.0
+
+
+@pytest.mark.parametrize("mark", ['"', "〃", "“", "”", "″", "ditto"])
+def test_ditto_does_not_cross_heat_or_table_and_preserves_original(mark):
+    rows = (("Coil", "Heat", "Thickness mm", "Width mm", "C 10^-2"),
+            ("AA-1", "H1", "1.8", "895", "33"),
+            ("AA-2", "H1", mark, mark, mark),
+            ("AA-3", "H2", mark, mark, mark),
+            ("AA-4", "H2", "", "", ""),
+            ("AA-5", "H2", mark, mark, mark))
+    table = TableRegion(1, BoundingBox(0, 0, 500, 300), rows)
+    result = GenericCertificateExtractor().extract(DocumentLayout("new.pdf", "hash", (
+        PageLayout(1, 600, 800, 0, PageSource.DIGITAL, tables=(table,)),)))
+    assert result.certificate is not None
+    products = result.certificate["products"]
+    assert products[1]["thickness_mm"] == 1.8
+    assert products[1]["observations"]["thickness_mm"]["raw_value"] == mark
+    assert products[1]["observations"]["thickness_mm"]["inherited_from"] == "AA-1"
+    assert products[2]["thickness_mm"] == 1.8
+    assert products[2]["composition_pct"] == {}
+    assert len(products) == 5
+    assert products[3]["thickness_mm"] is None
+    assert products[4]["thickness_mm"] is None
+    second = TableRegion(1, BoundingBox(0, 400, 500, 600), (rows[0], ("BB-1", "H2", mark, mark, "22")))
+    result = GenericCertificateExtractor().extract(DocumentLayout("new.pdf", "hash", (
+        PageLayout(1, 600, 800, 0, PageSource.DIGITAL, tables=(table, second)),)))
+    assert result.certificate["products"][-1]["thickness_mm"] is None
+
+
+def test_metadata_separates_dates_and_finds_description_in_notes():
+    blocks = (
+        TextBlock(1, "Manufacturer: Another Steel Corporation", BoundingBox(10, 20, 400, 30)),
+        TextBlock(1, "SHIPPING DATE: ON/ABOUT JUN. 28, 2026", BoundingBox(10, 40, 400, 50)),
+        TextBlock(1, "ISSUE DATE: JUN. 12, 2026", BoundingBox(10, 60, 400, 70)),
+        TextBlock(1, "HOT ROLLED SHEET-COIL (MILL EDGE)", BoundingBox(10, 650, 400, 670)),
+    )
+    extractor = GenericCertificateExtractor()
+    metadata = extractor._extract_metadata(DocumentLayout("unseen.pdf", "hash", (
+        PageLayout(1, 600, 800, 0, PageSource.DIGITAL, blocks),)))
+    assert metadata["issue_date"] == "JUN. 12, 2026"
+    assert metadata["shipping_date"] == "ON/ABOUT JUN. 28, 2026"
+    assert metadata["supplier"] == "Another Steel Corporation"
+    assert metadata["product_name"] == "HOT ROLLED SHEET-COIL (MILL EDGE)"
+    assert metadata["field_evidence"]["product_name"][0]["bbox"]["top"] == 650
+
+
+def test_ambiguous_metadata_stays_unknown_with_both_sources():
+    blocks = tuple(TextBlock(1, text, BoundingBox(10, y, 400, y + 10)) for text, y in (
+        ("Issue date: 2026-06-12", 20), ("Issue date: 2026-06-13", 50)))
+    metadata = GenericCertificateExtractor()._extract_metadata(DocumentLayout("new.pdf", "hash", (
+        PageLayout(1, 600, 800, 0, PageSource.DIGITAL, blocks),)))
+    assert metadata["issue_date"] is None
+    assert len(metadata["field_evidence"]["issue_date"]) == 2
+
+
+def test_metadata_accepts_vertical_labels_and_notes_on_another_page():
+    pages = (PageLayout(1, 600, 800, 0, PageSource.DIGITAL, (
+        TextBlock(1, "Issue date", BoundingBox(10, 20, 100, 30)),
+        TextBlock(1, "2026-06-12", BoundingBox(10, 32, 100, 42)),)),
+        PageLayout(2, 600, 800, 0, PageSource.DIGITAL, (
+            TextBlock(2, "HOT-ROLLED STEEL COIL", BoundingBox(10, 650, 400, 670)),)))
+    metadata = GenericCertificateExtractor()._extract_metadata(DocumentLayout("vertical.pdf", "hash", pages))
+    assert metadata["issue_date"] == "2026-06-12"
+    assert metadata["product_name"] == "HOT-ROLLED STEEL COIL"
+    assert metadata["field_evidence"]["product_name"][0]["page_number"] == 2

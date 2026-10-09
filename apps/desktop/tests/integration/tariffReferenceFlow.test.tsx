@@ -120,19 +120,17 @@ describe("Referencia del NICO en la LIGIE", () => {
 
     await user.click(within(candidates).getByRole("button", { name: /ver 7208\.52\.01 en la ligie/i }));
 
-    const ligieTab = await screen.findByRole("tab", { name: "LIGIE p. 24" });
-    expect(ligieTab).toHaveAttribute("aria-selected", "true");
     await waitFor(() => expect(ligieFrame()?.getAttribute("src")).toMatch(/^blob:.*#page=24$/));
     expect(backend.calls).toContain(`GET ${SOURCE_FILE}`);
-    expect(screen.getByText("7208.52.01-01")).toBeInTheDocument();
-    expect(screen.getByText("SIN VIGENCIA — NO VERIFICADO")).toBeInTheDocument();
 
     // Consultar la referencia no cambia el candidato elegido y la clasificación sigue a la vista.
     expect(radios[0]).toBeChecked();
     expect(candidates).toBeVisible();
-
-    await user.click(screen.getByRole("tab", { name: "Acta" }));
-    expect(screen.getByRole("tab", { name: "Acta" })).toHaveAttribute("aria-selected", "true");
+    const viewer = screen.getByRole("complementary", { name: "Visor de documento" });
+    expect(within(viewer).queryByRole("tablist")).not.toBeInTheDocument();
+    await user.click(within(viewer).getByRole("button", { name: "Cerrar visor" }));
+    expect(screen.queryByRole("complementary", { name: "Visor de documento" })).not.toBeInTheDocument();
+    expect(candidates).toBeVisible();
   });
 
   it("si el backend no indica la página, lo avisa y abre el inicio del PDF", async () => {
@@ -167,7 +165,6 @@ describe("Referencia del NICO en la LIGIE", () => {
     await user.click(evidenceButton as HTMLElement);
     await user.click(await screen.findByRole("button", { name: "Ver en la fuente (p. 31)" }));
 
-    expect(await screen.findByRole("tab", { name: "LIGIE p. 31" })).toHaveAttribute("aria-selected", "true");
     await waitFor(() => expect(ligieFrame()?.getAttribute("src")).toMatch(/#page=31$/));
   });
 });

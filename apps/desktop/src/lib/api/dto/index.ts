@@ -26,6 +26,7 @@ export type {
 export type {
   CertificateChemicalCompositionDto,
   CertificateDetailDto,
+  CertificateDeletionDto,
   CertificateHeatDto,
   CertificateObservationDto,
   CertificateProductDto,

@@ -14,11 +14,11 @@ export function SelectionHistory({ selections }: SelectionHistoryProps) {
       <Empty className="py-4">
         <EmptyHeader>
           <EmptyMedia variant="icon">
-            <History aria-hidden="true" className="w-5 h-5 text-slate-400" />
+            <History aria-hidden="true" className="w-5 h-5 text-muted-foreground" />
           </EmptyMedia>
-          <EmptyTitle className="text-xs">{es.classification.noSelections}</EmptyTitle>
-          <EmptyDescription className="text-[11px]">
-            No hay auditoría de selección previa en esta corrida.
+          <EmptyTitle className="text-sm">{es.classification.noSelections}</EmptyTitle>
+          <EmptyDescription className="text-sm">
+            {es.classification.noSelectionDescription}
           </EmptyDescription>
         </EmptyHeader>
       </Empty>
@@ -30,24 +30,24 @@ export function SelectionHistory({ selections }: SelectionHistoryProps) {
       {selections.map((sel) => (
         <div
           key={sel.id}
-          className="bg-white border border-slate-200 rounded-lg p-2.5 text-xs space-y-1"
+          className="border-b border-border py-4 text-sm leading-6 space-y-3 last:border-0"
         >
           <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5">
-            <span className="min-w-0 font-semibold text-slate-800">
+            <span className="min-w-0 font-semibold text-foreground">
               {sel.person_name}
             </span>
-            <span className="text-[10.5px] text-slate-400">
+            <span className="text-sm text-muted-foreground">
               {new Date(sel.created_at).toLocaleString("es-MX")}
             </span>
           </div>
 
-          <p className="text-[11px] text-slate-700 italic bg-slate-50 p-1.5 rounded border border-slate-100">
+          <p className="text-sm text-foreground break-words">
             "{sel.reason}"
           </p>
 
-          <div className="flex flex-wrap items-center justify-between gap-x-2 text-[10px] text-slate-500 pt-0.5">
+          <div className="flex flex-wrap items-center justify-between gap-x-2 text-sm text-muted-foreground pt-0.5">
             <span>{es.classification.workstation}: {sel.workstation_name}</span>
-            <span>Candidato #{sel.candidate_id}</span>
+            <span>{es.classification.candidateLabel(sel.candidate_id)}</span>
           </div>
         </div>
       ))}

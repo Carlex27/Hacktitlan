@@ -27,6 +27,18 @@
 
 ## Implementado
 
+- Eliminación definitiva de actas para pruebas (9 de octubre de 2026):
+  `DELETE /api/v1/certificates/{certificate_id}`, sin persona ni motivo,
+  habilitado sólo en `development`/`test`. Elimina datos dependientes y
+  exportaciones afectadas; conserva otras actas y archivos compartidos.
+  Rechaza trabajos en ejecución y restaura archivos ante fallo previo al commit.
+  Migración `0009_certificate_deletion` para permisos de la cuenta del servicio.
+  Validación: 20 pruebas de integración de eliminación, procesamiento y
+  selección de candidatos aprobadas en PostgreSQL de pruebas; OpenAPI y
+  compilación Python verificados. El entorno de pruebas no tiene el rol
+  `hacktitlan_app`: la concesión de permisos a esa cuenta no se verificó allí.
+  Operación y límites en `BACKEND_RUNBOOK.md`.
+
 - Importación XLSX (8 de octubre de 2026): almacenamiento original con hash,
   validación del paquete y límites, extracción sin OCR de tablas MOSSMEX y cartas
   por especificación, evidencia de hoja/celda y consulta documentada en OpenAPI.
@@ -72,7 +84,7 @@
   - Cola de revisión documental en `GET /api/v1/document-reviews` con filtros y resumen.
   - Reporte de calidad por acta en `GET /api/v1/certificates/{id}/quality-report`.
   - Reprocesamiento multi-etapa en `POST /api/v1/certificates/{id}/reprocess` (`extraction`, `normalization`, `classification`) preservando auditoría.
-  - Bloqueo y compuerta en el motor de clasificación: productos con datos bloqueantes no reciben códigos adivinados y quedan en `needs_review` con `quality_issues`.
+  - El motor de clasificación se ejecuta aun con incidencias documentales o baja confianza OCR. Conserva sugerencias, factores y evidencia; los productos con incidencias bloqueantes quedan en `needs_review` con `quality_issues` para decisión humana.
   - Sincronización de entidades en `ReviewService` con auditoría inmutable de correcciones.
 
 - Runtime Python 3.12 y dependencias fijadas mediante `uv.lock`.
@@ -101,7 +113,7 @@
   inmutables, captura manual de datos faltantes y bloqueo de aprobación cuando
   falta fracción o NICO.
 - Generación y persistencia de hasta tres candidatos completos y validados
-  contra catálogo. La selección exige exactamente tres opciones, persona y
+  contra catálogo. La selección de sugerencias exige de una a tres opciones del motor, persona y
   motivo; conserva historial inmutable y queda separada de la aprobación.
 - Expansión de NICO para fracciones deterministas, con ranking estable y filtros
   de compatibilidad para 7208 y 7225. Incluye fronteras de boro, espesor,
@@ -136,7 +148,7 @@
   cuando Paddle confirma CUDA; de lo contrario usa CPU.
 - Si una inicialización o inferencia GPU falla, el lector reintenta una vez en
   CPU y registra el dispositivo efectivo. Los modelos se liberan al terminar
-  cada trabajo para limitar memoria en equipos de 8 GB.
+  cada trabajo para liberar recursos.
 - Manifiesto tipado y administración del ciclo de vida de modelos mediante
   `OcrModelManager`: carpeta administrada fuera del repositorio, descarga
   atómica con `.part`, verificación previa de espacio en disco, comprobación de
@@ -176,8 +188,83 @@ El orden y los criterios de salida del trabajo restante están definidos en
   evidencia auditada, bloqueo de reportes oficiales sin aprobación completa.
 - Hito 7: Respaldo, volumen y rendimiento (Sección 10): pruebas de siembra con
   18,250 actas y 273,750 coladas sobre 5 años, verificación de restauración en
-  base vacía con hashes coincidentes, y presupuesto de memoria RAM $\le 8\text{ GB}$.
+  base vacía con hashes coincidentes, y medición de consumo en el equipo disponible.
 - Componente frontend para mostrar el PDF lateral, enfocar la página y dibujar
   el resaltado usando el contrato de evidencia ya disponible en el backend.
-- Modelo generativo local opcional (Sección 14): únicamente evaluable tras el
-  cierre del backend v1.
+- Modelo generativo local opcional (Sección 14): integración inicial de Ollama
+  implementada por solicitud del usuario; evaluación con modelos reales pendiente.
+
+- Revisión web: endpoint de borrador auditado para ejecuciones pendientes o rechazadas, con conservación de selecciones y protección de ejecuciones aprobadas. Contrato generado en OpenAPI.
+
+## Asistencia local de extracción (Ollama)
+
+Integración opcional en el worker, desactivada por defecto y configurable con
+`HACKTITLAN_OLLAMA_*`. Se valida JSON y evidencia literal; el backend normaliza
+dimensiones y escalas químicas. Los resultados asistidos requieren revisión.
+Los resultados existentes se conservan. Tanto adaptadores conocidos como la
+extracción genérica verifican sus observaciones por campo con evidencia literal
+y encabezados, sin reemplazarlas automáticamente. Migración 0008 guarda
+`verification_json`; el detalle del certificado expone el contrato en OpenAPI.
+Extraído muestra discrepancias y permite aceptar propuestas mediante la
+corrección auditada existente. Los fallos del motor no eliminan la extracción.
+Configuración y límites: `docs/BACKEND_RUNBOOK.md`, sección de Ollama.
+Prueba real con `qwen3.5:4b`: detectó el ejemplo `13` bajo `C 10^-4`; el backend
+calculó `0.0013 %` y conservó `0.13 %` hasta revisión. Pendiente medir exactitud y
+rendimiento con certificados revisados; no se gestiona el proceso Ollama.
+Propuestas normalizadas automáticas: química, ancho y espesor;
+campos sin reglas o evidencia suficiente se señalan como no verificables.
+
+Primera entrega del plan de formatos diversos: metadatos por etiquetas/posición
+en todas las páginas y notas, fechas separadas y descripción del producto;
+evidencia preservada y ambigüedad sin elegir un candidato arbitrario. Repetición
+explícita limitada por tabla y composición por colada; filas identificadas vacías
+no se descartan ni permiten rellenar posteriores por continuidad aparente.
+
+Ollama verifica por rollo y consulta si el modelo admite visión. Para OCR con
+PDF disponible envía recortes originales; una lectura visual distinta sólo queda
+como propuesta con valor OCR, región y encabezado. Renderizado fallido vuelve a
+texto y declara el fallo. No se añaden dependencias ni contratos API.
+Prueba real de MOLINO 3: qwen3.5:4b recibió imágenes, pero no verificó el carbono
+39/33. Se conserva 39/0.39 hasta revisión; no se considera solucionada esa lectura.
+Validación: 437 pruebas unitarias/golden y 8 de integración de procesamiento.
+Pendientes: recuperación parcial, reorientación OCR/PDF, precisión del corpus y
+medición del uso de RAM/latencia. La configuración local sigue siendo opcional.
+
+### Segunda entrega: recuperación parcial y corpus real
+
+- Recuperación opcional de ancho, espesor y elementos químicos ausentes con
+  Ollama, aun cuando ya existe un certificado. Se pide un rollo por consulta;
+  referencias limitadas por JSON Schema, evidencia literal, unidad/escala y
+  asociación de fila se comprueban antes de guardar una propuesta. No cambia
+  valores originales ni crea una identidad nueva por similitud. Propuestas
+  contradictorias entre páginas quedan no verificables.
+- Una celda sin texto OCR puede verificarse visualmente si el rollo y el
+  encabezado permiten delimitar su región. Un vacío no se rellena por proximidad.
+  Los recortes respetan la orientación detectada por Paddle; tamaños incompatibles
+  o errores de renderizado impiden validación visual y quedan registrados.
+- Comparación de lecturas OCR superpuestas: MOLINO 3 conserva 39/0.39 y propone
+  33/0.33 con celda y escala citadas. La API acepta la propuesta mediante la
+  corrección auditada existente, conservando la observación anterior.
+- Agrupación geométrica de lecturas idénticas de una misma celda. La nueva
+  ejecución de MOLINO 4 mostró este duplicado; se reparó sin eliminar rollos
+  distintos ni inventar identificadores. Se conservaron los seis rollos.
+- Se admiten rollos al final de la página, filas identificadas vacías y metadatos
+  con etiquetas encima del valor, incluyendo notas en páginas posteriores.
+- Evaluación de PDF reales: 6/1/11/6 rollos y pesos 47,615/8,995/80,320/34,050 kg;
+  ejecuciones OCR de 95.88/63.70/134.37/82.61 s en este equipo. MOLINO 4 se volvió
+  a ejecutar tras reparar el duplicado. Estos datos corresponden al equipo de prueba.
+- Prueba del LLM real: recuperación de ancho 1220 mm en una tabla de prueba
+  formada con datos de MOLINO 2; original ausente conservado. Es una prueba
+  controlada, no una medición de exactitud sobre todos los campos del PDF.
+
+La aceptación de proveedores nuevos reutiliza el lector genérico y el fallback
+local; no se agregan adaptadores por nombre. Aún pueden quedar fechas,
+identificadores, símbolos o campos sin lectura comprobable. Se preservan para
+revisión: la coincidencia del OCR o del LLM no autoriza una clasificación.
+No se ha completado la revisión manual de todos los campos de los cuatro PDF,
+ni la medición completa de consumo combinado OCR+LLM. El usuario retiró el
+requisito de 8 GB de RAM; esa medición no condiciona la entrega a un límite fijo.
+
+- Captura manual mediante el endpoint de selección documentado en OpenAPI: formato de 8/2 dígitos, justificación, candidato conditional con `details.manual=true`, conservación de sugerencias y cadena de reemplazos. Migración 0007 amplía el rango para registros manuales; el motor sigue limitado a tres sugerencias. No verifica automáticamente vigencia normativa. Cambios manuales bloqueados sobre ejecuciones aprobadas.
+
+Por decisión del usuario, la selección auditada de fracción y NICO confirma la verificación humana de cada rollo. La aprobación del acta cierra la revisión completa; los datos faltantes y factores desconocidos del motor se preservan sin bloquear el cierre. Se mantienen bloqueos de contradicciones y cobertura incompleta.

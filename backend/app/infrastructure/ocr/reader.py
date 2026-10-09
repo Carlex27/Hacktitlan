@@ -156,7 +156,9 @@ class PaddleStructureReader:
             original.file_name,
             original.sha256,
             pages,
-            {**original.metadata, "ocr": runtime.as_dict()},
+            {**original.metadata, "ocr": runtime.as_dict(),
+             "ocr_page_rotations": {str(index + 1): (result.get("doc_preprocessor_res") or {}).get("angle", 0)
+                                    for index, result in enumerate(results) if hasattr(result, "get")}},
         )
 
     def _get_pipeline(self, device: str):

@@ -19,7 +19,7 @@ export function ImportQueueItem({ item, onReview }: ImportQueueItemProps) {
   const showProgress = status === "loading" && item.progress !== null;
 
   return (
-    <li className="flex items-start gap-3 py-3" data-status={status}>
+    <li className="flex flex-wrap items-start gap-3 py-4" data-status={status}>
       <FileTextIcon aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-muted-foreground" />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <div className="flex items-center gap-2">
@@ -53,7 +53,7 @@ export function ImportQueueItem({ item, onReview }: ImportQueueItemProps) {
         {item.certificateId !== null && onReview && (
           <Button
             type="button"
-            variant="ghost"
+            variant="outline"
             size="sm"
             onClick={() => {
               const certId = item.certificateId;
@@ -61,7 +61,7 @@ export function ImportQueueItem({ item, onReview }: ImportQueueItemProps) {
                 onReview(certId, item.documentId);
               }
             }}
-            className="h-7 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 font-medium"
+            className="min-h-9"
           >
             {es.certificateImport.item.reviewAction}
           </Button>

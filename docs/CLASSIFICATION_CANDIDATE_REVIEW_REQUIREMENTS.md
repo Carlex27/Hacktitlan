@@ -2,12 +2,12 @@
 
 ## Objetivo
 
-Cada producto debe presentar exactamente tres opciones válidas de fracción
+Cada producto debe presentar de una a tres opciones válidas de fracción
 arancelaria y NICO antes de la decisión humana. El sistema no debe completar la
 lista con códigos incompatibles, ficticios o sin respaldo en las reglas
 versionadas.
 
-Si el motor no puede producir tres opciones válidas, la ejecución queda en
+Si el motor no puede producir ninguna opción válida, la ejecución queda en
 `needs_review`. Debe informar las opciones disponibles, los datos faltantes y
 las contradicciones. El personal autorizado debe resolver esos datos antes de
 continuar.
@@ -16,7 +16,7 @@ continuar.
 
 La selección de una opción y su aprobación son eventos diferentes:
 
-1. El motor genera y ordena tres candidatos válidos.
+1. El motor genera y ordena hasta tres candidatos válidos.
 2. El personal autorizado revisa los candidatos y selecciona uno.
 3. La selección exige `person_name` y `reason`; el backend registra equipo y
    fecha UTC.
@@ -25,8 +25,9 @@ La selección de una opción y su aprobación son eventos diferentes:
    evento posterior, también auditado.
 
 La selección no concede por sí misma el estado `approved`. Una clasificación
-con datos faltantes, contradicciones o evidencia insuficiente no puede
-aprobarse.
+con contradicciones no puede aprobarse. La selección auditada registra la
+verificación humana del rollo; los datos faltantes y factores desconocidos del
+motor se conservan como evidencia, sin bloquear el cierre del acta revisada.
 
 Mientras no exista autenticación, `person_name` identifica a la persona
 responsable dentro del registro de auditoría. La autorización operativa se
@@ -90,7 +91,7 @@ producto y ejecución.
 
 La API debe permitir:
 
-- consultar los tres candidatos, factores y estado de respaldo;
+- consultar hasta tres candidatos, factores y estado de respaldo;
 - registrar una selección con candidato, persona y motivo;
 - consultar la evidencia mediante un identificador administrado;
 - descargar el PDF mediante `document_id`;
@@ -115,7 +116,7 @@ Contrato implementado para este hito:
 
 La pantalla de revisión tendrá dos paneles:
 
-- izquierda: tres candidatos, selección y factores explicados;
+- izquierda: hasta tres candidatos, selección y factores explicados;
 - derecha: visor PDF enfocado en la evidencia activa.
 
 Todos los candidatos y factores deben ser utilizables por teclado, tener nombre
@@ -124,9 +125,9 @@ accesible y conservar los estados `loading`, `empty`, `success`,
 
 ## Pruebas de aceptación
 
-- El motor entrega exactamente tres candidatos válidos antes de habilitar la
+- El motor entrega de uno a tres candidatos válidos antes de habilitar la
   selección.
-- Con menos de tres candidatos, el resultado queda en `needs_review` y no se
+- Sin candidatos válidos, el resultado queda en `needs_review` y no se
   inventan códigos.
 - El orden de candidatos es reproducible con las mismas entradas y reglas.
 - Los valores situados justo debajo, en y justo encima de cada umbral producen
@@ -134,8 +135,9 @@ accesible y conservar los estados `loading`, `empty`, `success`,
 - Cada factor abre la página y región correctas del PDF.
 - Una selección exige persona y motivo y no equivale a aprobación.
 - No puede seleccionarse un candidato de otra ejecución o producto.
-- No puede aprobarse una opción con contradicciones, datos obligatorios
-  faltantes o evidencia insuficiente.
+- No puede aprobarse una opción con contradicciones o factores obligatorios
+  `not_matched` o `conflict`. Los datos faltantes y factores desconocidos no
+  impiden el cierre después de la verificación humana de todos los rollos.
 - El historial conserva candidatos, selecciones, aprobaciones y versiones de
   reglas sin sobrescrituras.
 
@@ -145,8 +147,11 @@ Actualización del 8 de octubre de 2026: la evidencia normativa de ejecuciones
 nuevas entrega URL administrada del PDF incluido, página y coordenadas de los
 umbrales de aleación. Los factores químicos apuntan a la nota correspondiente,
 no a la tabla del NICO. Las referencias históricas se conservan.
-La aprobación rechaza factores obligatorios cuyo resultado no sea `matched`,
-incluso si una selección humana ya fue registrada.
+Por decisión del usuario, confirmar cada rollo registra su verificación humana.
+La aprobación posterior cierra el acta cuando todos los rollos y coladas están
+cubiertos, con selección auditada, fracción y NICO. Sólo las contradicciones y
+factores obligatorios `not_matched` o `conflict` bloquean ese cierre; los datos
+originales, faltantes y factores desconocidos se preservan.
 
 Generación, persistencia, selección auditada, bloqueo de aprobación y enlace
 exacto paso–observación implementados. El backend ya entrega página, región y
@@ -157,3 +162,5 @@ La explicación individual quedó implementada mediante `candidate_factors` y
 `GET /api/v1/classification-candidates/{candidate_id}`. Cada factor conserva
 regla, comparación, valores, resultado y enlaces de evidencia. El motor también
 registra por qué descartó opciones evaluadas.
+
+La captura manual es una alternativa explícita a seleccionar una sugerencia. Conserva los candidatos del motor y la auditoría; su validación de formato no acredita cumplimiento normativo. El límite de tres se aplica a sugerencias del motor, no al historial de capturas manuales. El contrato actualizado vive en OpenAPI.

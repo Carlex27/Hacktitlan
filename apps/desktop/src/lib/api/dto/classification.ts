@@ -127,9 +127,10 @@ export interface ClassificationRunDto {
 }
 
 /** Cuerpo de `POST /api/v1/classification-results/{id}/select`. */
-export interface CandidateSelectionRequestDto extends ActorReasonDto {
-  candidate_id: number;
-}
+export type CandidateSelectionRequestDto = ActorReasonDto & (
+  | { candidate_id: number; fraction?: never; nico?: never }
+  | { candidate_id?: never; fraction: string; nico: string }
+);
 
 export interface CandidateSelectionDto {
   selection_id: number;

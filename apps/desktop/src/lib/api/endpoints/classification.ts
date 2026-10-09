@@ -26,7 +26,7 @@ export async function getClassificationRun(api: ApiClient, runId: number, option
   return (await api.get<ClassificationRunDto>(`/api/v1/classification-runs/${runId}`, options)).data;
 }
 
-/** Registra qué candidato (fracción + NICO) elige una persona para un resultado. */
+/** Registra un candidato elegido o una fracción/NICO manuales con auditoría. */
 export async function selectClassificationCandidate(
   api: ApiClient,
   resultId: number,
@@ -40,6 +40,12 @@ export async function selectClassificationCandidate(
       options,
     )
   ).data;
+}
+
+export async function deselectClassificationCandidate(api: ApiClient, resultId: number, request: ActorReasonDto) {
+  return (await api.post<{ classification_result_id: number; outcome: string }>(
+    `/api/v1/classification-results/${resultId}/deselect`, request,
+  )).data;
 }
 
 /** Aprueba formalmente una ejecución de clasificación con persona y motivo. */
@@ -86,4 +92,12 @@ export async function getClassificationCandidate(
       options,
     )
   ).data;
+}
+
+export async function saveClassificationDraft(api: ApiClient, runId: number, request: ActorReasonDto, options?: RequestOptions) {
+  return (await api.post<RunApprovalResultDto>(`/api/v1/classification-runs/${runId}/draft`, request, options)).data;
+}
+
+export async function reclassifyCertificate(api: ApiClient, certificateId: number, request: ActorReasonDto, options?: RequestOptions) {
+  return (await api.post<{ certificate_id: number; job_id: number }>(`/api/v1/certificates/${certificateId}/reclassify`, request, options)).data;
 }

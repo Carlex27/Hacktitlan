@@ -18,6 +18,10 @@ from backend.app.certificate_parser.semantics import (
     discover_table_candidates,
 )
 from backend.app.domain.document import DocumentLayout
+from backend.app.infrastructure.ollama import OllamaExtractor
+from backend.app.infrastructure.ollama_verification import verify_fields, reconcile_ocr_readings
+from backend.app.infrastructure.partial_recovery import recover_missing_fields
+from backend.app.infrastructure.ocr import OcrCancellationRequested
 
 
 class DocumentReader(Protocol):
@@ -34,8 +38,7 @@ class ExtractionStatus(StrEnum):
 class CertificateExtractionService:
     """Coordinate deterministic ingestion, detection, known adapters, and generic extraction.
 
-    No ML hallucinations are used. Unknown layouts produce canonical structures with
-    evidence and status needs_review, preserving unmapped blocks for human audit.
+    Unknown layouts require review; optional local assistance preserves evidence.
     """
 
     def __init__(
@@ -43,10 +46,12 @@ class CertificateExtractionService:
         reader: DocumentReader,
         adapters: AdapterRegistry | None = None,
         generic_extractor: GenericCertificateExtractor | None = None,
+        ollama_extractor: OllamaExtractor | None = None,
     ) -> None:
         self.reader = reader
         self.adapters = adapters or default_adapter_registry()
         self.generic_extractor = generic_extractor or GenericCertificateExtractor()
+        self.ollama_extractor = ollama_extractor
 
     def analyze_document(
         self,
@@ -107,19 +112,19 @@ class CertificateExtractionService:
                 except ValueError:
                     certificate = None
                 if certificate is not None:
-                    return {
+                    return self._assist({
                         **base,
                         "status": ExtractionStatus.EXTRACTED.value,
                         "adapter": adapter.name,
                         "certificate": certificate,
-                    }
+                    }, document, cancel_check, pdf_path=path)
             base["profile"] = {"name": profile_name, "confidence": profile_score, "signals": list(profile_signals)}
             base["reasons"] = [f"El formato conocido {profile_name} no tiene un adaptador utilizable; se intentó extracción genérica"]
 
         # Step 2: Generic deterministic extraction for unknown formats
         generic_result = self.generic_extractor.extract(document)
         if generic_result.is_valid_certificate and generic_result.certificate is not None:
-            return {
+            return self._assist({
                 **base,
                 "status": ExtractionStatus.NEEDS_REVIEW.value,
                 "adapter": "generic_layout_extractor",
@@ -127,19 +132,63 @@ class CertificateExtractionService:
                 "unmapped_blocks": generic_result.unmapped_blocks,
                 "signals": list(detection.signals) + generic_result.signals,
                 "reasons": ["Extracción genérica: verificar los valores OCR, las escalas químicas y los campos ausentes antes de aprobar"],
-            }
+            }, document, cancel_check, pdf_path=path)
 
         status = (
             ExtractionStatus.NEEDS_REVIEW
             if detection.kind is not DocumentKind.UNKNOWN or profile_name is not None
             else ExtractionStatus.UNSUPPORTED
         )
-        return {
+        return self._assist({
             **base,
             "status": status.value,
             "unmapped_blocks": generic_result.unmapped_blocks,
             "reasons": base.get("reasons", []) + generic_result.reasons,
-        }
+        }, document, cancel_check, pdf_path=path)
+
+    def _assist(self, result: dict[str, Any], document: DocumentLayout,
+                cancel_check: Callable[[], bool] | None, *, pdf_path: str | Path | None = None) -> dict[str, Any]:
+        if self.ollama_extractor is None:
+            if result.get("certificate") and reconcile_ocr_readings(document, result["certificate"]):
+                result["status"] = ExtractionStatus.NEEDS_REVIEW.value
+                result["reasons"] = result.get("reasons", []) + ["Lecturas OCR contradictorias en la misma celda: revisar las propuestas contra el PDF"]
+            return result
+        if result.get("certificate") is not None:
+            verification = verify_fields(self.ollama_extractor, document, result["certificate"], cancel_check, pdf_path=pdf_path)
+            recovery = recover_missing_fields(self.ollama_extractor, document, result["certificate"], cancel_check)
+            verification["partial_recovery"] = recovery
+            verification["ocr_conflicts"] = reconcile_ocr_readings(document, result["certificate"])
+            if recovery["proposed_fields"] or recovery["errors"] or verification["ocr_conflicts"]:
+                verification["status"] = "needs_review"
+            result["llm_assistance"] = verification
+            if verification["status"] != "success":
+                result["status"] = ExtractionStatus.NEEDS_REVIEW.value
+                result["reasons"] = result.get("reasons", []) + [
+                    "Verificación local: hay discrepancias o campos que no pudieron verificarse; se conserva la extracción original"
+                ]
+            return result
+        assistance = {"model": self.ollama_extractor.settings.ollama_model}
+        try:
+            candidate = self.ollama_extractor.extract(document, cancel_check=cancel_check)
+        except OcrCancellationRequested:
+            raise
+        except Exception as exc:
+            # Optional inference must never discard successful deterministic extraction.
+            assistance.update({"status": "error", "error_code": type(exc).__name__})
+            result["reasons"] = result.get("reasons", []) + [
+                "La asistencia local de Ollama no produjo una propuesta validada; se conserva la extracción original"
+            ]
+        else:
+            assistance["verification"] = verify_fields(self.ollama_extractor, document, candidate, cancel_check, pdf_path=pdf_path)
+            assistance.update({"status": "needs_review", "candidate": candidate})
+            if result.get("certificate") is None:
+                result.update({"certificate": candidate, "adapter": "ollama_local",
+                               "status": ExtractionStatus.NEEDS_REVIEW.value})
+            result["reasons"] = result.get("reasons", []) + [
+                "Propuesta de Ollama: verificar valores y asociaciones contra el PDF antes de aprobar"
+            ]
+        result["llm_assistance"] = assistance
+        return result
 
     def release(self) -> None:
         release = getattr(self.reader, "release", None)

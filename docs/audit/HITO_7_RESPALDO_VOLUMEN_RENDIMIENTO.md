@@ -119,7 +119,7 @@ utilidades o la conexión a `hacktitlan_test`.
 Quedan pendientes:
 
 1. Tiempos máximos acordados y ejecución en el servidor de demostración, incluyendo
-   el equipo mínimo de 8 GB cuando corresponda. No hay objetivo de latencia
+   el hardware disponible. El usuario retiró el requisito de 8 GB de RAM. No hay objetivo de latencia
    inventado ni aceptación automática del servidor.
 2. Duración/CPU/RAM de OCR con un PDF escaneado real y respuesta de API simultánea.
    El harness admite `--ocr-pdf`; las pruebas de persistencia usan extracción

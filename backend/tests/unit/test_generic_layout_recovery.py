@@ -10,6 +10,27 @@ def block(text, x, y):
     return TextBlock(1, text, BoundingBox(x - 10, y - 3, x + 10, y + 3), .91, PageSource.OCR)
 
 
+def test_bottom_of_page_rolls_are_not_cut_off_and_empty_identified_rows_are_retained():
+    blocks = (block("Product No.", 50, 480), block("Thickness mm", 150, 480),
+              block("ZZ-123", 50, 510), block("1.8", 150, 510),
+              block("ZZ-456", 50, 540))
+    result = GenericCertificateExtractor().extract(DocumentLayout("bottom.pdf", "hash", (
+        PageLayout(1, 400, 600, 0, PageSource.OCR, blocks),)))
+    assert [p["product_id"] for p in result.certificate["products"]] == ["ZZ-123", "ZZ-456"]
+    assert result.certificate["products"][1]["thickness_mm"] is None
+
+
+def test_overlapping_readings_of_one_identifier_are_not_two_rolls():
+    blocks = (block("Coil No.", 100, 200), block("Weight kg", 200, 200),
+              TextBlock(1, "ZZ-123", BoundingBox(80, 220, 125, 236), .96, PageSource.OCR),
+              TextBlock(1, "ZZ-123", BoundingBox(83, 221, 115, 227), .99, PageSource.OCR),
+              block("5100", 200, 224), block("ZZ-456", 100, 250), block("5900", 200, 250))
+    result = GenericCertificateExtractor().extract(DocumentLayout("overlap.pdf", "hash", (
+        PageLayout(1, 400, 600, 0, PageSource.OCR, blocks),)))
+    assert [p["product_id"] for p in result.certificate["products"]] == ["ZZ-123", "ZZ-456"]
+    assert sum(p["weight_kg"] for p in result.certificate["products"]) == 11000
+
+
 def test_unknown_supplier_without_recognized_table_recovers_rows_and_evidence():
     blocks = [block("Fabricante: NUEVO PROVEEDOR", 100, 20)]
     for text, x in (("Product No.", 50), ("Heat No.", 100), ("Size", 150), ("Weight kg", 200), ("C (%)", 250)):

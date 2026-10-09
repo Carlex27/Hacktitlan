@@ -134,7 +134,7 @@ class ClassificationCandidate(TimestampMixin, Base):
             "classification_result_id", "fraction", "nico",
             name="uq_candidate_result_code",
         ),
-        CheckConstraint("rank BETWEEN 1 AND 3", name="candidate_rank_range"),
+        CheckConstraint("rank >= 1", name="candidate_rank_range"),
         CheckConstraint("fraction ~ '^[0-9]{8}$'", name="candidate_fraction_format"),
         CheckConstraint("nico ~ '^[0-9]{2}$'", name="candidate_nico_format"),
         CheckConstraint(

@@ -73,7 +73,7 @@ def create_sample_certificate(
     *,
     thickness: Decimal | None = Decimal("2.50"),
     width: Decimal | None = Decimal("1250.00"),
-    thickness_confidence: float = 0.95,
+    thickness_confidence: float | None = 0.95,
     approval_status: str = ApprovalStatus.NEEDS_REVIEW.value,
     doc_status: str = ProcessingStatus.NEEDS_REVIEW.value,
 ) -> tuple[Document, MillCertificate, Product, Heat]:
@@ -333,7 +333,7 @@ def test_reprocess_stages(review_settings: Settings):
     assert res_inv.status_code == 422
 
 
-def test_quality_gating_and_manual_correction_flow(review_settings: Settings):
+def test_low_confidence_classification_and_manual_correction_flow(review_settings: Settings):
     app = create_app(review_settings)
     client = TestClient(app)
 
@@ -356,7 +356,7 @@ def test_quality_gating_and_manual_correction_flow(review_settings: Settings):
     assert report_data["blocking_count"] >= 1
     assert any(i["code"] == "low_confidence_field" for i in report_data["issues"])
 
-    # 2. Classification service respects gating: outcome must be needs_review, no guessed fraction/nico
+    # 2. Low confidence preserves review warnings while the engine generates suggestions
     with app.state.sessions() as session:
         rule_set = session.scalar(select(RuleSet).order_by(RuleSet.id).limit(1))
         assert rule_set is not None
@@ -378,7 +378,8 @@ def test_quality_gating_and_manual_correction_flow(review_settings: Settings):
     assert res_item["outcome"] == "needs_review"
     assert res_item["fraction"] is None
     assert res_item["nico"] is None
-    assert len(res_item["candidates"]) == 0
+    assert len(res_item["candidates"]) > 0
+    assert "7208" in res_item["details"]["candidates"]
     assert len(res_item["details"]["quality_issues"]) >= 1
 
     # 3. User corrects the observation manually via ReviewService
@@ -448,23 +449,27 @@ def test_quality_gating_and_manual_correction_flow(review_settings: Settings):
     assert "7208" in res2_item["details"]["candidates"]
 
 
-def test_quality_gate_does_not_call_classification_engine(review_settings: Settings):
-    class FailingEngine(Chapter72ClassificationEngine):
+@pytest.mark.parametrize("thickness_confidence", [0.0, 0.45, None])
+def test_quality_issues_do_not_skip_classification_engine(review_settings: Settings, thickness_confidence):
+    class TrackingEngine(Chapter72ClassificationEngine):
+        calls = 0
+
         def classify(self, facts):
-            raise AssertionError("El motor no debe ejecutarse con incidencias bloqueantes")
+            self.calls += 1
+            return super().classify(facts)
 
     app = create_app(review_settings)
+    engine = TrackingEngine()
     with app.state.sessions() as session:
         _, certificate, _, _ = create_sample_certificate(
-            session, thickness_confidence=0.45
+            session, thickness_confidence=thickness_confidence
         )
-        session.commit()
-        service = ClassificationService(review_settings, engine=FailingEngine())
+        service = ClassificationService(review_settings, engine=engine)
         run = service.classify_certificate(
             session,
             certificate_id=certificate.id,
             person_name="Auditor",
-            reason="Validar compuerta",
+            reason="Generar sugerencias para revisión humana",
         )
         session.flush()
         result = session.scalar(
@@ -472,8 +477,43 @@ def test_quality_gate_does_not_call_classification_engine(review_settings: Setti
                 ClassificationResult.classification_run_id == run.id
             )
         )
+        assert engine.calls == 1
         assert result is not None
+        assert result.details_json["valid_candidate_count"] > 0
         assert result.outcome == "needs_review"
+        assert run.approval_status == "needs_review"
+        assert certificate.approval_status == "needs_review"
+        if thickness_confidence is not None:
+            assert any(issue["code"] == "low_confidence_field" for issue in result.details_json["quality_issues"])
+
+
+@pytest.mark.parametrize("confidence, expected_outcome", [(0.45, "needs_review"), (0.95, "classified")])
+def test_complete_proposal_preserves_quality_review(review_settings: Settings, confidence, expected_outcome):
+    from backend.app.classification_engine.engine import ALLOY_THRESHOLDS
+
+    app = create_app(review_settings)
+    with app.state.sessions() as session:
+        _, certificate, product, heat = create_sample_certificate(session, thickness_confidence=confidence)
+        product.rolling = "cold"
+        product.properties_json = {"coated": False, "mechanical_properties": {"yield_strength_mpa": 230}}
+        # Synthetic fixture explicitly reports zero for the remaining alloy elements.
+        session.add_all([
+            ChemicalComposition(heat_id=heat.id, element=element, percentage=Decimal("0"),
+                                raw_value_json="0", inherited=False)
+            for element in ALLOY_THRESHOLDS if element != "Mn"
+        ])
+        session.flush()
+        run = ClassificationService(review_settings).classify_certificate(
+            session, certificate_id=certificate.id, person_name="Auditor",
+            reason="Revisar propuesta completa con confianza variable",
+        )
+        session.flush()
+        result = session.scalar(select(ClassificationResult).where(ClassificationResult.classification_run_id == run.id))
+        assert result is not None
+        assert (result.fraction, result.nico) == ("72091601", "99")
+        assert result.details_json["valid_candidate_count"] == 1
+        assert result.outcome == expected_outcome
+        assert run.approval_status == certificate.approval_status == "needs_review"
 
 
 def test_extraction_reprocess_creates_and_populates_new_revision(review_settings: Settings):
@@ -549,3 +589,51 @@ def test_extraction_reprocess_creates_and_populates_new_revision(review_settings
         assert session.scalar(
             select(func.count(Product.id)).where(Product.certificate_id == original_id)
         ) == original_product_count
+
+
+def test_manual_classification_preserves_suggestions_and_audit(review_settings: Settings):
+    from backend.app.infrastructure.database.models import ClassificationCandidate, ClassificationRun
+
+    app = create_app(review_settings)
+    client = TestClient(app)
+    with app.state.sessions() as session:
+        _, certificate, product, _ = create_sample_certificate(session)
+        rule_set = session.scalar(select(RuleSet).order_by(RuleSet.id).limit(1))
+        assert rule_set is not None
+        run = ClassificationRun(certificate_id=certificate.id, rule_set_id=rule_set.id,
+                                approval_status="needs_review", input_snapshot_json={}, demo_notice="Prueba")
+        session.add(run)
+        session.flush()
+        result = ClassificationResult(classification_run_id=run.id, product_id=product.id,
+                                      outcome="needs_review", details_json={})
+        session.add(result)
+        session.flush()
+        suggestions = [ClassificationCandidate(classification_result_id=result.id, rank=rank,
+            fraction=f"7209170{rank}", nico="99", description="Sugerencia",
+            support_level="conditional", details_json={}) for rank in (1, 2, 3)]
+        session.add_all(suggestions)
+        session.commit()
+        result_id, run_id = result.id, run.id
+        suggestion_ids = [candidate.id for candidate in suggestions]
+
+    path = f"/api/v1/classification-results/{result_id}/select"
+    payload = {"fraction": "72091704", "nico": "01", "person_name": "Administrador",
+               "reason": "Clasificación manual tras revisión documental"}
+    assert client.post(path, json={**payload, "fraction": "123"}).status_code == 422
+    assert client.post(path, json={**payload, "candidate_id": suggestion_ids[0]}).status_code == 422
+    first = client.post(path, json=payload)
+    assert first.status_code == 200, first.text
+    first_selection = first.json()["data"]
+    second = client.post(path, json=payload)
+    assert second.status_code == 200, second.text
+    detail = client.get(f"/api/v1/classification-runs/{run_id}").json()["data"]["results"][0]
+    assert [candidate["id"] for candidate in detail["candidates"][:3]] == suggestion_ids
+    assert len(detail["candidates"]) == 4
+    assert detail["candidates"][3]["details"]["manual"] is True
+    assert detail["fraction"] == "72091704" and detail["nico"] == "01"
+    assert detail["current_selection"]["supersedes_selection_id"] == first_selection["selection_id"]
+    assert len(detail["selections"]) == 2
+    approved = client.post(f"/api/v1/classification-runs/{run_id}/approve", json={
+        "person_name": "Administrador", "reason": "Dictamen de prueba"})
+    assert approved.status_code == 200, approved.text
+    assert client.post(path, json=payload).status_code == 409

@@ -11,6 +11,7 @@ from decimal import Decimal
 from typing import Any
 
 from backend.app.normalization.chemistry import normalize_scaled_percentage
+from backend.app.certificate_parser.vocabulary import DITTO_TOKENS
 
 
 class CertificateParseError(ValueError):
@@ -51,7 +52,7 @@ ELEMENT_ALIASES = {
     "n": "N",
 }
 
-DITTO_MARKS = {'"', "''", "〃", "同上"}
+DITTO_MARKS = DITTO_TOKENS
 
 
 def _decimal(value: Any, field: str) -> Decimal:

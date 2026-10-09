@@ -35,6 +35,7 @@ from backend.app.infrastructure.database.models import (
 from backend.app.infrastructure.database.session import create_session_factory
 from backend.app.infrastructure.files import FileStorage
 from backend.app.infrastructure.logging import configure_logging
+from backend.app.infrastructure.ollama import OllamaExtractor
 from backend.app.reporting.excel_export import ExcelExportService
 
 logger = logging.getLogger(__name__)
@@ -57,7 +58,10 @@ class Worker:
         self.storage = storage
         self.repository = JobRepository()
         self.worker_id = f"{socket.gethostname()}-{uuid4().hex[:8]}"
-        self.extractor = extractor or CertificateExtractionService(build_document_reader(settings))
+        self.extractor = extractor or CertificateExtractionService(
+            build_document_reader(settings),
+            ollama_extractor=OllamaExtractor(settings) if settings.ollama_enabled else None,
+        )
         self.persistence = CertificatePersistenceService(settings)
 
     def run_once(self) -> bool:
@@ -185,6 +189,7 @@ class Worker:
             document = session.get(Document, document_id)
             if job is None or document is None:
                 raise ValueError("El trabajo fue eliminado durante el procesamiento")
+            classification_run_id = None
             if result.get("certificate") is not None:
                 certificate = self.persistence.persist_normalized(
                     session,
@@ -193,6 +198,24 @@ class Worker:
                 )
                 if final_status == ProcessingStatus.NEEDS_REVIEW:
                     certificate.approval_status = "needs_review"
+                if result["certificate"].get("products"):
+                    try:
+                        with session.begin_nested():
+                            run = ClassificationService(self.settings).classify_certificate(
+                                session,
+                                certificate_id=certificate.id,
+                                person_name=self.worker_id,
+                                reason="Sugerencias automáticas tras extraer el acta",
+                            )
+                            session.flush()
+                            classification_run_id = run.id
+                    except Exception as exc:
+                        # Conservar la extracción aunque el catálogo o la clasificación fallen.
+                        logger.exception("automatic_classification_failed", extra={"job_id": job_id})
+                        final_status = ProcessingStatus.NEEDS_REVIEW
+                        certificate.approval_status = "needs_review"
+                        job.error_code = "automatic_classification_failed"
+                        job.error_message = str(exc)[:4000]
             document.processing_status = final_status.value
             document.page_count = result["document"].get("page_count")
             document.metadata_json = {
@@ -201,12 +224,14 @@ class Worker:
                 "adapter": result.get("adapter"),
                 "ingestion": result["document"].get("ingestion") or {},
                 "extraction_reasons": result.get("reasons") or [],
+                "llm_assistance": result.get("llm_assistance"),
             }
             job.status = final_status.value
             job.progress = 100
             job.finished_at = datetime.now(timezone.utc)
             job.heartbeat_at = job.finished_at
             job.result_json = {
+                "classification_run_id": classification_run_id,
                 "status": result["status"],
                 "adapter": result.get("adapter"),
                 "detection": result.get("detection"),
@@ -222,6 +247,7 @@ class Worker:
                         "field_candidates": result.get("field_candidates") or [],
                         "table_candidates": result.get("table_candidates") or [],
                         "unmapped_blocks": result.get("unmapped_blocks") or [],
+                        "llm_assistance": result.get("llm_assistance"),
                     },
                     normalized_json=result.get("certificate"),
                     warnings_json=result.get("reasons") or [],

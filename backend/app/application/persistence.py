@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+import re
 from decimal import Decimal
 from typing import Any
 
@@ -29,6 +30,13 @@ def parse_certificate_date(value: Any) -> datetime | None:
     if value in (None, ""):
         return None
     text = str(value).strip()
+    if re.search(r"\b(?:about|approx|circa)\b", text, re.I):
+        return None
+    months = {name: f"{index:02}" for index, name in enumerate(
+        ("JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"), 1)}
+    match = re.fullmatch(r"([A-Za-z]{3})\.?\s+(\d{1,2}),?\s+(\d{4})", text)
+    if match and match[1].upper() in months:
+        text = f"{match[3]}-{months[match[1].upper()]}-{int(match[2]):02}"
     for pattern in ("%Y%m%d", "%Y-%m-%d", "%Y/%m/%d"):
         try:
             return datetime.strptime(text, pattern)
@@ -72,7 +80,7 @@ class CertificatePersistenceService:
         certificate_no = str(document_data.get("certificate_no") or "").strip() or None
         certificate.certificate_no = certificate_no
         parsed_date = parse_certificate_date(
-            document_data.get("certificate_date_raw") or document_data.get("delivery_date_raw") or document_data.get("issue_date_raw")
+            document_data.get("certificate_date_raw") or document_data.get("issue_date_raw")
         )
         certificate.certificate_date = parsed_date.date() if parsed_date else None
         products_data = normalized.get("products") or []
@@ -144,6 +152,10 @@ class CertificatePersistenceService:
             # Spreadsheet cells belong to individual rows even when percentages match.
             if any(item[1].get("source_format") == "xlsx" for item in entries):
                 shared = False
+            # Keep each roll's verification and citations, even when percentages match.
+            if any(detail.get("verification") for _, data in entries
+                   for detail in (data.get("observations", {}).get("composition_pct") or {}).values()):
+                shared = False
             if shared:
                 self._persist_composition(
                     session, certificate_id=certificate.id,
@@ -189,6 +201,7 @@ class CertificatePersistenceService:
                     field_path=field_path,
                     raw_value_json=detail.get("raw_value"),
                     normalized_value_json=detail.get("normalized_value"),
+                    verification_json=detail.get("verification"),
                     unit=detail.get("unit"),
                     confidence=detail.get("confidence", 1.0),
                     page_number=detail.get("page_number", detail.get("page")),
@@ -276,6 +289,7 @@ class CertificatePersistenceService:
                     field_path=f"composition_pct.{element}",
                     raw_value_json=detail.get("raw_value"),
                     normalized_value_json=percentage,
+                    verification_json=detail.get("verification"),
                     unit="%",
                     confidence=detail.get("confidence", 1.0),
                     page_number=detail.get("page_number", detail.get("page")),

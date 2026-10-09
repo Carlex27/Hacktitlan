@@ -11,11 +11,15 @@ import { validateReprocessForm, type ReprocessFormErrors } from "../model/review
 export interface ReprocessFormProps {
   /** Deshabilitado si el acta tiene una extracción activa u otra solicitud en curso. */
   disabled: boolean;
+  title?: string;
+  hint?: string;
+  submitLabel?: string;
+  reasonLabel?: string;
   isSubmitting: boolean;
   onSubmit(personName: string, reason: string): Promise<boolean>;
 }
 
-export function ReprocessForm({ disabled, isSubmitting, onSubmit }: ReprocessFormProps) {
+export function ReprocessForm({ disabled, isSubmitting, onSubmit, title, hint, submitLabel, reasonLabel }: ReprocessFormProps) {
   const [person, setPerson] = useState("");
   const [reason, setReason] = useState("");
   const [errors, setErrors] = useState<ReprocessFormErrors>({});
@@ -31,44 +35,44 @@ export function ReprocessForm({ disabled, isSubmitting, onSubmit }: ReprocessFor
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-2">
-      <fieldset disabled={locked} aria-describedby={ids.hint} className="flex flex-col gap-2">
-        <legend className="text-[11px] font-semibold text-slate-700">{es.documentReview.reprocessTitle}</legend>
-        <p id={ids.hint} className="text-[11px] text-slate-500">{es.documentReview.reprocessHint}</p>
+    <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-3">
+      <fieldset disabled={locked} aria-describedby={ids.hint} className="flex flex-col gap-3">
+        <legend className="text-sm leading-5 font-semibold text-foreground">{title ?? es.documentReview.reprocessTitle}</legend>
+        <p id={ids.hint} className="text-sm leading-5 text-muted-foreground">{hint ?? es.documentReview.reprocessHint}</p>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <div className="flex flex-col gap-0.5">
-            <label htmlFor={ids.person} className="text-[11px] text-slate-600">{es.documentReview.personLabel}</label>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor={ids.person} className="text-sm leading-5 text-foreground">{es.documentReview.personLabel}</label>
             <Input
               id={ids.person}
               value={person}
               onChange={(event) => setPerson(event.target.value)}
               aria-invalid={errors.person ? true : undefined}
               aria-describedby={errors.person ? ids.personError : undefined}
-              className="h-8 text-xs"
+              className="h-10 text-sm"
             />
-            {errors.person && <p id={ids.personError} className="text-[11px] text-destructive">{errors.person}</p>}
+            {errors.person && <p id={ids.personError} className="text-sm leading-5 text-destructive">{errors.person}</p>}
           </div>
-          <div className="flex flex-col gap-0.5">
-            <label htmlFor={ids.reason} className="text-[11px] text-slate-600">{es.documentReview.reasonLabel}</label>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor={ids.reason} className="text-sm leading-5 text-foreground">{reasonLabel ?? es.documentReview.reasonLabel}</label>
             <Input
               id={ids.reason}
               value={reason}
               onChange={(event) => setReason(event.target.value)}
               aria-invalid={errors.reason ? true : undefined}
               aria-describedby={errors.reason ? ids.reasonError : undefined}
-              className="h-8 text-xs"
+              className="h-10 text-sm"
             />
-            {errors.reason && <p id={ids.reasonError} className="text-[11px] text-destructive">{errors.reason}</p>}
+            {errors.reason && <p id={ids.reasonError} className="text-sm leading-5 text-destructive">{errors.reason}</p>}
           </div>
         </div>
         <div>
-          <Button type="submit" variant="outline" size="sm">
+          <Button type="submit" variant="outline" className="min-h-10">
             {isSubmitting ? (
               <Spinner data-icon="inline-start" aria-hidden="true" />
             ) : (
               <RotateCwIcon data-icon="inline-start" aria-hidden="true" />
             )}
-            {isSubmitting ? es.documentReview.processing : es.documentReview.reprocess}
+            {isSubmitting ? es.documentReview.processing : submitLabel ?? es.documentReview.reprocess}
           </Button>
         </div>
       </fieldset>
