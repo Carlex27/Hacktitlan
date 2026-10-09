@@ -1,4 +1,4 @@
-import { ArrowLeft, FileText, RotateCw, X } from "lucide-react";
+import { ArrowLeft, FileText, RotateCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { DeleteCertificateButton, HeatReview, useCertificate } from "@/features/certificate-review";
@@ -11,6 +11,7 @@ import {
   useEvidence,
 } from "@/features/classification-results";
 import { PdfViewer } from "@/features/document-viewer";
+import { FormatLibrary } from "@/features/certificate-formats";
 import {
   TariffReferenceButton,
   TariffReferenceViewer,
@@ -27,9 +28,11 @@ export interface ValidationPageProps {
   onBack?: () => void;
   onDeleted?: () => void;
   onSourceFileName?: (name: string | null) => void;
+  onOpenRevision?: (certificateId: number, documentId?: number | null) => void;
 }
 
-export function ValidationPage({ certificateId, documentId, onBack, onDeleted, onSourceFileName }: ValidationPageProps) {
+export function ValidationPage({ certificateId, documentId, onBack, onDeleted, onSourceFileName, onOpenRevision }: ValidationPageProps) {
+  const [formatOpen, setFormatOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"rolls" | "extracted" | "validation" | "approval">("rolls");
   const [selectedHeatId, setSelectedHeatId] = useState<number | null | undefined>(undefined);
   const [pdfPage, setPdfPage] = useState(1);
@@ -69,32 +72,34 @@ export function ValidationPage({ certificateId, documentId, onBack, onDeleted, o
 
   const docId = documentId ?? certificate?.document_id ?? null;
   const filePath = docId ? `/api/v1/documents/${docId}/file` : null;
-  const refreshButton = <Button type="button" variant="outline" onClick={reloadRun} className="min-h-10" title={es.tabs.reExtract}>
+  const refreshButton = <Button type="button" variant="outline" onClick={reloadRun} className="min-h-11" title={es.tabs.reExtract}>
     <RotateCw aria-hidden="true" className="size-4" />
     <span>{es.tabs.reExtract}</span>
   </Button>;
 
+  if (formatOpen) return <FormatLibrary documentId={docId} certificateId={certificateId} onBack={() => setFormatOpen(false)} {...(onOpenRevision ? { onOpenRevision } : {})} />;
   return (
     <div className="flex-1 flex overflow-hidden min-h-0 w-full">
       <main ref={reviewMain} className="flex-1 bg-background text-foreground text-sm leading-5 flex flex-col min-w-0 overflow-y-auto overscroll-y-contain lg:overflow-hidden min-h-0">
         <div className="shrink-0 border-b border-border px-4 py-3 sm:px-8">
           <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3">
-          <div>{onBack && <Button className="min-h-10" variant="ghost" onClick={onBack}><ArrowLeft aria-hidden="true" />{es.workspace.back}</Button>}</div>
-          <Button className="min-h-10" variant="outline" onClick={() => { if (viewerOpen) setViewerOpen(false); else { setViewerTab("acta"); setViewerOpen(true); } }} disabled={!docId}>
+          <div>{onBack && <Button className="min-h-11" variant="ghost" onClick={onBack}><ArrowLeft aria-hidden="true" />{es.workspace.back}</Button>}</div>
+          <div className="flex flex-wrap gap-2"><Button className="min-h-11" variant="outline" disabled={!docId || certificate?.source_file_name?.toLowerCase().endsWith(".xlsx")} onClick={() => setFormatOpen(true)}>{es.formats.configure}</Button>
+          <Button className="min-h-11" variant="outline" onClick={() => { if (viewerOpen) setViewerOpen(false); else { setViewerTab("acta"); setViewerOpen(true); } }} disabled={!docId}>
             <FileText aria-hidden="true" />{viewerOpen ? es.workspace.closeViewer : es.workspace.original}
-          </Button>
+          </Button></div>
           </div>
         </div>
         <header className="px-4 sm:px-8 py-3 border-b border-border shrink-0 bg-background">
           <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3">
-          <nav aria-label={es.workspace.reviewSections} className="flex min-w-0 max-w-full gap-1 overflow-x-auto rounded-lg bg-muted p-1">
+          <nav aria-label={es.workspace.reviewSections} className="grid w-full min-w-0 grid-cols-2 gap-1 rounded-xl bg-muted p-1 sm:flex sm:w-auto sm:flex-wrap">
             {(["rolls", "extracted", "validation", "approval"] as const).map((tab) => (
               <Button key={tab} type="button" variant="ghost" onClick={() => {
                 if (reviewMain.current) reviewMain.current.scrollTop = 0;
                 if (reviewContent.current) reviewContent.current.scrollTop = 0;
                 setActiveTab(tab);
               }} aria-current={activeTab === tab ? "true" : undefined}
-                className={cn("min-h-10 px-3", activeTab === tab ? "bg-background text-foreground shadow-sm hover:bg-background" : "text-muted-foreground hover:text-foreground")}>
+                className={cn("min-h-11 whitespace-normal px-3 text-center", activeTab === tab ? "bg-background text-foreground shadow-sm hover:bg-background" : "text-muted-foreground hover:text-foreground")}>
                 {tab === "rolls" ? es.workspace.reviewTitle : es.tabs[tab]}
               </Button>
             ))}
@@ -109,7 +114,7 @@ export function ValidationPage({ certificateId, documentId, onBack, onDeleted, o
         </header>
 
         <div className="shrink-0 lg:flex-1 flex flex-col lg:flex-row lg:min-h-0 lg:overflow-hidden">
-        <div ref={reviewContent} className="lg:flex-1 lg:overflow-y-auto overscroll-y-contain px-4 py-8 sm:px-8 space-y-8 [&>*]:w-full [&>*]:max-w-6xl [&>*]:mx-auto bg-muted/30 lg:min-h-0 min-w-0">
+        <div ref={reviewContent} className="lg:flex-1 lg:overflow-y-auto overscroll-y-contain px-4 py-8 sm:px-8 space-y-8 [&>*]:w-full [&>*]:max-w-6xl [&>*]:mx-auto bg-muted/20 lg:min-h-0 min-w-0">
           <EvidenceArea state={evidence.state} onRetry={evidence.retry} onClose={evidence.close} onGoToPage={goToActaPage} onOpenSource={openTariffReference} />
           {(activeTab === "rolls" || activeTab === "extracted") && <HeatReview certificate={certificate} isLoading={certLoading}
             error={certError} onRetry={reloadCertificate} selectedHeatId={selectedHeatId} onSelectHeat={setSelectedHeatId}
@@ -125,10 +130,7 @@ export function ValidationPage({ certificateId, documentId, onBack, onDeleted, o
           </div>
         </div>
 
-          {viewerOpen && <aside className="relative h-[32rem] lg:h-auto lg:w-[42%] lg:min-w-80 shrink-0 flex flex-col min-h-0 border-t lg:border-t-0 lg:border-l border-border bg-background" aria-label={es.viewer.title}>
-            <Button type="button" variant="outline" size="icon" className="absolute right-3 top-3 z-10 size-11 bg-background shadow-sm" aria-label={es.workspace.closeViewer} title={es.workspace.closeViewer} onClick={() => setViewerOpen(false)}>
-              <X aria-hidden="true" />
-            </Button>
+          {viewerOpen && <aside className="relative h-[75vh] lg:h-auto lg:w-[46%] lg:min-w-80 shrink-0 flex flex-col min-h-0 border-t lg:border-t-0 lg:border-l border-border bg-background" aria-label={es.viewer.title}>
             {viewerTab === "acta"
               ? <PdfViewer filePath={filePath} page={pdfPage} fileName={certificate?.certificate_no ? `Acta ${certificate.certificate_no}` : null} />
               : <TariffReferenceViewer active={tariffReference.active} />}

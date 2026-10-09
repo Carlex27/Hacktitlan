@@ -27,6 +27,6 @@ describe("RollCandidateSelector", () => {
     const current = candidates[0];
     if (!current) throw new Error("Missing fixture");
     render(<RollCandidateSelector candidates={candidates} current={current} identifier="R-1" disabled onSelect={vi.fn()} />);
-    expect(screen.getByRole("button", { name: "NICO y alternativas: R-1" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "NICO: R-1" })).toBeDisabled();
   });
 });

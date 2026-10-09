@@ -29,7 +29,7 @@ export function ClassificationEngineCard({ run, result, isLoading = false, onSel
   const fraction = topCandidate?.fraction ?? result.fraction ?? null;
   const nico = topCandidate?.nico ?? result.nico ?? null;
   const code = formatTariffCode(fraction, nico);
-  return <section aria-labelledby="class-engine-title" className="space-y-5 rounded-xl border border-border bg-background p-5">
+  return <section aria-labelledby="class-engine-title" className="space-y-5 rounded-xl border border-border bg-background p-5 sm:p-6">
     <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
       <h3 id="class-engine-title" className="text-lg leading-7 font-semibold">{es.classification.engineTitle}</h3>
       <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
@@ -47,7 +47,7 @@ export function ClassificationEngineCard({ run, result, isLoading = false, onSel
         {renderTariffAction?.(findSourceReferenceForCode(result, fraction, nico), code)}
       </div>
       <p className="text-sm leading-6 text-muted-foreground">{topCandidate?.description ?? result.description ?? es.classification.noDescription}</p>
-      {onSelectCandidateOpen && result.candidates.length > 0 && <Button variant="outline" className="min-h-10" onClick={onSelectCandidateOpen}>{es.classification.selectCandidateBtn} ({result.candidates.length})</Button>}
+      {onSelectCandidateOpen && result.candidates.length > 0 && <Button variant="outline" className="min-h-11" onClick={onSelectCandidateOpen}>{es.classification.selectCandidateBtn} ({result.candidates.length})</Button>}
     </div>
   </section>;
 }

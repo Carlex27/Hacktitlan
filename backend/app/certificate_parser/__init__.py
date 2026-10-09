@@ -11,6 +11,7 @@ from backend.app.certificate_parser.mill_certificate import (
     CertificateParseError,
     normalize_certificate,
 )
+from backend.app.certificate_parser.regions import PageRegion, RegionEvidence, select_region
 
 __all__ = [
     "CertificateParseError",
@@ -18,7 +19,10 @@ __all__ = [
     "FormatProfile",
     "GenericCertificateExtractor",
     "GenericExtractionResult",
+    "PageRegion",
+    "RegionEvidence",
     "detect_document_kind",
     "evaluate_format_profiles",
     "normalize_certificate",
+    "select_region",
 ]

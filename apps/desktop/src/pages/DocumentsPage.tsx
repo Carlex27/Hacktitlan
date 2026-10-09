@@ -1,4 +1,4 @@
-import { CertificateDropzone, ImportQueue, type ImportItem } from "@/features/certificate-import";
+import { CertificateDropzone, ImportQueue, completedImportKey, type ImportItem } from "@/features/certificate-import";
 import { DocumentReviewQueue } from "@/features/document-review";
 import { es } from "@/lib/i18n";
 
@@ -19,7 +19,7 @@ export function DocumentsPage({
     <div className="flex-1 flex overflow-hidden min-h-0 w-full">
       {/* `*:shrink-0`: las tarjetas (overflow-hidden) no deben comprimirse para caber;
           la columna crece y se recorre con scroll. */}
-      <main className="flex-1 bg-background flex flex-col min-w-0 min-h-0 overflow-y-auto px-4 py-8 sm:px-8 gap-8 *:shrink-0 [&>*]:w-full [&>*]:max-w-6xl [&>*]:mx-auto">
+      <main className="flex-1 bg-background flex flex-col min-w-0 min-h-0 overflow-y-auto [scrollbar-gutter:stable] px-4 py-8 sm:px-8 gap-8 *:shrink-0 [&>*]:w-full [&>*]:max-w-6xl [&>*]:mx-auto">
         <header className="flex flex-col gap-1">
           <h2 className="text-2xl leading-8 font-semibold text-foreground">
             {es.certificateImport.title}
@@ -38,7 +38,7 @@ export function DocumentsPage({
         />
 
         <p className="text-sm leading-5 text-muted-foreground">{es.workspace.processing}</p>
-        <DocumentReviewQueue onReview={onReview} />
+        <DocumentReviewQueue onReview={onReview} refreshKey={completedImportKey(items)} />
       </main>
     </div>
   );

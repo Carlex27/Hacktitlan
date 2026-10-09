@@ -36,6 +36,13 @@ def test_real_pdf_ocr_produces_products_without_supplier_specific_adapters(numbe
     assert len(products) == count
     assert products[0]['product_id'] == first_id
     assert (products[0]['weight_kg'] or products[0]['net_weight_kg']) == weight
+    if number == 1:
+        assert result['adapter'] == 'MOLINO_1_BX_POSCO'
+        assert [p['product_id'] for p in products] == [
+            f'25BH2B{number}0200' for number in range(755, 761)]
+        assert {p['heat_no'] for p in products} == {'2518114'}
+        assert all(p['composition_pct'] == {'C': .0013, 'Si': 0, 'Mn': .12,
+            'P': .011, 'S': .008, 'Al_soluble': .031, 'Ti': .068} for p in products)
     if number != 1:
         assert result['adapter'] == 'generic_layout_extractor'
         assert result['status'] == 'needs_review'
@@ -78,6 +85,19 @@ def test_real_metadata_snapshot_finds_notes_and_does_not_mix_shipping_with_issue
     assert "JUN 28" in metadata["shipping_date_raw"]
     assert "ABOUT" in metadata["shipping_date_raw"]
     assert metadata["product_name"] == "HOT ROLLED SHEET-COIL (MILL EDGE)"
+
+
+def test_molino2_refined_cells_preserve_all_five_elements_and_original_readings():
+    from backend.app.certificate_parser.generic_extractor import GenericCertificateExtractor
+
+    layout = read_snapshot('2-refined')
+    product = GenericCertificateExtractor().extract(layout).certificate['products'][0]
+    assert product['heat_no'] == '2641568'
+    assert product['composition_pct'] == {'C': .08, 'Mn': .34, 'P': .015, 'S': .008, 'Al_total': .029}
+    chemistry = product['observations']['composition_pct']
+    assert chemistry['P']['raw_value'] == '15'
+    assert chemistry['P']['source_text'] == '15'
+    assert any(block.text == '5' for block in layout.pages[0].blocks)
 
 
 def test_molino3_refined_cells_preserve_all_elements_and_repeated_dimensions():

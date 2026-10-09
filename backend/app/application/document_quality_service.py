@@ -292,8 +292,13 @@ class DocumentQualityService:
         from_stage: Literal["extraction", "normalization", "classification"],
         person_name: str,
         reason: str,
+        format_version_id: int | None = None,
     ) -> dict[str, Any]:
         """Trigger reprocessing from specified stage while preserving immutable historical events."""
+        from backend.app.application.format_activation import template_snapshots
+        if format_version_id is not None and from_stage != "extraction":
+            raise ApplicationError("format_requires_extraction", "La plantilla sólo se aplica al reprocesar extracción")
+        candidates = template_snapshots(session, format_version_id) if from_stage == "extraction" else []
         person_name = person_name.strip()
         reason = reason.strip()
         if not person_name or not reason:
@@ -375,6 +380,8 @@ class DocumentQualityService:
                 payload_json={
                     "certificate_id": revision.id,
                     "reprocess_stage": "extraction",
+                    "template_candidates": candidates,
+                    "explicit_template": format_version_id is not None,
                     "person_name": person_name,
                     "reason": reason,
                     "workstation_name": self.settings.workstation_name,

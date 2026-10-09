@@ -11,6 +11,7 @@ import {
   envelope,
   errorEnvelope,
   healthyRoutes,
+  pdfFile,
   type RouteHandler,
 } from "../support/fakeBackend";
 
@@ -54,6 +55,24 @@ function queue() {
 }
 
 describe("Revisión documental", () => {
+  it.each(["succeeded", "needs_review"])("actualiza automáticamente cuando la extracción termina en %s", async (status) => {
+    let complete = false;
+    let finish!: (response: Response) => void;
+    const { backend, user } = renderWith({
+      "GET /api/v1/document-reviews": () => envelope(complete ? [item({})] : []),
+      "POST /api/v1/documents": () => envelope({ certificate_id: 42, document_id: 10, job_id: 7, duplicate: false }),
+      "GET /api/v1/jobs/7": () => new Promise<Response>((resolve) => { finish = resolve; }),
+    });
+    await screen.findByText("No hay revisiones pendientes");
+    await user.upload(screen.getByLabelText(/Seleccionar certificados PDF/), pdfFile());
+    await waitFor(() => expect(backend.calls).toContain("GET /api/v1/jobs/7"));
+    complete = true;
+    finish(envelope({ id: 7, document_id: 10, kind: "extract_document", status, progress: 100,
+      attempts: 1, max_attempts: 3, error_code: null, error_message: null, result: null }));
+    expect(within(await queue()).getByRole("listitem", { name: "CM-42" })).toBeVisible();
+    expect(screen.getByText("No hay archivos seleccionados")).toBeVisible();
+    expect(backend.calls.filter((call) => call === "GET /api/v1/document-reviews")).toHaveLength(2);
+  });
   it("identifica los Excel por su nombre original durante procesamiento y revisión", async () => {
     renderWith({
       "GET /api/v1/document-reviews": () => envelope([
@@ -80,6 +99,10 @@ describe("Revisión documental", () => {
     const list = await queue();
     expect(screen.queryByRole("region", { name: "Visor de documento" })).not.toBeInTheDocument();
     const ready = within(list).getByRole("listitem", { name: "CM-42" });
+    expect(within(ready).getByText("Fabricante Uno")).toBeVisible();
+    expect(within(list).queryByText(/^Calidad /)).not.toBeInTheDocument();
+    expect(within(list).queryByText(/bloqueantes?$/)).not.toBeInTheDocument();
+    expect(within(list).queryByText(/advertencias?$/)).not.toBeInTheDocument();
     expect(within(ready).queryByText(/Falta el espesor/)).not.toBeInTheDocument();
     expect(within(ready).queryByText("products[0].thickness_mm")).not.toBeInTheDocument();
     expect(within(ready).queryByRole("button", { name: "Volver a analizar" })).not.toBeInTheDocument();

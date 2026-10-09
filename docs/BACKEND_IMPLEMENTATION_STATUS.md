@@ -2,6 +2,28 @@
 
 ## En proceso
 
+- Biblioteca de formatos, etapas 2 y 3 (9 de octubre de 2026): editor web con
+  regiones, alternativa de teclado, columnas, guardado, pruebas y confirmación.
+  Activación/retirada transaccionales, reconocimiento por encabezados estables,
+  snapshots en jobs, procedencia y reprocesamiento explícito implementados.
+  Migración 0011 validada sólo en hacktitlan_test; pendiente despliegue en la
+  base de desarrollo cuya revisión Alembic no está registrada. Se mantiene
+  revisión humana, el alcance de tablas simples y el modelo de confianza local.
+  Ver [audit/FORMAT_LIBRARY_EDITOR.md](audit/FORMAT_LIBRARY_EDITOR.md).
+
+- Biblioteca de formatos (9 de octubre de 2026): iniciada la etapa 0. Regiones
+  relativas validadas y selección de evidencia con estados explícitos, sin
+  modificar importación ni clasificación. Se inspeccionaron los seis PDFs
+  aportados: todos son escaneados y necesitan OCR. Página 2 de COLD ROLL (B)
+  procesada con caché OCR: 107 bloques y una tabla; superposición de cajas
+  comprobada visualmente. Pendientes otros ejemplos, segmentación de paquetes,
+  reconocimiento automático y editor web. Etapa 1: biblioteca de borradores,
+  revisiones con control de concurrencia, preparación de layout y pruebas
+  aisladas por jobs implementadas en API v1. La prueba fija configuración,
+  revisión, layout y hash del extractor; no guarda productos ni modifica actas.
+  Migración 0010 verificada en PostgreSQL de pruebas; aplicar al desplegar.
+  Evidencia en [audit/FORMAT_LIBRARY_PILOT.md](audit/FORMAT_LIBRARY_PILOT.md).
+
 - Progreso de importación conectado al trabajo real: avance por página durante
   OCR, guardado al 95 y finalización al 100 dentro de la transacción. Barra por
   archivo, consulta cada segundo, estados finales explícitos y recuperación de
@@ -318,6 +340,59 @@ requisito de 8 GB de RAM; esa medición no condiciona la entrega a un límite fi
 
 Por decisión del usuario, la selección auditada de fracción y NICO confirma la verificación humana de cada rollo. La aprobación del acta cierra la revisión completa; los datos faltantes y factores desconocidos del motor se preservan sin bloquear el cierre. Se mantienen bloqueos de contradicciones y cobertura incompleta.
 
+### Química de tablas con un solo rollo (2026-10-09)
+
+El refinamiento OCR genérico ahora relee las celdas químicas aunque exista un solo
+rollo y no haya bloques fusionados. Limita el recorte de las escalas al encabezado
+y elimina sus bordes antes de reconocer los superíndices. Se comprobó con los
+bloques OCR y la imagen de MOLINO 2: C 0.08 %, Mn 0.34 %, P 0.015 %, S 0.008 %
+y Al_total 0.029 %. La prueba conserva los bloques originales, incluida la lectura
+incompleta de P como 5, junto a la lectura refinada 15. No se infieren escalas
+ausentes ni se completan elementos con cero. Las extracciones guardadas requieren
+reiniciar el worker y reprocesar el documento para incorporar el cambio.
+
 ### Formato Calvert incorporado (2026-10-09)
 
 Por petición del usuario se añade el adaptador ArcelorMittal Calvert sobre el OCR existente. La carta complementaria conserva A1011 CS-B como evidencia y deja de crear un rollo ficticio A1011. Se validaron las cuatro páginas escaneadas, la extracción de un rollo con su colada, química en dos bandas y ensayos en otra página, y la persistencia mediante el worker/API en PostgreSQL de pruebas. La incorporación de este adaptador es una excepción solicitada al enfoque genérico descrito arriba; no modifica las reglas de clasificación. Los documentos previamente extraídos requieren reprocesamiento para actualizar sus datos.
+### Calvert aluminizado con varios certificados (2026-10-09)
+
+El adaptador admite varios certificados en un PDF y asocia química, dimensiones
+y ensayos por página y número de certificado. Las descripciones `Aluminize Coil`
+ya no dependen de `Hot Roll`; `Cold Roll Base` aporta la laminación declarada.
+Se preserva la especificación de cada rollo y se recuperan los pesos de
+recubrimiento por cara. La regresión usa el OCR real de las seis páginas de
+`ALUMINIZE 1233 (B).pdf`: dos rollos y 17 elementos por rollo, dimensiones
+1.2 × 1105 y 2 × 1073 mm, ensayos 407/602/28 y 417/594/27.
+Los encabezados OCR `SI`, `AI` y `% Tolal` se reconocen conservando la evidencia.
+El peso neto OCR `10,090,000` queda sin normalizar por separadores ambiguos;
+el peso bruto legible de 10090 kg se presenta explícitamente como bruto.
+Un archivo con varios números no recibe un número de acta único inventado;
+los números originales se conservan en la evidencia de cada rollo.
+Requiere reiniciar el worker y reprocesar para actualizar extracciones guardadas.
+
+### Regresión de rasterización en Molino 1 (2026-10-09)
+
+La selección de páginas para omitir portadas había reemplazado la rasterización
+nativa de Paddle (escala 2, suavizado habilitado) por 150 dpi sin suavizado.
+La reproducción con el PDF real produjo cinco rollos, tres lecturas de colada
+(`2519114`, `7518114`, `2518114`) y sólo Si/Al soluble; el adaptador conocido
+fallaba y el servicio recurría al extractor genérico. Se restauró la imagen de
+entrada equivalente a la nativa: 144 dpi con `antialias=True`, comprobada píxel
+a píxel contra PDFium. Se conserva la omisión de portadas Calvert.
+La nueva ejecución real recuperó seis rollos, una colada `2518114` y los siete
+elementos C, Si, Mn, P, S, Al soluble y Ti. Las pruebas ahora exigen todos esos
+datos y comprueban la rasterización de páginas con y sin fallo del sondeo de
+portadas. No se fusionan identificadores por semejanza ni se inventa química.
+Validación operativa: worker reiniciado sin trabajos activos; reprocesamiento
+por API del acta 27 creó la revisión 2 (acta 29), conservando la anterior.
+El trabajo 36 terminó sin error en `needs_review`; la API publica seis rollos,
+una colada y 42 mediciones químicas (siete por rollo), con los valores esperados.
+
+## Filtros del historial
+
+
+Corregida la búsqueda de actas por el título visible (número, ID o nombre de archivo),
+espacios y comodines literales. Los filtros de colada, rollo y clasificación se
+combinan sobre el mismo producto y la última ejecución. El intervalo por fecha
+del acta excluye fechas desconocidas. Semántica documentada en OpenAPI y runbook;
+pruebas sobre PostgreSQL cubren combinaciones, fechas y paginación.

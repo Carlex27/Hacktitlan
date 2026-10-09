@@ -1,0 +1,5070 @@
+{
+  "file_name": "ALUMINIZE 1233 (B).pdf",
+  "sha256": "7fae2ca6d251b031bdddd8c2ec5a4940e360bace6fbeebc58364828342f69cad",
+  "pages": [
+    {
+      "page_number": 1,
+      "width": 612.48,
+      "height": 792.0,
+      "rotation": 0,
+      "source": "ocr",
+      "blocks": [],
+      "tables": []
+    },
+    {
+      "page_number": 2,
+      "width": 612.48,
+      "height": 792.0,
+      "rotation": 0,
+      "source": "ocr",
+      "blocks": [
+        {
+          "page_number": 2,
+          "text": "20",
+          "bbox": {
+            "x0": 117.47999999999999,
+            "top": 514.0600000000001,
+            "x1": 144.48000000000002,
+            "bottom": 541.7800000000001
+          },
+          "confidence": 0.5108566284179688,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "0.214",
+          "bbox": {
+            "x0": 144.48000000000002,
+            "top": 514.0600000000001,
+            "x1": 191.16,
+            "bottom": 541.7800000000001
+          },
+          "confidence": 0.9571524858474731,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "1.15",
+          "bbox": {
+            "x0": 191.16,
+            "top": 514.0600000000001,
+            "x1": 238.92,
+            "bottom": 541.7800000000001
+          },
+          "confidence": 0.9478171467781067,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "0.006",
+          "bbox": {
+            "x0": 238.92,
+            "top": 514.0600000000001,
+            "x1": 288.0,
+            "bottom": 541.7800000000001
+          },
+          "confidence": 0.9825995564460754,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "0.001",
+          "bbox": {
+            "x0": 288.0,
+            "top": 514.0600000000001,
+            "x1": 335.64,
+            "bottom": 541.7800000000001
+          },
+          "confidence": 0.9537472724914551,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "0.028",
+          "bbox": {
+            "x0": 335.64,
+            "top": 514.0600000000001,
+            "x1": 382.32,
+            "bottom": 541.7800000000001
+          },
+          "confidence": 0.9805243611335754,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "0.20",
+          "bbox": {
+            "x0": 382.32,
+            "top": 514.0600000000001,
+            "x1": 429.12,
+            "bottom": 541.7800000000001
+          },
+          "confidence": 0.8583662509918213,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "0.005",
+          "bbox": {
+            "x0": 429.12,
+            "top": 514.0600000000001,
+            "x1": 473.88,
+            "bottom": 541.7800000000001
+          },
+          "confidence": 0.8205936551094055,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "0.003",
+          "bbox": {
+            "x0": 473.88,
+            "top": 514.0600000000001,
+            "x1": 518.1600000000001,
+            "bottom": 541.7800000000001
+          },
+          "confidence": 0.9890041351318359,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "0.0055",
+          "bbox": {
+            "x0": 518.1600000000001,
+            "top": 514.0600000000001,
+            "x1": 547.76,
+            "bottom": 541.7800000000001
+          },
+          "confidence": 0.9800590872764587,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "ArcelorMittal Calvert LLC",
+          "bbox": {
+            "x0": 27.84,
+            "top": 34.54,
+            "x1": 158.4,
+            "bottom": 48.45
+          },
+          "confidence": 0.9786270260810852,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "1 Calvert Way",
+          "bbox": {
+            "x0": 28.8,
+            "top": 48.45,
+            "x1": 93.12,
+            "bottom": 61.4
+          },
+          "confidence": 0.9685146808624268,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "ArcelorMittal",
+          "bbox": {
+            "x0": 448.32,
+            "top": 53.73,
+            "x1": 521.76,
+            "bottom": 67.16
+          },
+          "confidence": 0.8979984521865845,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "Calvert, AL 36513 USA",
+          "bbox": {
+            "x0": 29.28,
+            "top": 59.48,
+            "x1": 133.92,
+            "bottom": 71.96
+          },
+          "confidence": 0.960845947265625,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "Mill Certificate",
+          "bbox": {
+            "x0": 252.48,
+            "top": 83.47,
+            "x1": 339.36,
+            "bottom": 96.42
+          },
+          "confidence": 0.9655914306640625,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "CUSTOMER ORIGINAL",
+          "bbox": {
+            "x0": 412.8,
+            "top": 79.15,
+            "x1": 528.0,
+            "bottom": 90.67
+          },
+          "confidence": 0.9942111968994141,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "Order - Item",
+          "bbox": {
+            "x0": 27.36,
+            "top": 100.26,
+            "x1": 82.08,
+            "bottom": 111.77
+          },
+          "confidence": 0.9525833129882812,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "Certificate Number",
+          "bbox": {
+            "x0": 122.88,
+            "top": 99.3,
+            "x1": 206.88,
+            "bottom": 111.77
+          },
+          "confidence": 0.9957192540168762,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "Delivery No",
+          "bbox": {
+            "x0": 237.6,
+            "top": 99.78,
+            "x1": 290.4,
+            "bottom": 111.77
+          },
+          "confidence": 0.9319994449615479,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "Date",
+          "bbox": {
+            "x0": 343.2,
+            "top": 99.3,
+            "x1": 367.68,
+            "bottom": 111.77
+          },
+          "confidence": 0.9992516040802002,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "Page",
+          "bbox": {
+            "x0": 452.16,
+            "top": 97.86,
+            "x1": 481.92,
+            "bottom": 113.69
+          },
+          "confidence": 0.9994865655899048,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "356656-10",
+          "bbox": {
+            "x0": 27.36,
+            "top": 111.77,
+            "x1": 76.8,
+            "bottom": 123.29
+          },
+          "confidence": 0.9996118545532227,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "4404035750",
+          "bbox": {
+            "x0": 123.84,
+            "top": 112.25,
+            "x1": 179.04,
+            "bottom": 122.33
+          },
+          "confidence": 0.9996135830879211,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "800646710-10",
+          "bbox": {
+            "x0": 238.08,
+            "top": 111.77,
+            "x1": 301.92,
+            "bottom": 121.85
+          },
+          "confidence": 0.999470055103302,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "06/28/2026",
+          "bbox": {
+            "x0": 343.68,
+            "top": 111.29,
+            "x1": 394.08,
+            "bottom": 122.81
+          },
+          "confidence": 0.999717116355896,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "2 of 3",
+          "bbox": {
+            "x0": 453.12,
+            "top": 109.85,
+            "x1": 486.72,
+            "bottom": 123.76
+          },
+          "confidence": 0.863286018371582,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "Customer No: 14875",
+          "bbox": {
+            "x0": 27.84,
+            "top": 127.6,
+            "x1": 123.36,
+            "bottom": 139.12
+          },
+          "confidence": 0.9896776676177979,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "Cust PO: B2604021102",
+          "bbox": {
+            "x0": 269.76,
+            "top": 126.64,
+            "x1": 378.24,
+            "bottom": 138.64
+          },
+          "confidence": 0.9876124262809753,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "Customer Part No: 76218/9-7LG0A",
+          "bbox": {
+            "x0": 27.36,
+            "top": 147.75,
+            "x1": 187.68,
+            "bottom": 159.26
+          },
+          "confidence": 0.9822194576263428,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "Customer Sold to:",
+          "bbox": {
+            "x0": 27.84,
+            "top": 167.42,
+            "x1": 106.56,
+            "bottom": 177.49
+          },
+          "confidence": 0.9468703269958496,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "Customer Ship to:",
+          "bbox": {
+            "x0": 201.6,
+            "top": 166.46,
+            "x1": 280.32,
+            "bottom": 177.97
+          },
+          "confidence": 0.9944562315940857,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "Contact - AMANDA BAKER",
+          "bbox": {
+            "x0": 371.04,
+            "top": 165.98,
+            "x1": 490.08,
+            "bottom": 177.01
+          },
+          "confidence": 0.9271442890167236,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "Metal One Steel Service",
+          "bbox": {
+            "x0": 27.36,
+            "top": 177.49,
+            "x1": 138.72,
+            "bottom": 189.49
+          },
+          "confidence": 0.9922115206718445,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "METAL ONE STEEL SERVICE DE",
+          "bbox": {
+            "x0": 202.08,
+            "top": 178.45,
+            "x1": 359.52,
+            "bottom": 188.05
+          },
+          "confidence": 0.9591749906539917,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "AM Calvert LLC",
+          "bbox": {
+            "x0": 371.04,
+            "top": 177.97,
+            "x1": 443.04,
+            "bottom": 188.05
+          },
+          "confidence": 0.9886733889579773,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "de Mexico SA de CV",
+          "bbox": {
+            "x0": 26.88,
+            "top": 189.01,
+            "x1": 123.36,
+            "bottom": 201.48
+          },
+          "confidence": 0.9666798114776611,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "MEXICO SA DE",
+          "bbox": {
+            "x0": 202.08,
+            "top": 189.96,
+            "x1": 276.0,
+            "bottom": 200.04
+          },
+          "confidence": 0.9822580218315125,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "1 AM/NS Way",
+          "bbox": {
+            "x0": 369.6,
+            "top": 188.05,
+            "x1": 436.32,
+            "bottom": 202.44
+          },
+          "confidence": 0.962720513343811,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "AVENIDA CELAYA 106",
+          "bbox": {
+            "x0": 27.84,
+            "top": 201.96,
+            "x1": 135.36,
+            "bottom": 212.03
+          },
+          "confidence": 0.985733687877655,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "PARQUE INDUSTRIAL AMISTAD",
+          "bbox": {
+            "x0": 201.6,
+            "top": 201.0,
+            "x1": 355.68,
+            "bottom": 212.03
+          },
+          "confidence": 0.9897899627685547,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "CALVERT AL 36513",
+          "bbox": {
+            "x0": 371.52,
+            "top": 201.48,
+            "x1": 467.04,
+            "bottom": 211.55
+          },
+          "confidence": 0.975720226764679,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "38199 APASEO EL GRANDE",
+          "bbox": {
+            "x0": 27.36,
+            "top": 212.99,
+            "x1": 163.2,
+            "bottom": 223.54
+          },
+          "confidence": 0.9766969084739685,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "BAJIO",
+          "bbox": {
+            "x0": 200.16,
+            "top": 211.07,
+            "x1": 233.28,
+            "bottom": 224.98
+          },
+          "confidence": 0.9989593625068665,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "USA",
+          "bbox": {
+            "x0": 370.08,
+            "top": 212.03,
+            "x1": 394.56,
+            "bottom": 224.02
+          },
+          "confidence": 0.999661386013031,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "MEXICO",
+          "bbox": {
+            "x0": 27.36,
+            "top": 224.02,
+            "x1": 70.56,
+            "bottom": 236.02
+          },
+          "confidence": 0.9981759190559387,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "AVENIDA CELAYA 106",
+          "bbox": {
+            "x0": 201.6,
+            "top": 224.5,
+            "x1": 309.12,
+            "bottom": 234.58
+          },
+          "confidence": 0.9867846369743347,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "Email: amanda.baker@arcelormittal.com",
+          "bbox": {
+            "x0": 370.08,
+            "top": 223.54,
+            "x1": 554.4,
+            "bottom": 236.02
+          },
+          "confidence": 0.9683427810668945,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "38199 APASEO EL GRANDE",
+          "bbox": {
+            "x0": 201.6,
+            "top": 235.54,
+            "x1": 336.48,
+            "bottom": 246.57
+          },
+          "confidence": 0.9757646322250366,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "Phone: 251-289-3000",
+          "bbox": {
+            "x0": 371.52,
+            "top": 236.02,
+            "x1": 469.44,
+            "bottom": 246.09
+          },
+          "confidence": 0.992820143699646,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "MEXICO",
+          "bbox": {
+            "x0": 201.12,
+            "top": 247.05,
+            "x1": 243.36,
+            "bottom": 258.56
+          },
+          "confidence": 0.9987294673919678,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "Steel Grade /Customer Specification",
+          "bbox": {
+            "x0": 27.36,
+            "top": 262.4,
+            "x1": 187.2,
+            "bottom": 273.43
+          },
+          "confidence": 0.9611241817474365,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "Aluminize Coil USIBOR@1500CONV22MNB5 AS10/10O/1.200 mm X 1,105.000 mm AS80 Nissan 2201 AS10/10",
+          "bbox": {
+            "x0": 26.88,
+            "top": 273.43,
+            "x1": 514.56,
+            "bottom": 284.95
+          },
+          "confidence": 0.9587470293045044,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "ACCORDING TO M2201-Cold Roll Base",
+          "bbox": {
+            "x0": 27.36,
+            "top": 286.39,
+            "x1": 203.04,
+            "bottom": 295.98
+          },
+          "confidence": 0.9591159224510193,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "Type of Product/Surface",
+          "bbox": {
+            "x0": 26.4,
+            "top": 309.89,
+            "x1": 132.96,
+            "bottom": 323.32
+          },
+          "confidence": 0.9824665188789368,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "Aluminize Non Chem Treat, 0.3 g/m2 Quaker Ferrocote EGL-1 Unexposed REINF FR PLR OTR R/L MT",
+          "bbox": {
+            "x0": 26.4,
+            "top": 321.41,
+            "x1": 471.36,
+            "bottom": 333.88
+          },
+          "confidence": 0.9435870051383972,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "TEST METHOD",
+          "bbox": {
+            "x0": 26.88,
+            "top": 345.39,
+            "x1": 90.72,
+            "bottom": 354.98
+          },
+          "confidence": 0.9910659193992615,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "Melted in Mexico",
+          "bbox": {
+            "x0": 197.28,
+            "top": 347.31,
+            "x1": 273.6,
+            "bottom": 357.38
+          },
+          "confidence": 0.9908971190452576,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "Manufactured in USA",
+          "bbox": {
+            "x0": 374.4,
+            "top": 346.35,
+            "x1": 470.88,
+            "bottom": 356.42
+          },
+          "confidence": 0.9834086894989014,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "NISSAN",
+          "bbox": {
+            "x0": 26.88,
+            "top": 361.7,
+            "x1": 59.52,
+            "bottom": 371.77
+          },
+          "confidence": 0.9972701668739319,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "Country of origin: USA",
+          "bbox": {
+            "x0": 196.8,
+            "top": 381.37,
+            "x1": 299.04,
+            "bottom": 392.88
+          },
+          "confidence": 0.9695098996162415,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "MATERIAL DESCRIPTION",
+          "bbox": {
+            "x0": 27.36,
+            "top": 394.32,
+            "x1": 133.92,
+            "bottom": 403.92
+          },
+          "confidence": 0.9776648283004761,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "Weight",
+          "bbox": {
+            "x0": 307.2,
+            "top": 409.19,
+            "x1": 336.0,
+            "bottom": 421.18
+          },
+          "confidence": 0.9887938499450684,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "Weight",
+          "bbox": {
+            "x0": 388.32,
+            "top": 408.71,
+            "x1": 418.08,
+            "bottom": 421.66
+          },
+          "confidence": 0.9973852634429932,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "Heat",
+          "bbox": {
+            "x0": 180.48,
+            "top": 421.66,
+            "x1": 201.6,
+            "bottom": 432.22
+          },
+          "confidence": 0.9975020289421082,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "Coil",
+          "bbox": {
+            "x0": 237.6,
+            "top": 421.18,
+            "x1": 255.36,
+            "bottom": 432.22
+          },
+          "confidence": 0.9694663882255554,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "Net",
+          "bbox": {
+            "x0": 320.16,
+            "top": 421.66,
+            "x1": 336.0,
+            "bottom": 432.22
+          },
+          "confidence": 0.9980399012565613,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "Gross",
+          "bbox": {
+            "x0": 392.16,
+            "top": 421.18,
+            "x1": 417.12,
+            "bottom": 432.7
+          },
+          "confidence": 0.9987044334411621,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "ORDERED",
+          "bbox": {
+            "x0": 99.36,
+            "top": 432.7,
+            "x1": 145.44,
+            "bottom": 444.21
+          },
+          "confidence": 0.9982327818870544,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "No.",
+          "bbox": {
+            "x0": 184.32,
+            "top": 433.18,
+            "x1": 201.6,
+            "bottom": 444.21
+          },
+          "confidence": 0.999211311340332,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "No.",
+          "bbox": {
+            "x0": 238.56,
+            "top": 433.18,
+            "x1": 255.36,
+            "bottom": 444.21
+          },
+          "confidence": 0.9987873435020447,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "KG",
+          "bbox": {
+            "x0": 320.16,
+            "top": 433.66,
+            "x1": 336.0,
+            "bottom": 444.21
+          },
+          "confidence": 0.9978321194648743,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "KG",
+          "bbox": {
+            "x0": 401.76,
+            "top": 433.66,
+            "x1": 416.64,
+            "bottom": 443.73
+          },
+          "confidence": 0.9972637295722961,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "(mm)",
+          "bbox": {
+            "x0": 43.2,
+            "top": 445.65,
+            "x1": 65.28,
+            "bottom": 458.12
+          },
+          "confidence": 0.9756569862365723,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "1.200",
+          "bbox": {
+            "x0": 123.84,
+            "top": 446.61,
+            "x1": 145.44,
+            "bottom": 455.72
+          },
+          "confidence": 0.9044011235237122,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "2640998",
+          "bbox": {
+            "x0": 167.52,
+            "top": 446.13,
+            "x1": 201.12,
+            "bottom": 456.2
+          },
+          "confidence": 0.9997739195823669,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "4404035750",
+          "bbox": {
+            "x0": 209.28,
+            "top": 446.61,
+            "x1": 253.92,
+            "bottom": 455.24
+          },
+          "confidence": 0.9996322393417358,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "20,370.000",
+          "bbox": {
+            "x0": 292.8,
+            "top": 445.17,
+            "x1": 334.56,
+            "bottom": 456.68
+          },
+          "confidence": 0.991476833820343,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "20,370.000",
+          "bbox": {
+            "x0": 373.92,
+            "top": 445.17,
+            "x1": 415.68,
+            "bottom": 456.68
+          },
+          "confidence": 0.9835694432258606,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "(in)",
+          "bbox": {
+            "x0": 50.4,
+            "top": 457.16,
+            "x1": 65.28,
+            "bottom": 469.16
+          },
+          "confidence": 0.9874264001846313,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "0.0472",
+          "bbox": {
+            "x0": 119.04,
+            "top": 457.64,
+            "x1": 145.92,
+            "bottom": 467.72
+          },
+          "confidence": 0.9992013573646545,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "CHEMICAL COMPOSITION OF THE COIL *",
+          "bbox": {
+            "x0": 26.88,
+            "top": 477.31,
+            "x1": 201.6,
+            "bottom": 489.78
+          },
+          "confidence": 0.9781100153923035,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "Heat",
+          "bbox": {
+            "x0": 58.08,
+            "top": 495.54,
+            "x1": 78.24,
+            "bottom": 506.09
+          },
+          "confidence": 0.9983236193656921,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "No.",
+          "bbox": {
+            "x0": 62.88,
+            "top": 508.01,
+            "x1": 78.24,
+            "bottom": 518.09
+          },
+          "confidence": 0.9988042712211609,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "C",
+          "bbox": {
+            "x0": 116.16,
+            "top": 507.53,
+            "x1": 125.28,
+            "bottom": 517.61
+          },
+          "confidence": 0.9835593104362488,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "Si",
+          "bbox": {
+            "x0": 162.24,
+            "top": 507.05,
+            "x1": 174.24,
+            "bottom": 518.09
+          },
+          "confidence": 0.9891284108161926,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "Mn",
+          "bbox": {
+            "x0": 206.4,
+            "top": 506.57,
+            "x1": 221.76,
+            "bottom": 518.09
+          },
+          "confidence": 0.9929680824279785,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "P",
+          "bbox": {
+            "x0": 259.2,
+            "top": 507.53,
+            "x1": 268.32,
+            "bottom": 517.61
+          },
+          "confidence": 0.9783948659896851,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "S",
+          "bbox": {
+            "x0": 307.68,
+            "top": 507.05,
+            "x1": 316.8,
+            "bottom": 517.13
+          },
+          "confidence": 0.9844595193862915,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "Al",
+          "bbox": {
+            "x0": 353.28,
+            "top": 506.57,
+            "x1": 364.8,
+            "bottom": 517.61
+          },
+          "confidence": 0.7347215414047241,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "Cr",
+          "bbox": {
+            "x0": 399.36,
+            "top": 506.57,
+            "x1": 411.84,
+            "bottom": 517.61
+          },
+          "confidence": 0.9981052279472351,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "Cu",
+          "bbox": {
+            "x0": 445.92,
+            "top": 507.05,
+            "x1": 459.36,
+            "bottom": 517.61
+          },
+          "confidence": 0.9970698356628418,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "Mo",
+          "bbox": {
+            "x0": 487.2,
+            "top": 506.09,
+            "x1": 503.04,
+            "bottom": 518.09
+          },
+          "confidence": 0.9992716312408447,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "N",
+          "bbox": {
+            "x0": 536.64,
+            "top": 507.53,
+            "x1": 545.76,
+            "bottom": 517.61
+          },
+          "confidence": 0.9962564706802368,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "2640998",
+          "bbox": {
+            "x0": 45.6,
+            "top": 522.88,
+            "x1": 77.28,
+            "bottom": 532.96
+          },
+          "confidence": 0.9997904896736145,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "0.220",
+          "bbox": {
+            "x0": 102.24,
+            "top": 522.4,
+            "x1": 125.76,
+            "bottom": 532.96
+          },
+          "confidence": 0.998919665813446,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "0.214",
+          "bbox": {
+            "x0": 149.76,
+            "top": 522.4,
+            "x1": 173.76,
+            "bottom": 532.96
+          },
+          "confidence": 0.9988386034965515,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "1.15",
+          "bbox": {
+            "x0": 202.08,
+            "top": 521.92,
+            "x1": 221.76,
+            "bottom": 532.96
+          },
+          "confidence": 0.9995157718658447,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "0.006",
+          "bbox": {
+            "x0": 245.28,
+            "top": 522.88,
+            "x1": 267.84,
+            "bottom": 532.0
+          },
+          "confidence": 0.9995683431625366,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "0.001",
+          "bbox": {
+            "x0": 293.28,
+            "top": 521.92,
+            "x1": 316.32,
+            "bottom": 532.96
+          },
+          "confidence": 0.9979125261306763,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "0.028",
+          "bbox": {
+            "x0": 341.28,
+            "top": 521.92,
+            "x1": 364.32,
+            "bottom": 532.96
+          },
+          "confidence": 0.9996374249458313,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "0.20",
+          "bbox": {
+            "x0": 392.16,
+            "top": 521.92,
+            "x1": 411.84,
+            "bottom": 532.96
+          },
+          "confidence": 0.9996445775032043,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "0.005",
+          "bbox": {
+            "x0": 435.84,
+            "top": 521.92,
+            "x1": 459.36,
+            "bottom": 532.48
+          },
+          "confidence": 0.9998859167098999,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "0.003",
+          "bbox": {
+            "x0": 479.52,
+            "top": 521.92,
+            "x1": 502.56,
+            "bottom": 532.96
+          },
+          "confidence": 0.9998071789741516,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "0.0055",
+          "bbox": {
+            "x0": 518.88,
+            "top": 522.4,
+            "x1": 545.76,
+            "bottom": 532.96
+          },
+          "confidence": 0.9971725940704346,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "Ni",
+          "bbox": {
+            "x0": 114.24,
+            "top": 543.03,
+            "x1": 125.76,
+            "bottom": 554.06
+          },
+          "confidence": 0.9973026514053345,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "Nb",
+          "bbox": {
+            "x0": 158.88,
+            "top": 542.55,
+            "x1": 173.76,
+            "bottom": 554.06
+          },
+          "confidence": 0.9958168268203735,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "Ti",
+          "bbox": {
+            "x0": 210.72,
+            "top": 543.03,
+            "x1": 221.76,
+            "bottom": 553.58
+          },
+          "confidence": 0.9951294660568237,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "B",
+          "bbox": {
+            "x0": 259.2,
+            "top": 543.51,
+            "x1": 267.84,
+            "bottom": 553.1
+          },
+          "confidence": 0.9499882459640503,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "V",
+          "bbox": {
+            "x0": 307.68,
+            "top": 543.51,
+            "x1": 316.8,
+            "bottom": 553.58
+          },
+          "confidence": 0.9902717471122742,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "Ca",
+          "bbox": {
+            "x0": 350.88,
+            "top": 543.03,
+            "x1": 364.32,
+            "bottom": 553.58
+          },
+          "confidence": 0.9985902905464172,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "Sn",
+          "bbox": {
+            "x0": 398.4,
+            "top": 543.03,
+            "x1": 411.36,
+            "bottom": 553.58
+          },
+          "confidence": 0.9988150000572205,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "0.003",
+          "bbox": {
+            "x0": 102.72,
+            "top": 557.9,
+            "x1": 124.8,
+            "bottom": 567.02
+          },
+          "confidence": 0.9996622204780579,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "0.002",
+          "bbox": {
+            "x0": 150.24,
+            "top": 557.42,
+            "x1": 173.28,
+            "bottom": 567.98
+          },
+          "confidence": 0.9998718500137329,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "0.031",
+          "bbox": {
+            "x0": 198.24,
+            "top": 557.9,
+            "x1": 220.32,
+            "bottom": 567.02
+          },
+          "confidence": 0.999809741973877,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "0.0031",
+          "bbox": {
+            "x0": 240.96,
+            "top": 557.42,
+            "x1": 267.84,
+            "bottom": 567.5
+          },
+          "confidence": 0.9995231628417969,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "0.003",
+          "bbox": {
+            "x0": 293.76,
+            "top": 557.9,
+            "x1": 315.84,
+            "bottom": 567.02
+          },
+          "confidence": 0.9997075796127319,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "0.0023",
+          "bbox": {
+            "x0": 336.96,
+            "top": 557.42,
+            "x1": 364.32,
+            "bottom": 567.5
+          },
+          "confidence": 0.999244749546051,
+          "source": "ocr"
+        },
+        {
+          "page_number": 2,
+          "text": "0.001",
+          "bbox": {
+            "x0": 388.32,
+            "top": 556.94,
+            "x1": 411.36,
+            "bottom": 567.5
+          },
+          "confidence": 0.9804344177246094,
+          "source": "ocr"
+        }
+      ],
+      "tables": [
+        {
+          "page_number": 2,
+          "bbox": {
+            "x0": 21.88,
+            "top": 97.31,
+            "x1": 565.22,
+            "bottom": 619.36
+          },
+          "rows": [
+            [
+              "Order - Item Certificate Number 356656-10 4404035750 Customer No: 14875",
+              "Order - Item Certificate Number Delivery No Date Page 356656-10 4404035750 800646710-10 06/28/2026 2 of 3 Customer No: 14875 Cust PO: B2604021102 Customer Part No: 76218/9-7LG0A",
+              "Date Page 06/28/2026 2 of 3 Cust PO: B2604021102 Contact - AMANDA BAKER AM Calvert LLC 1 AM/NS Way CALVERT AL 36513 USA Email: amanda.baker@arcelormittal.com Phone: 251-289-3000",
+              "Date Page 06/28/2026 2 of 3 Cust PO: B2604021102 Contact - AMANDA BAKER AM Calvert LLC 1 AM/NS Way CALVERT AL 36513 USA Email: amanda.baker@arcelormittal.com Phone: 251-289-3000",
+              "Customer Sold to: Customer Ship to: Contact - AMANDA BAKER Metal One Steel Service METAL ONE STEEL SERVICE DE AM Calvert LLC de Mexico SA de CV MEXICO SA DE 1 AM/NS Way AVENIDA CELAYA 106 PARQUE INDUSTRIAL AMISTAD CALVERT AL 36513 38199 APASEO EL GRANDE BAJIO USA MEXICO AVENIDA CELAYA 106 Email: amanda.baker@arcelormittal.com 38199 APASEO EL GRANDE Phone: 251-289-3000 MEXICO Steel Grade /Customer Specification Aluminize Coil USIBOR@1500CONV22MNB5 AS10/10O/1.200 mm X 1,105.000 mm AS80 Nissan 2201 AS10/10 ACCORDING TO M2201-Cold Roll Base Type of Product/Surface Aluminize Non Chem Treat, 0.3 g/m2 Quaker Ferrocote EGL-1 Unexposed REINF FR PLR OTR R/L MT",
+              "Customer Sold to: Metal One Steel Service de Mexico SA de CV AVENIDA CELAYA 106 38199 APASEO EL GRANDE MEXICO"
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              "TEST METHOD NISSAN MATERIAL DESCRIPTION",
+              "TEST METHOD NISSAN MATERIAL DESCRIPTION",
+              "TEST METHOD NISSAN MATERIAL DESCRIPTION",
+              "TEST METHOD NISSAN MATERIAL DESCRIPTION",
+              "TEST METHOD NISSAN MATERIAL DESCRIPTION",
+              "TEST METHOD NISSAN MATERIAL DESCRIPTION"
+            ],
+            [
+              "Weight Net KG 20,370.000",
+              "Weight Net KG 20,370.000",
+              "ORDERED No. (mm) 1.200 2640998 (in) 0.0472 CHEMICAL COMPOSITION OF THE COIL * Heat No. C Si 2640998 0.220 0.214",
+              "ORDERED No. (mm) 1.200 2640998 (in) 0.0472 CHEMICAL COMPOSITION OF THE COIL * Heat No. C Si 2640998 0.220 0.214",
+              "ORDERED No. (mm) 1.200 2640998 (in) 0.0472 CHEMICAL COMPOSITION OF THE COIL * Heat No. C Si 2640998 0.220 0.214",
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              "No. C Si 2640998 0.220 0.214 Ni Nb 0.003 0.002",
+              "No. C Si 2640998 0.220 0.214 Ni Nb 0.003 0.002",
+              "No. C Si 2640998 0.220 0.214 Ni Nb 0.003 0.002",
+              "No. C Si 2640998 0.220 0.214 Ni Nb 0.003 0.002",
+              "No. C Si 2640998 0.220 0.214 Ni Nb 0.003 0.002",
+              "No. C Si 2640998 0.220 0.214 Ni Nb 0.003 0.002",
+              "No. C Si 2640998 0.220 0.214 Ni Nb 0.003 0.002"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "page_number": 3,
+      "width": 612.48,
+      "height": 792.0,
+      "rotation": 0,
+      "source": "ocr",
+      "blocks": [
+        {
+          "page_number": 3,
+          "text": "ArcelorMittal Calvert LLC",
+          "bbox": {
+            "x0": 28.8,
+            "top": 42.21,
+            "x1": 157.92,
+            "bottom": 53.73
+          },
+          "confidence": 0.9684160351753235,
+          "source": "ocr"
+        },
+        {
+          "page_number": 3,
+          "text": "1 Calvert Way",
+          "bbox": {
+            "x0": 29.28,
+            "top": 54.69,
+            "x1": 93.12,
+            "bottom": 67.64
+          },
+          "confidence": 0.9900668263435364,
+          "source": "ocr"
+        },
+        {
+          "page_number": 3,
+          "text": "ArcelorMittal",
+          "bbox": {
+            "x0": 449.76,
+            "top": 53.25,
+            "x1": 523.2,
+            "bottom": 67.64
+          },
+          "confidence": 0.9767771363258362,
+          "source": "ocr"
+        },
+        {
+          "page_number": 3,
+          "text": "Calvert, AL 36513 USA",
+          "bbox": {
+            "x0": 29.28,
+            "top": 65.72,
+            "x1": 133.92,
+            "bottom": 78.19
+          },
+          "confidence": 0.9604313969612122,
+          "source": "ocr"
+        },
+        {
+          "page_number": 3,
+          "text": "Mill Certificate",
+          "bbox": {
+            "x0": 252.48,
+            "top": 75.79,
+            "x1": 339.36,
+            "bottom": 90.67
+          },
+          "confidence": 0.9527887105941772,
+          "source": "ocr"
+        },
+        {
+          "page_number": 3,
+          "text": "Order - Item",
+          "bbox": {
+            "x0": 29.28,
+            "top": 99.3,
+            "x1": 83.52,
+            "bottom": 110.81
+          },
+          "confidence": 0.9593479037284851,
+          "source": "ocr"
+        },
+        {
+          "page_number": 3,
+          "text": "Certificate Number",
+          "bbox": {
+            "x0": 124.32,
+            "top": 98.82,
+            "x1": 207.84,
+            "bottom": 111.29
+          },
+          "confidence": 0.9798964262008667,
+          "source": "ocr"
+        },
+        {
+          "page_number": 3,
+          "text": "Delivery No",
+          "bbox": {
+            "x0": 238.56,
+            "top": 98.82,
+            "x1": 292.32,
+            "bottom": 112.25
+          },
+          "confidence": 0.9907655119895935,
+          "source": "ocr"
+        },
+        {
+          "page_number": 3,
+          "text": "Date",
+          "bbox": {
+            "x0": 343.68,
+            "top": 98.34,
+            "x1": 369.12,
+            "bottom": 112.73
+          },
+          "confidence": 0.9989563226699829,
+          "source": "ocr"
+        },
+        {
+          "page_number": 3,
+          "text": "Page",
+          "bbox": {
+            "x0": 454.56,
+            "top": 98.34,
+            "x1": 483.36,
+            "bottom": 114.17
+          },
+          "confidence": 0.9988848567008972,
+          "source": "ocr"
+        },
+        {
+          "page_number": 3,
+          "text": "356656-10",
+          "bbox": {
+            "x0": 28.8,
+            "top": 111.29,
+            "x1": 78.24,
+            "bottom": 122.81
+          },
+          "confidence": 0.9994752407073975,
+          "source": "ocr"
+        },
+        {
+          "page_number": 3,
+          "text": "4404035750",
+          "bbox": {
+            "x0": 124.32,
+            "top": 110.81,
+            "x1": 180.48,
+            "bottom": 122.33
+          },
+          "confidence": 0.9997888803482056,
+          "source": "ocr"
+        },
+        {
+          "page_number": 3,
+          "text": "800646710-10",
+          "bbox": {
+            "x0": 239.04,
+            "top": 110.81,
+            "x1": 303.84,
+            "bottom": 122.33
+          },
+          "confidence": 0.9997023940086365,
+          "source": "ocr"
+        },
+        {
+          "page_number": 3,
+          "text": "06/28/2026",
+          "bbox": {
+            "x0": 345.12,
+            "top": 110.81,
+            "x1": 395.52,
+            "bottom": 122.81
+          },
+          "confidence": 0.9996932744979858,
+          "source": "ocr"
+        },
+        {
+          "page_number": 3,
+          "text": "3 of 3",
+          "bbox": {
+            "x0": 454.56,
+            "top": 109.85,
+            "x1": 488.16,
+            "bottom": 124.24
+          },
+          "confidence": 0.8922984004020691,
+          "source": "ocr"
+        },
+        {
+          "page_number": 3,
+          "text": "COATING*",
+          "bbox": {
+            "x0": 28.32,
+            "top": 124.72,
+            "x1": 79.2,
+            "bottom": 137.2
+          },
+          "confidence": 0.9655046463012695,
+          "source": "ocr"
+        },
+        {
+          "page_number": 3,
+          "text": "Top Side",
+          "bbox": {
+            "x0": 46.56,
+            "top": 142.47,
+            "x1": 79.2,
+            "bottom": 152.55
+          },
+          "confidence": 0.9943544268608093,
+          "source": "ocr"
+        },
+        {
+          "page_number": 3,
+          "text": "Bottom Side",
+          "bbox": {
+            "x0": 94.56,
+            "top": 142.47,
+            "x1": 139.2,
+            "bottom": 152.07
+          },
+          "confidence": 0.9943215847015381,
+          "source": "ocr"
+        },
+        {
+          "page_number": 3,
+          "text": "g/m2",
+          "bbox": {
+            "x0": 58.56,
+            "top": 153.03,
+            "x1": 80.16,
+            "bottom": 165.5
+          },
+          "confidence": 0.9895796775817871,
+          "source": "ocr"
+        },
+        {
+          "page_number": 3,
+          "text": "g/m2",
+          "bbox": {
+            "x0": 117.6,
+            "top": 152.07,
+            "x1": 141.12,
+            "bottom": 166.46
+          },
+          "confidence": 0.9931159019470215,
+          "source": "ocr"
+        },
+        {
+          "page_number": 3,
+          "text": "46",
+          "bbox": {
+            "x0": 67.2,
+            "top": 169.34,
+            "x1": 79.68,
+            "bottom": 179.89
+          },
+          "confidence": 0.9997351169586182,
+          "source": "ocr"
+        },
+        {
+          "page_number": 3,
+          "text": "48",
+          "bbox": {
+            "x0": 127.2,
+            "top": 169.34,
+            "x1": 140.16,
+            "bottom": 179.89
+          },
+          "confidence": 0.9997022747993469,
+          "source": "ocr"
+        },
+        {
+          "page_number": 3,
+          "text": "TENSILE TEST",
+          "bbox": {
+            "x0": 29.28,
+            "top": 180.85,
+            "x1": 91.68,
+            "bottom": 190.92
+          },
+          "confidence": 0.9865517020225525,
+          "source": "ocr"
+        },
+        {
+          "page_number": 3,
+          "text": "Test",
+          "bbox": {
+            "x0": 48.0,
+            "top": 196.68,
+            "x1": 66.72,
+            "bottom": 207.71
+          },
+          "confidence": 0.9991916418075562,
+          "source": "ocr"
+        },
+        {
+          "page_number": 3,
+          "text": "Yield",
+          "bbox": {
+            "x0": 85.44,
+            "top": 196.68,
+            "x1": 106.56,
+            "bottom": 207.23
+          },
+          "confidence": 0.9924785494804382,
+          "source": "ocr"
+        },
+        {
+          "page_number": 3,
+          "text": "Tensile",
+          "bbox": {
+            "x0": 119.04,
+            "top": 197.16,
+            "x1": 147.84,
+            "bottom": 207.23
+          },
+          "confidence": 0.9988694190979004,
+          "source": "ocr"
+        },
+        {
+          "page_number": 3,
+          "text": "% Tolal",
+          "bbox": {
+            "x0": 158.88,
+            "top": 197.16,
+            "x1": 188.64,
+            "bottom": 207.23
+          },
+          "confidence": 0.9230595231056213,
+          "source": "ocr"
+        },
+        {
+          "page_number": 3,
+          "text": "Directlon",
+          "bbox": {
+            "x0": 32.64,
+            "top": 209.15,
+            "x1": 66.24,
+            "bottom": 218.75
+          },
+          "confidence": 0.9877443313598633,
+          "source": "ocr"
+        },
+        {
+          "page_number": 3,
+          "text": "Strength",
+          "bbox": {
+            "x0": 74.4,
+            "top": 209.15,
+            "x1": 106.08,
+            "bottom": 219.23
+          },
+          "confidence": 0.9989586472511292,
+          "source": "ocr"
+        },
+        {
+          "page_number": 3,
+          "text": "Strength",
+          "bbox": {
+            "x0": 115.2,
+            "top": 209.15,
+            "x1": 147.36,
+            "bottom": 219.23
+          },
+          "confidence": 0.9986227750778198,
+          "source": "ocr"
+        },
+        {
+          "page_number": 3,
+          "text": "Elong.",
+          "bbox": {
+            "x0": 162.24,
+            "top": 207.71,
+            "x1": 188.16,
+            "bottom": 220.67
+          },
+          "confidence": 0.9959542155265808,
+          "source": "ocr"
+        },
+        {
+          "page_number": 3,
+          "text": "T",
+          "bbox": {
+            "x0": 58.08,
+            "top": 224.5,
+            "x1": 66.72,
+            "bottom": 233.62
+          },
+          "confidence": 0.9834342002868652,
+          "source": "ocr"
+        },
+        {
+          "page_number": 3,
+          "text": "407 MPa",
+          "bbox": {
+            "x0": 72.48,
+            "top": 224.02,
+            "x1": 106.56,
+            "bottom": 234.1
+          },
+          "confidence": 0.9805663824081421,
+          "source": "ocr"
+        },
+        {
+          "page_number": 3,
+          "text": "602 MPa",
+          "bbox": {
+            "x0": 113.28,
+            "top": 224.02,
+            "x1": 146.88,
+            "bottom": 234.1
+          },
+          "confidence": 0.9854828119277954,
+          "source": "ocr"
+        },
+        {
+          "page_number": 3,
+          "text": "28",
+          "bbox": {
+            "x0": 176.16,
+            "top": 224.02,
+            "x1": 188.64,
+            "bottom": 234.58
+          },
+          "confidence": 0.999690055847168,
+          "source": "ocr"
+        },
+        {
+          "page_number": 3,
+          "text": "This is not a NAFTA or any other FTA certificate of origin",
+          "bbox": {
+            "x0": 28.32,
+            "top": 621.22,
+            "x1": 284.16,
+            "bottom": 633.22
+          },
+          "confidence": 0.9475114941596985,
+          "source": "ocr"
+        },
+        {
+          "page_number": 3,
+          "text": "ArcelorMittal Calvert LLC certifies that the material herein described has been manufactured, sampled, tested, and",
+          "bbox": {
+            "x0": 29.28,
+            "top": 633.7,
+            "x1": 541.44,
+            "bottom": 644.25
+          },
+          "confidence": 0.9706186652183533,
+          "source": "ocr"
+        },
+        {
+          "page_number": 3,
+          "text": "inspected in accordance with the contract requirements and is fully in compliance. Test certificates are prepared in",
+          "bbox": {
+            "x0": 28.8,
+            "top": 645.21,
+            "x1": 540.48,
+            "bottom": 656.24
+          },
+          "confidence": 0.9615312814712524,
+          "source": "ocr"
+        },
+        {
+          "page_number": 3,
+          "text": "accordance with procedures outlined in DIN EN 10204:2005 Type 3.1. All tests performed to the current version of the",
+          "bbox": {
+            "x0": 28.8,
+            "top": 656.72,
+            "x1": 556.32,
+            "bottom": 667.76
+          },
+          "confidence": 0.9650089144706726,
+          "source": "ocr"
+        },
+        {
+          "page_number": 3,
+          "text": "standard unless otherwise noted.",
+          "bbox": {
+            "x0": 29.28,
+            "top": 668.71,
+            "x1": 177.12,
+            "bottom": 678.31
+          },
+          "confidence": 0.9872134923934937,
+          "source": "ocr"
+        },
+        {
+          "page_number": 3,
+          "text": "*-This test is not covered by our current A2LA",
+          "bbox": {
+            "x0": 26.88,
+            "top": 704.69,
+            "x1": 168.96,
+            "bottom": 714.77
+          },
+          "confidence": 0.9458699226379395,
+          "source": "ocr"
+        },
+        {
+          "page_number": 3,
+          "text": "accreditation",
+          "bbox": {
+            "x0": 27.36,
+            "top": 714.77,
+            "x1": 67.2,
+            "bottom": 722.92
+          },
+          "confidence": 0.9932887554168701,
+          "source": "ocr"
+        },
+        {
+          "page_number": 3,
+          "text": "06/28/2026",
+          "bbox": {
+            "x0": 468.0,
+            "top": 716.21,
+            "x1": 508.32,
+            "bottom": 727.24
+          },
+          "confidence": 0.9982007145881653,
+          "source": "ocr"
+        },
+        {
+          "page_number": 3,
+          "text": "Chris Saniuel",
+          "bbox": {
+            "x0": 201.6,
+            "top": 730.6,
+            "x1": 255.84,
+            "bottom": 740.67
+          },
+          "confidence": 0.8953383564949036,
+          "source": "ocr"
+        },
+        {
+          "page_number": 3,
+          "text": "Manager,JQuality Management",
+          "bbox": {
+            "x0": 202.08,
+            "top": 740.67,
+            "x1": 323.52,
+            "bottom": 750.27
+          },
+          "confidence": 0.9461630582809448,
+          "source": "ocr"
+        },
+        {
+          "page_number": 3,
+          "text": "Rev.",
+          "bbox": {
+            "x0": 467.52,
+            "top": 744.99,
+            "x1": 487.2,
+            "bottom": 755.54
+          },
+          "confidence": 0.9973633289337158,
+          "source": "ocr"
+        },
+        {
+          "page_number": 3,
+          "text": "Arcelorkyfttal Calvert",
+          "bbox": {
+            "x0": 202.08,
+            "top": 749.79,
+            "x1": 282.72,
+            "bottom": 759.38
+          },
+          "confidence": 0.9248585104942322,
+          "source": "ocr"
+        }
+      ],
+      "tables": [
+        {
+          "page_number": 3,
+          "bbox": {
+            "x0": 22.96,
+            "top": 97.88,
+            "x1": 568.72,
+            "bottom": 655.3
+          },
+          "rows": [
+            [
+              "Order - Item 356656-10 Top Side",
+              "Certificate Number 4404035750",
+              "Certificate Number 4404035750",
+              "Delivery No 800646710-10",
+              "Date 06/28/2026",
+              "Page 3 of 3"
+            ],
+            [
+              "COATING*",
+              "COATING*",
+              "COATING*",
+              "COATING*",
+              "COATING*",
+              "COATING*"
+            ],
+            [
+              "g/m2 g/m2",
+              "g/m2 g/m2",
+              "g/m2 g/m2",
+              "g/m2 g/m2",
+              "g/m2 g/m2",
+              "g/m2 g/m2"
+            ],
+            [
+              "46 TENSILE TEST",
+              "Bottom Side 48",
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              "Test",
+              "Yield Tensile",
+              "% Tolal",
+              "% Tolal",
+              null,
+              null
+            ],
+            [
+              "Directlon",
+              "Strength Strength",
+              "Elong.",
+              null,
+              null,
+              null
+            ],
+            [
+              "T 407 MPa",
+              "602 MPa",
+              "28",
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              "This is not a NAFTA or any other FTA certificate of origin",
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              "accordance with procedures outlined in DIN EN 10204:2005 Type 3.1. All tests performed to the current version of the",
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              "ArcelorMittal Calvert LLC certifies that the material herein described has been manufactured, sampled, tested, and",
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              "inspected in accordance with the contract requirements and is fully in compliance. Test certificates are prepared in",
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "page_number": 4,
+      "width": 612.48,
+      "height": 792.0,
+      "rotation": 0,
+      "source": "ocr",
+      "blocks": [],
+      "tables": []
+    },
+    {
+      "page_number": 5,
+      "width": 612.48,
+      "height": 792.0,
+      "rotation": 0,
+      "source": "ocr",
+      "blocks": [
+        {
+          "page_number": 5,
+          "text": "0.232",
+          "bbox": {
+            "x0": 145.68,
+            "top": 514.78,
+            "x1": 192.24,
+            "bottom": 542.5
+          },
+          "confidence": 0.929975688457489,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "1.15",
+          "bbox": {
+            "x0": 192.24,
+            "top": 514.78,
+            "x1": 239.88,
+            "bottom": 542.5
+          },
+          "confidence": 0.8821291923522949,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "0.007",
+          "bbox": {
+            "x0": 239.88,
+            "top": 514.78,
+            "x1": 288.96,
+            "bottom": 542.5
+          },
+          "confidence": 0.9679156541824341,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "0.001  0.03",
+          "bbox": {
+            "x0": 288.96,
+            "top": 514.78,
+            "x1": 360.0,
+            "bottom": 542.5
+          },
+          "confidence": 0.9384726881980896,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "0.1",
+          "bbox": {
+            "x0": 360.0,
+            "top": 514.78,
+            "x1": 430.43999999999994,
+            "bottom": 542.5
+          },
+          "confidence": 0.6001375913619995,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "0.006",
+          "bbox": {
+            "x0": 430.43999999999994,
+            "top": 514.78,
+            "x1": 475.2,
+            "bottom": 542.5
+          },
+          "confidence": 0.8845341801643372,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "0.002",
+          "bbox": {
+            "x0": 475.2,
+            "top": 514.78,
+            "x1": 519.36,
+            "bottom": 542.5
+          },
+          "confidence": 0.9855820536613464,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "0.0038",
+          "bbox": {
+            "x0": 519.36,
+            "top": 514.78,
+            "x1": 548.72,
+            "bottom": 542.5
+          },
+          "confidence": 0.9937302470207214,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "ArcelorMittal Calvert L..C",
+          "bbox": {
+            "x0": 30.72,
+            "top": 36.94,
+            "x1": 160.8,
+            "bottom": 48.45
+          },
+          "confidence": 0.9287828207015991,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "1 Calvert Way",
+          "bbox": {
+            "x0": 30.72,
+            "top": 47.97,
+            "x1": 95.04,
+            "bottom": 61.88
+          },
+          "confidence": 0.9897892475128174,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "ArcelorMilfal",
+          "bbox": {
+            "x0": 449.76,
+            "top": 53.73,
+            "x1": 523.68,
+            "bottom": 69.56
+          },
+          "confidence": 0.9063012003898621,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "Calvert, AL 36513 USA",
+          "bbox": {
+            "x0": 32.16,
+            "top": 61.4,
+            "x1": 135.84,
+            "bottom": 71.48
+          },
+          "confidence": 0.9641500115394592,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "CUSTOMER ORIGINAL",
+          "bbox": {
+            "x0": 414.24,
+            "top": 79.63,
+            "x1": 529.92,
+            "bottom": 92.1
+          },
+          "confidence": 0.9817063808441162,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "Mill Certificate",
+          "bbox": {
+            "x0": 254.88,
+            "top": 84.43,
+            "x1": 340.8,
+            "bottom": 97.38
+          },
+          "confidence": 0.9554287195205688,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "Order - Item",
+          "bbox": {
+            "x0": 29.28,
+            "top": 100.74,
+            "x1": 84.0,
+            "bottom": 112.25
+          },
+          "confidence": 0.9461591839790344,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "Certificate Number",
+          "bbox": {
+            "x0": 126.24,
+            "top": 101.22,
+            "x1": 207.84,
+            "bottom": 111.29
+          },
+          "confidence": 0.9810445308685303,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "Delivery No",
+          "bbox": {
+            "x0": 238.56,
+            "top": 99.3,
+            "x1": 292.32,
+            "bottom": 113.69
+          },
+          "confidence": 0.992957353591919,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "Date",
+          "bbox": {
+            "x0": 345.12,
+            "top": 100.26,
+            "x1": 370.08,
+            "bottom": 112.73
+          },
+          "confidence": 0.9996291399002075,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "Page",
+          "bbox": {
+            "x0": 455.52,
+            "top": 99.78,
+            "x1": 483.36,
+            "bottom": 114.65
+          },
+          "confidence": 0.9991746544837952,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "354055-10",
+          "bbox": {
+            "x0": 29.28,
+            "top": 112.25,
+            "x1": 78.72,
+            "bottom": 123.76
+          },
+          "confidence": 0.9997004270553589,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "4404014860",
+          "bbox": {
+            "x0": 125.76,
+            "top": 112.73,
+            "x1": 181.44,
+            "bottom": 122.81
+          },
+          "confidence": 0.9998218417167664,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "800650042-10",
+          "bbox": {
+            "x0": 240.48,
+            "top": 112.73,
+            "x1": 303.84,
+            "bottom": 122.81
+          },
+          "confidence": 0.9995148181915283,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "06/28/2026",
+          "bbox": {
+            "x0": 346.08,
+            "top": 112.25,
+            "x1": 396.0,
+            "bottom": 123.76
+          },
+          "confidence": 0.9997844696044922,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "2 of 3",
+          "bbox": {
+            "x0": 454.56,
+            "top": 110.81,
+            "x1": 488.16,
+            "bottom": 125.2
+          },
+          "confidence": 0.8698373436927795,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "Customer No: 14875",
+          "bbox": {
+            "x0": 30.24,
+            "top": 129.04,
+            "x1": 124.32,
+            "bottom": 139.12
+          },
+          "confidence": 0.9782077074050903,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "Cust PO: B2603021062",
+          "bbox": {
+            "x0": 272.64,
+            "top": 129.04,
+            "x1": 380.16,
+            "bottom": 139.12
+          },
+          "confidence": 0.9851328730583191,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "Customer Part No: 732506LB0A",
+          "bbox": {
+            "x0": 29.76,
+            "top": 149.19,
+            "x1": 177.12,
+            "bottom": 159.74
+          },
+          "confidence": 0.9749884009361267,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "Customer Sold to:",
+          "bbox": {
+            "x0": 29.76,
+            "top": 167.9,
+            "x1": 108.48,
+            "bottom": 177.97
+          },
+          "confidence": 0.9949742555618286,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "Customer Ship to:",
+          "bbox": {
+            "x0": 203.04,
+            "top": 166.94,
+            "x1": 281.76,
+            "bottom": 178.45
+          },
+          "confidence": 0.9783063530921936,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "Contact - AMANDA BAKER",
+          "bbox": {
+            "x0": 373.44,
+            "top": 168.38,
+            "x1": 492.0,
+            "bottom": 177.97
+          },
+          "confidence": 0.9274193048477173,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "Metal One Steel Service",
+          "bbox": {
+            "x0": 29.76,
+            "top": 179.41,
+            "x1": 140.16,
+            "bottom": 189.49
+          },
+          "confidence": 0.9897204041481018,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "METAL ONE STEEL SERVICE DE",
+          "bbox": {
+            "x0": 202.56,
+            "top": 178.45,
+            "x1": 361.92,
+            "bottom": 189.49
+          },
+          "confidence": 0.962660551071167,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "AM Calvert LLC",
+          "bbox": {
+            "x0": 372.96,
+            "top": 179.41,
+            "x1": 444.96,
+            "bottom": 189.49
+          },
+          "confidence": 0.9646965265274048,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "de Mexico SA de CV",
+          "bbox": {
+            "x0": 29.76,
+            "top": 190.92,
+            "x1": 124.32,
+            "bottom": 201.0
+          },
+          "confidence": 0.9738417863845825,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "MEXICO SA DE",
+          "bbox": {
+            "x0": 202.08,
+            "top": 189.01,
+            "x1": 277.92,
+            "bottom": 201.48
+          },
+          "confidence": 0.9852336049079895,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "1 AM/NS Way",
+          "bbox": {
+            "x0": 372.48,
+            "top": 189.96,
+            "x1": 437.76,
+            "bottom": 202.92
+          },
+          "confidence": 0.9682067632675171,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "AVENIDA CELAYA 106",
+          "bbox": {
+            "x0": 29.28,
+            "top": 202.44,
+            "x1": 137.76,
+            "bottom": 212.51
+          },
+          "confidence": 0.9885493516921997,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "PARQUE INDUSTRIAL AMISTAD",
+          "bbox": {
+            "x0": 202.56,
+            "top": 201.96,
+            "x1": 357.6,
+            "bottom": 212.99
+          },
+          "confidence": 0.983151912689209,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "CALVERTAL 36513",
+          "bbox": {
+            "x0": 372.0,
+            "top": 201.48,
+            "x1": 469.44,
+            "bottom": 213.95
+          },
+          "confidence": 0.9897109866142273,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "38199 APASEO EL GRANDE",
+          "bbox": {
+            "x0": 29.76,
+            "top": 213.95,
+            "x1": 164.64,
+            "bottom": 223.54
+          },
+          "confidence": 0.9472154378890991,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "BAJIO",
+          "bbox": {
+            "x0": 202.08,
+            "top": 212.99,
+            "x1": 234.72,
+            "bottom": 224.5
+          },
+          "confidence": 0.9983952641487122,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "USA",
+          "bbox": {
+            "x0": 372.0,
+            "top": 212.99,
+            "x1": 396.0,
+            "bottom": 224.98
+          },
+          "confidence": 0.9994015097618103,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "MEXICO",
+          "bbox": {
+            "x0": 28.8,
+            "top": 224.5,
+            "x1": 71.52,
+            "bottom": 236.02
+          },
+          "confidence": 0.9976770281791687,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "AVENIDA CELAYA 106",
+          "bbox": {
+            "x0": 202.56,
+            "top": 225.46,
+            "x1": 311.04,
+            "bottom": 235.54
+          },
+          "confidence": 0.9868134260177612,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "Email: amanda,baker@arcelormittal.com",
+          "bbox": {
+            "x0": 372.48,
+            "top": 224.5,
+            "x1": 555.84,
+            "bottom": 237.46
+          },
+          "confidence": 0.929691731929779,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "38199 APASEO EL GRANDE",
+          "bbox": {
+            "x0": 202.56,
+            "top": 236.5,
+            "x1": 337.44,
+            "bottom": 247.53
+          },
+          "confidence": 0.9649980068206787,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "Phone: 251-289-3000",
+          "bbox": {
+            "x0": 372.96,
+            "top": 237.46,
+            "x1": 470.88,
+            "bottom": 247.53
+          },
+          "confidence": 0.970191240310669,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "MEXICO",
+          "bbox": {
+            "x0": 202.56,
+            "top": 248.01,
+            "x1": 244.8,
+            "bottom": 259.52
+          },
+          "confidence": 0.9982743859291077,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "Steel Grade /Customer Specification",
+          "bbox": {
+            "x0": 29.28,
+            "top": 263.36,
+            "x1": 189.12,
+            "bottom": 274.39
+          },
+          "confidence": 0.974212646484375,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "Aluminize Coil USIBOR® 1500 Conv to M2201 22MnB5/2.000 mm X 1,073.000 mm AS80 Nissan 2201 AS10/10",
+          "bbox": {
+            "x0": 28.32,
+            "top": 274.39,
+            "x1": 512.64,
+            "bottom": 285.91
+          },
+          "confidence": 0.9562368392944336,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "ACCORDING TO M2201-Cold Roll Base",
+          "bbox": {
+            "x0": 28.32,
+            "top": 286.39,
+            "x1": 204.48,
+            "bottom": 297.42
+          },
+          "confidence": 0.9761234521865845,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "Type of Product/Surface",
+          "bbox": {
+            "x0": 28.8,
+            "top": 311.81,
+            "x1": 134.88,
+            "bottom": 323.32
+          },
+          "confidence": 0.970201849937439,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "Aluminize Non Chem Treat, 0.3 g/m2 Quaker Ferrocote EGL-1 Unexposed REINF-ROOF, CTR",
+          "bbox": {
+            "x0": 28.32,
+            "top": 322.84,
+            "x1": 434.4,
+            "bottom": 333.88
+          },
+          "confidence": 0.9536041617393494,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "TEST METHOD",
+          "bbox": {
+            "x0": 28.32,
+            "top": 346.35,
+            "x1": 92.64,
+            "bottom": 356.42
+          },
+          "confidence": 0.9959213137626648,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "Melted in Mexico",
+          "bbox": {
+            "x0": 198.24,
+            "top": 348.27,
+            "x1": 275.04,
+            "bottom": 358.34
+          },
+          "confidence": 0.9932640790939331,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "Manufactured in USA",
+          "bbox": {
+            "x0": 375.84,
+            "top": 348.27,
+            "x1": 471.84,
+            "bottom": 358.34
+          },
+          "confidence": 0.9905117154121399,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "NISSAN",
+          "bbox": {
+            "x0": 27.36,
+            "top": 363.14,
+            "x1": 60.0,
+            "bottom": 373.21
+          },
+          "confidence": 0.9989719390869141,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "Country of origin: USA",
+          "bbox": {
+            "x0": 197.76,
+            "top": 382.33,
+            "x1": 299.52,
+            "bottom": 393.84
+          },
+          "confidence": 0.9900598526000977,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "MATERIAL DESCRIPTION",
+          "bbox": {
+            "x0": 28.32,
+            "top": 395.28,
+            "x1": 135.36,
+            "bottom": 404.39
+          },
+          "confidence": 0.9801362156867981,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "Weight",
+          "bbox": {
+            "x0": 308.16,
+            "top": 410.63,
+            "x1": 336.96,
+            "bottom": 422.62
+          },
+          "confidence": 0.9979248642921448,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "Weight",
+          "bbox": {
+            "x0": 390.72,
+            "top": 411.11,
+            "x1": 418.08,
+            "bottom": 421.66
+          },
+          "confidence": 0.9978757500648499,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "Heat",
+          "bbox": {
+            "x0": 181.92,
+            "top": 422.62,
+            "x1": 202.08,
+            "bottom": 433.18
+          },
+          "confidence": 0.9980584383010864,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "Coil",
+          "bbox": {
+            "x0": 239.04,
+            "top": 422.14,
+            "x1": 256.32,
+            "bottom": 433.18
+          },
+          "confidence": 0.9891114234924316,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "Net",
+          "bbox": {
+            "x0": 321.12,
+            "top": 423.1,
+            "x1": 336.96,
+            "bottom": 432.7
+          },
+          "confidence": 0.9835515022277832,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "Gross",
+          "bbox": {
+            "x0": 394.56,
+            "top": 423.58,
+            "x1": 417.6,
+            "bottom": 432.7
+          },
+          "confidence": 0.9968328475952148,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "ORDERED",
+          "bbox": {
+            "x0": 100.8,
+            "top": 434.14,
+            "x1": 146.4,
+            "bottom": 444.21
+          },
+          "confidence": 0.9988895058631897,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "No.",
+          "bbox": {
+            "x0": 186.24,
+            "top": 434.62,
+            "x1": 202.08,
+            "bottom": 445.17
+          },
+          "confidence": 0.9991154074668884,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "No.",
+          "bbox": {
+            "x0": 240.48,
+            "top": 434.62,
+            "x1": 256.32,
+            "bottom": 445.17
+          },
+          "confidence": 0.9991709589958191,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "KG",
+          "bbox": {
+            "x0": 322.08,
+            "top": 434.62,
+            "x1": 336.0,
+            "bottom": 444.69
+          },
+          "confidence": 0.9980399012565613,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "KG",
+          "bbox": {
+            "x0": 403.2,
+            "top": 434.62,
+            "x1": 417.6,
+            "bottom": 444.69
+          },
+          "confidence": 0.99635910987854,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "(mm)",
+          "bbox": {
+            "x0": 43.68,
+            "top": 446.61,
+            "x1": 65.76,
+            "bottom": 458.6
+          },
+          "confidence": 0.9908937215805054,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "2.000",
+          "bbox": {
+            "x0": 124.32,
+            "top": 447.57,
+            "x1": 146.88,
+            "bottom": 456.68
+          },
+          "confidence": 0.9991531372070312,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "2640604",
+          "bbox": {
+            "x0": 168.96,
+            "top": 447.09,
+            "x1": 201.12,
+            "bottom": 456.68
+          },
+          "confidence": 0.9997940063476562,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "4404014860",
+          "bbox": {
+            "x0": 210.72,
+            "top": 447.57,
+            "x1": 254.88,
+            "bottom": 456.2
+          },
+          "confidence": 0.9995711445808411,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "10,090,000",
+          "bbox": {
+            "x0": 294.72,
+            "top": 447.09,
+            "x1": 335.52,
+            "bottom": 456.68
+          },
+          "confidence": 0.9545318484306335,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "10,090.000",
+          "bbox": {
+            "x0": 375.84,
+            "top": 446.13,
+            "x1": 416.64,
+            "bottom": 458.12
+          },
+          "confidence": 0.9911161661148071,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "(in)",
+          "bbox": {
+            "x0": 50.4,
+            "top": 457.64,
+            "x1": 65.76,
+            "bottom": 470.12
+          },
+          "confidence": 0.9869463443756104,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "0.0787",
+          "bbox": {
+            "x0": 120.0,
+            "top": 458.6,
+            "x1": 146.88,
+            "bottom": 468.68
+          },
+          "confidence": 0.9995253086090088,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "CHEMICAL COMPOSITION OF THE COIL *",
+          "bbox": {
+            "x0": 27.36,
+            "top": 478.75,
+            "x1": 202.08,
+            "bottom": 490.26
+          },
+          "confidence": 0.9698538184165955,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "Heat",
+          "bbox": {
+            "x0": 59.52,
+            "top": 496.98,
+            "x1": 78.72,
+            "bottom": 506.09
+          },
+          "confidence": 0.996895432472229,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "No.",
+          "bbox": {
+            "x0": 61.92,
+            "top": 506.57,
+            "x1": 79.2,
+            "bottom": 520.0
+          },
+          "confidence": 0.9966812133789062,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "C",
+          "bbox": {
+            "x0": 116.64,
+            "top": 508.49,
+            "x1": 126.72,
+            "bottom": 518.09
+          },
+          "confidence": 0.9951249957084656,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "SI",
+          "bbox": {
+            "x0": 164.16,
+            "top": 507.53,
+            "x1": 175.2,
+            "bottom": 518.09
+          },
+          "confidence": 0.7210564613342285,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "Mn",
+          "bbox": {
+            "x0": 206.88,
+            "top": 507.53,
+            "x1": 222.72,
+            "bottom": 518.57
+          },
+          "confidence": 0.9929002523422241,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "P",
+          "bbox": {
+            "x0": 260.64,
+            "top": 508.49,
+            "x1": 269.28,
+            "bottom": 518.09
+          },
+          "confidence": 0.9757250547409058,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "S",
+          "bbox": {
+            "x0": 308.64,
+            "top": 508.49,
+            "x1": 317.28,
+            "bottom": 518.09
+          },
+          "confidence": 0.8941393494606018,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "AI",
+          "bbox": {
+            "x0": 354.72,
+            "top": 508.01,
+            "x1": 366.24,
+            "bottom": 518.57
+          },
+          "confidence": 0.9199976921081543,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "Cr",
+          "bbox": {
+            "x0": 400.8,
+            "top": 508.01,
+            "x1": 413.28,
+            "bottom": 518.57
+          },
+          "confidence": 0.9929078817367554,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "Cu",
+          "bbox": {
+            "x0": 446.4,
+            "top": 507.53,
+            "x1": 461.28,
+            "bottom": 519.05
+          },
+          "confidence": 0.9968458414077759,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "Mo",
+          "bbox": {
+            "x0": 488.64,
+            "top": 508.01,
+            "x1": 504.48,
+            "bottom": 519.53
+          },
+          "confidence": 0.9988067150115967,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "N",
+          "bbox": {
+            "x0": 537.6,
+            "top": 508.97,
+            "x1": 546.72,
+            "bottom": 518.57
+          },
+          "confidence": 0.9961293935775757,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "2640604",
+          "bbox": {
+            "x0": 44.64,
+            "top": 522.88,
+            "x1": 78.72,
+            "bottom": 534.4
+          },
+          "confidence": 0.9997528791427612,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "0.213",
+          "bbox": {
+            "x0": 102.72,
+            "top": 523.36,
+            "x1": 126.72,
+            "bottom": 534.4
+          },
+          "confidence": 0.9960725903511047,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "0.232",
+          "bbox": {
+            "x0": 150.72,
+            "top": 523.36,
+            "x1": 174.72,
+            "bottom": 533.92
+          },
+          "confidence": 0.9989293813705444,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "1.15",
+          "bbox": {
+            "x0": 203.52,
+            "top": 522.88,
+            "x1": 222.72,
+            "bottom": 533.92
+          },
+          "confidence": 0.9995916485786438,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "0.007",
+          "bbox": {
+            "x0": 245.76,
+            "top": 523.36,
+            "x1": 269.76,
+            "bottom": 533.92
+          },
+          "confidence": 0.9997906684875488,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "0.001",
+          "bbox": {
+            "x0": 294.24,
+            "top": 523.36,
+            "x1": 317.28,
+            "bottom": 534.4
+          },
+          "confidence": 0.9991168975830078,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "0.033",
+          "bbox": {
+            "x0": 342.24,
+            "top": 523.36,
+            "x1": 365.76,
+            "bottom": 534.4
+          },
+          "confidence": 0.9997576475143433,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "0.19",
+          "bbox": {
+            "x0": 393.6,
+            "top": 523.36,
+            "x1": 413.28,
+            "bottom": 534.4
+          },
+          "confidence": 0.9997684955596924,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "0.006",
+          "bbox": {
+            "x0": 437.28,
+            "top": 523.36,
+            "x1": 460.8,
+            "bottom": 534.4
+          },
+          "confidence": 0.9999145269393921,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "0.002",
+          "bbox": {
+            "x0": 480.48,
+            "top": 523.84,
+            "x1": 504.0,
+            "bottom": 534.4
+          },
+          "confidence": 0.9998700022697449,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "0.0038",
+          "bbox": {
+            "x0": 519.84,
+            "top": 523.84,
+            "x1": 547.2,
+            "bottom": 534.4
+          },
+          "confidence": 0.9997000694274902,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "Ni",
+          "bbox": {
+            "x0": 114.72,
+            "top": 543.99,
+            "x1": 126.72,
+            "bottom": 554.54
+          },
+          "confidence": 0.9868347644805908,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "Nb",
+          "bbox": {
+            "x0": 159.84,
+            "top": 543.51,
+            "x1": 174.72,
+            "bottom": 555.02
+          },
+          "confidence": 0.9983513951301575,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "Ti",
+          "bbox": {
+            "x0": 211.2,
+            "top": 543.99,
+            "x1": 222.72,
+            "bottom": 554.54
+          },
+          "confidence": 0.9960297346115112,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "B",
+          "bbox": {
+            "x0": 260.16,
+            "top": 544.47,
+            "x1": 269.28,
+            "bottom": 554.06
+          },
+          "confidence": 0.9679446220397949,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "V",
+          "bbox": {
+            "x0": 308.16,
+            "top": 544.47,
+            "x1": 318.24,
+            "bottom": 554.54
+          },
+          "confidence": 0.988387405872345,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "Ca",
+          "bbox": {
+            "x0": 351.36,
+            "top": 543.99,
+            "x1": 366.24,
+            "bottom": 555.5
+          },
+          "confidence": 0.998435914516449,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "Sn",
+          "bbox": {
+            "x0": 399.36,
+            "top": 544.95,
+            "x1": 413.28,
+            "bottom": 555.02
+          },
+          "confidence": 0.9987771511077881,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "0.003",
+          "bbox": {
+            "x0": 102.72,
+            "top": 557.9,
+            "x1": 126.24,
+            "bottom": 568.46
+          },
+          "confidence": 0.9998905062675476,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "0.001",
+          "bbox": {
+            "x0": 150.72,
+            "top": 557.9,
+            "x1": 174.24,
+            "bottom": 568.46
+          },
+          "confidence": 0.9998182058334351,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "0.035",
+          "bbox": {
+            "x0": 198.24,
+            "top": 557.9,
+            "x1": 222.24,
+            "bottom": 568.46
+          },
+          "confidence": 0.9998270273208618,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "0.0035",
+          "bbox": {
+            "x0": 241.92,
+            "top": 557.9,
+            "x1": 269.28,
+            "bottom": 568.46
+          },
+          "confidence": 0.999699592590332,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "0.004",
+          "bbox": {
+            "x0": 293.76,
+            "top": 557.9,
+            "x1": 317.28,
+            "bottom": 568.46
+          },
+          "confidence": 0.9997990727424622,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "0.0021",
+          "bbox": {
+            "x0": 337.92,
+            "top": 558.38,
+            "x1": 364.8,
+            "bottom": 568.46
+          },
+          "confidence": 0.9997572898864746,
+          "source": "ocr"
+        },
+        {
+          "page_number": 5,
+          "text": "0.001",
+          "bbox": {
+            "x0": 389.28,
+            "top": 558.38,
+            "x1": 412.8,
+            "bottom": 568.94
+          },
+          "confidence": 0.9917668104171753,
+          "source": "ocr"
+        }
+      ],
+      "tables": [
+        {
+          "page_number": 5,
+          "bbox": {
+            "x0": 22.45,
+            "top": 98.3,
+            "x1": 567.25,
+            "bottom": 633.66
+          },
+          "rows": [
+            [
+              "Order - Item 354055-10",
+              "Certificate Number 4404014860",
+              "Certificate Number 4404014860",
+              "Delivery No 800650042-10",
+              "Delivery No 800650042-10",
+              "Date 06/28/2026",
+              "Date 06/28/2026",
+              "Page 2 of 3"
+            ],
+            [
+              "Customer No: 14875",
+              "Customer No: 14875",
+              "Customer No: 14875",
+              "Customer No: 14875",
+              "Cust PO: B2603021062",
+              "Cust PO: B2603021062",
+              "Cust PO: B2603021062",
+              "Cust PO: B2603021062"
+            ],
+            [
+              "Customer Part No: 732506LB0A Customer Sold to: Contact - AMANDA BAKER",
+              "Customer Part No: 732506LB0A Customer Sold to: Contact - AMANDA BAKER",
+              "Customer Part No: 732506LB0A Customer Sold to: Contact - AMANDA BAKER",
+              "Customer Part No: 732506LB0A Customer Sold to: Contact - AMANDA BAKER",
+              "Customer Part No: 732506LB0A Customer Sold to: Contact - AMANDA BAKER",
+              "Customer Part No: 732506LB0A Customer Sold to: Contact - AMANDA BAKER",
+              "Customer Part No: 732506LB0A Customer Sold to: Contact - AMANDA BAKER",
+              "Customer Part No: 732506LB0A Customer Sold to: Contact - AMANDA BAKER",
+              "Customer Part No: 732506LB0A Customer Sold to: Contact - AMANDA BAKER",
+              "Customer Part No: 732506LB0A Customer Sold to: Contact - AMANDA BAKER",
+              "Customer Part No: 732506LB0A Customer Sold to: Contact - AMANDA BAKER",
+              "Customer Part No: 732506LB0A Customer Sold to: Contact - AMANDA BAKER",
+              "Customer Part No: 732506LB0A Customer Sold to: Contact - AMANDA BAKER",
+              "Customer Part No: 732506LB0A Customer Sold to: Contact - AMANDA BAKER"
+            ],
+            [
+              "Metal One Steel Service de Mexico SA de CV AVENIDA CELAYA 106 38199 APASEO EL GRANDE MEXICO",
+              "Metal One Steel Service de Mexico SA de CV AVENIDA CELAYA 106 38199 APASEO EL GRANDE MEXICO",
+              "Customer Ship to: METAL ONE STEEL SERVICE DE MEXICO SA DE PARQUE INDUSTRIAL AMISTAD BAJIO AVENIDA CELAYA 106 38199 APASEO EL GRANDE MEXICO",
+              "Customer Ship to: METAL ONE STEEL SERVICE DE MEXICO SA DE PARQUE INDUSTRIAL AMISTAD BAJIO AVENIDA CELAYA 106 38199 APASEO EL GRANDE MEXICO",
+              "Customer Ship to: METAL ONE STEEL SERVICE DE MEXICO SA DE PARQUE INDUSTRIAL AMISTAD BAJIO AVENIDA CELAYA 106 38199 APASEO EL GRANDE MEXICO",
+              "Customer Ship to: METAL ONE STEEL SERVICE DE MEXICO SA DE PARQUE INDUSTRIAL AMISTAD BAJIO AVENIDA CELAYA 106 38199 APASEO EL GRANDE MEXICO",
+              "AM Calvert LLC 1 AM/NS Way CALVERTAL 36513 USA Email: amanda,baker@arcelormittal.com Phone: 251-289-3000",
+              "AM Calvert LLC 1 AM/NS Way CALVERTAL 36513 USA Email: amanda,baker@arcelormittal.com Phone: 251-289-3000",
+              "AM Calvert LLC 1 AM/NS Way CALVERTAL 36513 USA Email: amanda,baker@arcelormittal.com Phone: 251-289-3000",
+              "AM Calvert LLC 1 AM/NS Way CALVERTAL 36513 USA Email: amanda,baker@arcelormittal.com Phone: 251-289-3000"
+            ],
+            [
+              "Steel Grade /Customer Specification Aluminize Coil USIBOR® 1500 Conv to M2201 22MnB5/2.000 mm X 1,073.000 mm AS80 Nissan 2201 AS10/10 ACCORDING TO M2201-Cold Roll Base",
+              "Steel Grade /Customer Specification Aluminize Coil USIBOR® 1500 Conv to M2201 22MnB5/2.000 mm X 1,073.000 mm AS80 Nissan 2201 AS10/10 ACCORDING TO M2201-Cold Roll Base",
+              "Steel Grade /Customer Specification Aluminize Coil USIBOR® 1500 Conv to M2201 22MnB5/2.000 mm X 1,073.000 mm AS80 Nissan 2201 AS10/10 ACCORDING TO M2201-Cold Roll Base",
+              "Steel Grade /Customer Specification Aluminize Coil USIBOR® 1500 Conv to M2201 22MnB5/2.000 mm X 1,073.000 mm AS80 Nissan 2201 AS10/10 ACCORDING TO M2201-Cold Roll Base",
+              "Steel Grade /Customer Specification Aluminize Coil USIBOR® 1500 Conv to M2201 22MnB5/2.000 mm X 1,073.000 mm AS80 Nissan 2201 AS10/10 ACCORDING TO M2201-Cold Roll Base",
+              "Steel Grade /Customer Specification Aluminize Coil USIBOR® 1500 Conv to M2201 22MnB5/2.000 mm X 1,073.000 mm AS80 Nissan 2201 AS10/10 ACCORDING TO M2201-Cold Roll Base",
+              "Steel Grade /Customer Specification Aluminize Coil USIBOR® 1500 Conv to M2201 22MnB5/2.000 mm X 1,073.000 mm AS80 Nissan 2201 AS10/10 ACCORDING TO M2201-Cold Roll Base",
+              "Steel Grade /Customer Specification Aluminize Coil USIBOR® 1500 Conv to M2201 22MnB5/2.000 mm X 1,073.000 mm AS80 Nissan 2201 AS10/10 ACCORDING TO M2201-Cold Roll Base",
+              "Steel Grade /Customer Specification Aluminize Coil USIBOR® 1500 Conv to M2201 22MnB5/2.000 mm X 1,073.000 mm AS80 Nissan 2201 AS10/10 ACCORDING TO M2201-Cold Roll Base",
+              "Steel Grade /Customer Specification Aluminize Coil USIBOR® 1500 Conv to M2201 22MnB5/2.000 mm X 1,073.000 mm AS80 Nissan 2201 AS10/10 ACCORDING TO M2201-Cold Roll Base",
+              "Steel Grade /Customer Specification Aluminize Coil USIBOR® 1500 Conv to M2201 22MnB5/2.000 mm X 1,073.000 mm AS80 Nissan 2201 AS10/10 ACCORDING TO M2201-Cold Roll Base",
+              "Steel Grade /Customer Specification Aluminize Coil USIBOR® 1500 Conv to M2201 22MnB5/2.000 mm X 1,073.000 mm AS80 Nissan 2201 AS10/10 ACCORDING TO M2201-Cold Roll Base",
+              "Steel Grade /Customer Specification Aluminize Coil USIBOR® 1500 Conv to M2201 22MnB5/2.000 mm X 1,073.000 mm AS80 Nissan 2201 AS10/10 ACCORDING TO M2201-Cold Roll Base",
+              "Steel Grade /Customer Specification Aluminize Coil USIBOR® 1500 Conv to M2201 22MnB5/2.000 mm X 1,073.000 mm AS80 Nissan 2201 AS10/10 ACCORDING TO M2201-Cold Roll Base"
+            ],
+            [
+              "Type of Product/Surface Aluminize Non Chem Treat, 0.3 g/m2 Quaker Ferrocote EGL-1 Unexposed REINF-ROOF, CTR",
+              "Type of Product/Surface Aluminize Non Chem Treat, 0.3 g/m2 Quaker Ferrocote EGL-1 Unexposed REINF-ROOF, CTR",
+              "Type of Product/Surface Aluminize Non Chem Treat, 0.3 g/m2 Quaker Ferrocote EGL-1 Unexposed REINF-ROOF, CTR",
+              "Type of Product/Surface Aluminize Non Chem Treat, 0.3 g/m2 Quaker Ferrocote EGL-1 Unexposed REINF-ROOF, CTR",
+              "Type of Product/Surface Aluminize Non Chem Treat, 0.3 g/m2 Quaker Ferrocote EGL-1 Unexposed REINF-ROOF, CTR",
+              "Type of Product/Surface Aluminize Non Chem Treat, 0.3 g/m2 Quaker Ferrocote EGL-1 Unexposed REINF-ROOF, CTR",
+              "Type of Product/Surface Aluminize Non Chem Treat, 0.3 g/m2 Quaker Ferrocote EGL-1 Unexposed REINF-ROOF, CTR",
+              "Type of Product/Surface Aluminize Non Chem Treat, 0.3 g/m2 Quaker Ferrocote EGL-1 Unexposed REINF-ROOF, CTR",
+              "Type of Product/Surface Aluminize Non Chem Treat, 0.3 g/m2 Quaker Ferrocote EGL-1 Unexposed REINF-ROOF, CTR",
+              "Type of Product/Surface Aluminize Non Chem Treat, 0.3 g/m2 Quaker Ferrocote EGL-1 Unexposed REINF-ROOF, CTR",
+              "Type of Product/Surface Aluminize Non Chem Treat, 0.3 g/m2 Quaker Ferrocote EGL-1 Unexposed REINF-ROOF, CTR",
+              "Type of Product/Surface Aluminize Non Chem Treat, 0.3 g/m2 Quaker Ferrocote EGL-1 Unexposed REINF-ROOF, CTR"
+            ],
+            [
+              "TEST METHOD Melted in Mexico Manufactured in USA NISSAN Country of origin: USA MATERIAL DESCRIPTION",
+              "TEST METHOD Melted in Mexico Manufactured in USA NISSAN Country of origin: USA MATERIAL DESCRIPTION",
+              "TEST METHOD Melted in Mexico Manufactured in USA NISSAN Country of origin: USA MATERIAL DESCRIPTION",
+              "TEST METHOD Melted in Mexico Manufactured in USA NISSAN Country of origin: USA MATERIAL DESCRIPTION",
+              "TEST METHOD Melted in Mexico Manufactured in USA NISSAN Country of origin: USA MATERIAL DESCRIPTION",
+              "TEST METHOD Melted in Mexico Manufactured in USA NISSAN Country of origin: USA MATERIAL DESCRIPTION",
+              "TEST METHOD Melted in Mexico Manufactured in USA NISSAN Country of origin: USA MATERIAL DESCRIPTION",
+              "TEST METHOD Melted in Mexico Manufactured in USA NISSAN Country of origin: USA MATERIAL DESCRIPTION",
+              "TEST METHOD Melted in Mexico Manufactured in USA NISSAN Country of origin: USA MATERIAL DESCRIPTION",
+              "TEST METHOD Melted in Mexico Manufactured in USA NISSAN Country of origin: USA MATERIAL DESCRIPTION",
+              "TEST METHOD Melted in Mexico Manufactured in USA NISSAN Country of origin: USA MATERIAL DESCRIPTION",
+              "TEST METHOD Melted in Mexico Manufactured in USA NISSAN Country of origin: USA MATERIAL DESCRIPTION"
+            ],
+            [
+              "Weight Weight Heat Coil Net Gross ORDERED No. No. KG (mm) 2.000 10,090,000",
+              "Weight Weight Heat Coil Net Gross ORDERED No. No. KG (mm) 2.000 10,090,000",
+              "Weight Weight Heat Coil Net Gross ORDERED No. No. KG (mm) 2.000 10,090,000",
+              "Weight Weight Heat Coil Net Gross ORDERED No. No. KG (mm) 2.000 10,090,000",
+              "Weight Weight Heat Coil Net Gross ORDERED No. No. KG (mm) 2.000 10,090,000",
+              "Weight Weight Heat Coil Net Gross ORDERED No. No. KG (mm) 2.000 10,090,000",
+              "Weight Weight Heat Coil Net Gross ORDERED No. No. KG (mm) 2.000 10,090,000",
+              "Weight Weight Heat Coil Net Gross ORDERED No. No. KG (mm) 2.000 10,090,000",
+              "KG 10,090.000 0.002 0.0038",
+              "KG 10,090.000 0.002 0.0038",
+              "KG 10,090.000 0.002 0.0038",
+              "KG 10,090.000 0.002 0.0038"
+            ],
+            [
+              "(in) CHEMICAL COMPOSITION OF THE COIL * Heat No. C 2640604 0.213",
+              "0.0787 SI 0.232 Nb 0.001",
+              "2640604 Mn 1.15 Ti 0.035",
+              "4404014860 P 0.007",
+              "S 0.001",
+              "AI 0.033 0.19",
+              "Cr",
+              "Cu 0.006",
+              "Mo",
+              "N"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "page_number": 6,
+      "width": 612.48,
+      "height": 792.0,
+      "rotation": 0,
+      "source": "ocr",
+      "blocks": [
+        {
+          "page_number": 6,
+          "text": "ArcelorMittal Calvert LLC",
+          "bbox": {
+            "x0": 28.8,
+            "top": 42.21,
+            "x1": 157.92,
+            "bottom": 53.73
+          },
+          "confidence": 0.9663267731666565,
+          "source": "ocr"
+        },
+        {
+          "page_number": 6,
+          "text": "1 Calvert Way",
+          "bbox": {
+            "x0": 28.8,
+            "top": 53.25,
+            "x1": 93.12,
+            "bottom": 67.16
+          },
+          "confidence": 0.973374605178833,
+          "source": "ocr"
+        },
+        {
+          "page_number": 6,
+          "text": "ArcelorMifal",
+          "bbox": {
+            "x0": 449.28,
+            "top": 53.73,
+            "x1": 523.2,
+            "bottom": 68.12
+          },
+          "confidence": 0.9506009221076965,
+          "source": "ocr"
+        },
+        {
+          "page_number": 6,
+          "text": "Calvert,AL 36513USA",
+          "bbox": {
+            "x0": 30.24,
+            "top": 67.16,
+            "x1": 132.96,
+            "bottom": 77.23
+          },
+          "confidence": 0.9311487078666687,
+          "source": "ocr"
+        },
+        {
+          "page_number": 6,
+          "text": "Mill Certificate",
+          "bbox": {
+            "x0": 251.52,
+            "top": 75.31,
+            "x1": 339.84,
+            "bottom": 91.14
+          },
+          "confidence": 0.9298540949821472,
+          "source": "ocr"
+        },
+        {
+          "page_number": 6,
+          "text": "Order - Item",
+          "bbox": {
+            "x0": 29.28,
+            "top": 99.78,
+            "x1": 83.04,
+            "bottom": 109.85
+          },
+          "confidence": 0.946243941783905,
+          "source": "ocr"
+        },
+        {
+          "page_number": 6,
+          "text": "Certificate Number",
+          "bbox": {
+            "x0": 124.8,
+            "top": 99.78,
+            "x1": 206.4,
+            "bottom": 109.85
+          },
+          "confidence": 0.9670501351356506,
+          "source": "ocr"
+        },
+        {
+          "page_number": 6,
+          "text": "Delivery No",
+          "bbox": {
+            "x0": 237.6,
+            "top": 97.86,
+            "x1": 291.36,
+            "bottom": 112.25
+          },
+          "confidence": 0.9926022887229919,
+          "source": "ocr"
+        },
+        {
+          "page_number": 6,
+          "text": "Date",
+          "bbox": {
+            "x0": 344.64,
+            "top": 99.3,
+            "x1": 369.12,
+            "bottom": 111.77
+          },
+          "confidence": 0.999393105506897,
+          "source": "ocr"
+        },
+        {
+          "page_number": 6,
+          "text": "Page",
+          "bbox": {
+            "x0": 453.12,
+            "top": 98.34,
+            "x1": 482.88,
+            "bottom": 114.65
+          },
+          "confidence": 0.9989533424377441,
+          "source": "ocr"
+        },
+        {
+          "page_number": 6,
+          "text": "354055-10",
+          "bbox": {
+            "x0": 28.8,
+            "top": 110.81,
+            "x1": 77.76,
+            "bottom": 122.33
+          },
+          "confidence": 0.9995459318161011,
+          "source": "ocr"
+        },
+        {
+          "page_number": 6,
+          "text": "4404014860",
+          "bbox": {
+            "x0": 124.32,
+            "top": 110.81,
+            "x1": 180.48,
+            "bottom": 122.33
+          },
+          "confidence": 0.9998089075088501,
+          "source": "ocr"
+        },
+        {
+          "page_number": 6,
+          "text": "800650042-10",
+          "bbox": {
+            "x0": 238.56,
+            "top": 110.81,
+            "x1": 302.88,
+            "bottom": 122.33
+          },
+          "confidence": 0.9996405243873596,
+          "source": "ocr"
+        },
+        {
+          "page_number": 6,
+          "text": "06/28/2026",
+          "bbox": {
+            "x0": 344.64,
+            "top": 110.81,
+            "x1": 395.52,
+            "bottom": 122.81
+          },
+          "confidence": 0.9996305704116821,
+          "source": "ocr"
+        },
+        {
+          "page_number": 6,
+          "text": "3of 3",
+          "bbox": {
+            "x0": 453.6,
+            "top": 109.37,
+            "x1": 487.68,
+            "bottom": 124.72
+          },
+          "confidence": 0.9689857363700867,
+          "source": "ocr"
+        },
+        {
+          "page_number": 6,
+          "text": "COATING*",
+          "bbox": {
+            "x0": 28.32,
+            "top": 124.72,
+            "x1": 78.72,
+            "bottom": 136.24
+          },
+          "confidence": 0.9770624041557312,
+          "source": "ocr"
+        },
+        {
+          "page_number": 6,
+          "text": "Top Side",
+          "bbox": {
+            "x0": 45.6,
+            "top": 141.51,
+            "x1": 79.68,
+            "bottom": 153.03
+          },
+          "confidence": 0.9939241409301758,
+          "source": "ocr"
+        },
+        {
+          "page_number": 6,
+          "text": "Bottom Side",
+          "bbox": {
+            "x0": 94.56,
+            "top": 141.99,
+            "x1": 138.72,
+            "bottom": 152.07
+          },
+          "confidence": 0.9798753261566162,
+          "source": "ocr"
+        },
+        {
+          "page_number": 6,
+          "text": "g/m2",
+          "bbox": {
+            "x0": 58.56,
+            "top": 152.55,
+            "x1": 80.16,
+            "bottom": 165.02
+          },
+          "confidence": 0.99250328540802,
+          "source": "ocr"
+        },
+        {
+          "page_number": 6,
+          "text": "g/m2",
+          "bbox": {
+            "x0": 117.6,
+            "top": 151.59,
+            "x1": 140.16,
+            "bottom": 165.98
+          },
+          "confidence": 0.9935131669044495,
+          "source": "ocr"
+        },
+        {
+          "page_number": 6,
+          "text": "47",
+          "bbox": {
+            "x0": 67.2,
+            "top": 168.86,
+            "x1": 79.2,
+            "bottom": 179.89
+          },
+          "confidence": 0.9995817542076111,
+          "source": "ocr"
+        },
+        {
+          "page_number": 6,
+          "text": "46",
+          "bbox": {
+            "x0": 126.72,
+            "top": 169.34,
+            "x1": 139.2,
+            "bottom": 179.89
+          },
+          "confidence": 0.9995405673980713,
+          "source": "ocr"
+        },
+        {
+          "page_number": 6,
+          "text": "TENSILE TEST",
+          "bbox": {
+            "x0": 28.32,
+            "top": 180.37,
+            "x1": 91.68,
+            "bottom": 190.44
+          },
+          "confidence": 0.9860703945159912,
+          "source": "ocr"
+        },
+        {
+          "page_number": 6,
+          "text": "Test",
+          "bbox": {
+            "x0": 48.0,
+            "top": 197.16,
+            "x1": 65.76,
+            "bottom": 206.75
+          },
+          "confidence": 0.9972115755081177,
+          "source": "ocr"
+        },
+        {
+          "page_number": 6,
+          "text": "Yield",
+          "bbox": {
+            "x0": 85.44,
+            "top": 196.68,
+            "x1": 106.56,
+            "bottom": 207.23
+          },
+          "confidence": 0.991782009601593,
+          "source": "ocr"
+        },
+        {
+          "page_number": 6,
+          "text": "Tensile",
+          "bbox": {
+            "x0": 118.56,
+            "top": 196.68,
+            "x1": 146.88,
+            "bottom": 207.23
+          },
+          "confidence": 0.9989700317382812,
+          "source": "ocr"
+        },
+        {
+          "page_number": 6,
+          "text": "% Total",
+          "bbox": {
+            "x0": 158.4,
+            "top": 197.16,
+            "x1": 188.16,
+            "bottom": 207.23
+          },
+          "confidence": 0.9459320902824402,
+          "source": "ocr"
+        },
+        {
+          "page_number": 6,
+          "text": "Direction",
+          "bbox": {
+            "x0": 31.68,
+            "top": 208.67,
+            "x1": 65.76,
+            "bottom": 218.27
+          },
+          "confidence": 0.9572272896766663,
+          "source": "ocr"
+        },
+        {
+          "page_number": 6,
+          "text": "Strength",
+          "bbox": {
+            "x0": 74.4,
+            "top": 208.67,
+            "x1": 106.08,
+            "bottom": 218.75
+          },
+          "confidence": 0.9992421865463257,
+          "source": "ocr"
+        },
+        {
+          "page_number": 6,
+          "text": "Strength",
+          "bbox": {
+            "x0": 114.72,
+            "top": 207.71,
+            "x1": 146.4,
+            "bottom": 220.19
+          },
+          "confidence": 0.9987528324127197,
+          "source": "ocr"
+        },
+        {
+          "page_number": 6,
+          "text": "Elong.",
+          "bbox": {
+            "x0": 162.24,
+            "top": 208.19,
+            "x1": 188.16,
+            "bottom": 220.19
+          },
+          "confidence": 0.9980304837226868,
+          "source": "ocr"
+        },
+        {
+          "page_number": 6,
+          "text": "T",
+          "bbox": {
+            "x0": 57.12,
+            "top": 224.02,
+            "x1": 66.24,
+            "bottom": 233.14
+          },
+          "confidence": 0.9115562438964844,
+          "source": "ocr"
+        },
+        {
+          "page_number": 6,
+          "text": "417 MPa",
+          "bbox": {
+            "x0": 72.48,
+            "top": 224.02,
+            "x1": 106.56,
+            "bottom": 234.1
+          },
+          "confidence": 0.9497283697128296,
+          "source": "ocr"
+        },
+        {
+          "page_number": 6,
+          "text": "594 MPa",
+          "bbox": {
+            "x0": 112.8,
+            "top": 224.02,
+            "x1": 145.92,
+            "bottom": 234.1
+          },
+          "confidence": 0.9707484245300293,
+          "source": "ocr"
+        },
+        {
+          "page_number": 6,
+          "text": "27",
+          "bbox": {
+            "x0": 175.68,
+            "top": 224.02,
+            "x1": 188.16,
+            "bottom": 234.58
+          },
+          "confidence": 0.9998416900634766,
+          "source": "ocr"
+        },
+        {
+          "page_number": 6,
+          "text": "This is not a NAFTA or any other FTA certificate of origin",
+          "bbox": {
+            "x0": 27.36,
+            "top": 620.74,
+            "x1": 282.24,
+            "bottom": 633.22
+          },
+          "confidence": 0.9713893532752991,
+          "source": "ocr"
+        },
+        {
+          "page_number": 6,
+          "text": "ArcelorMittal Calvert LLC certifies that the material herein described has been manufactured, sampled, tested, and",
+          "bbox": {
+            "x0": 26.88,
+            "top": 632.74,
+            "x1": 540.48,
+            "bottom": 645.21
+          },
+          "confidence": 0.9739950299263,
+          "source": "ocr"
+        },
+        {
+          "page_number": 6,
+          "text": "inspected in accordance with the contract requirements and is fully in compliance. Test certificates are prepared in",
+          "bbox": {
+            "x0": 25.92,
+            "top": 643.29,
+            "x1": 540.0,
+            "bottom": 657.68
+          },
+          "confidence": 0.9619215130805969,
+          "source": "ocr"
+        },
+        {
+          "page_number": 6,
+          "text": "accordance with procedures outlined in DIN EN 10204:2005 Type 3.1. All tests performed to the current version of the",
+          "bbox": {
+            "x0": 26.4,
+            "top": 655.76,
+            "x1": 554.88,
+            "bottom": 668.71
+          },
+          "confidence": 0.951416552066803,
+          "source": "ocr"
+        },
+        {
+          "page_number": 6,
+          "text": "standard unless otherwise noted.",
+          "bbox": {
+            "x0": 26.88,
+            "top": 668.24,
+            "x1": 176.16,
+            "bottom": 678.79
+          },
+          "confidence": 0.9895803928375244,
+          "source": "ocr"
+        },
+        {
+          "page_number": 6,
+          "text": " -This test is not covered by our current A2LA",
+          "bbox": {
+            "x0": 25.44,
+            "top": 704.21,
+            "x1": 167.04,
+            "bottom": 714.77
+          },
+          "confidence": 0.8934201598167419,
+          "source": "ocr"
+        },
+        {
+          "page_number": 6,
+          "text": "accreditation",
+          "bbox": {
+            "x0": 25.44,
+            "top": 714.77,
+            "x1": 65.28,
+            "bottom": 722.92
+          },
+          "confidence": 0.9481651782989502,
+          "source": "ocr"
+        },
+        {
+          "page_number": 6,
+          "text": "06/28/2026",
+          "bbox": {
+            "x0": 466.08,
+            "top": 717.17,
+            "x1": 507.36,
+            "bottom": 728.2
+          },
+          "confidence": 0.9989491701126099,
+          "source": "ocr"
+        },
+        {
+          "page_number": 6,
+          "text": "Chris Samuel",
+          "bbox": {
+            "x0": 199.68,
+            "top": 729.64,
+            "x1": 254.4,
+            "bottom": 742.11
+          },
+          "confidence": 0.9209776520729065,
+          "source": "ocr"
+        },
+        {
+          "page_number": 6,
+          "text": "Manager,Quality Management",
+          "bbox": {
+            "x0": 199.68,
+            "top": 739.23,
+            "x1": 321.12,
+            "bottom": 751.22
+          },
+          "confidence": 0.9548186659812927,
+          "source": "ocr"
+        },
+        {
+          "page_number": 6,
+          "text": "Rev.",
+          "bbox": {
+            "x0": 465.12,
+            "top": 744.03,
+            "x1": 485.28,
+            "bottom": 756.5
+          },
+          "confidence": 0.965731680393219,
+          "source": "ocr"
+        },
+        {
+          "page_number": 6,
+          "text": "Arcelorkyftal Calvert",
+          "bbox": {
+            "x0": 200.16,
+            "top": 749.79,
+            "x1": 279.84,
+            "bottom": 759.86
+          },
+          "confidence": 0.8851830363273621,
+          "source": "ocr"
+        }
+      ],
+      "tables": [
+        {
+          "page_number": 6,
+          "bbox": {
+            "x0": 22.34,
+            "top": 98.97,
+            "x1": 550.34,
+            "bottom": 664.07
+          },
+          "rows": [
+            [
+              "Order - Item 354055-10",
+              "Certificate Number 4404014860",
+              null,
+              "Delivery No 800650042-10",
+              "Date 06/28/2026",
+              "Page 3of 3"
+            ],
+            [
+              "COATING* Top Side Bottom Side",
+              "COATING* Top Side Bottom Side",
+              "COATING* Top Side Bottom Side",
+              "COATING* Top Side Bottom Side",
+              "COATING* Top Side Bottom Side",
+              "COATING* Top Side Bottom Side"
+            ],
+            [
+              "g/m2 g/m2 47 46",
+              "g/m2 g/m2 47 46",
+              "g/m2 g/m2 47 46",
+              "g/m2 g/m2 47 46",
+              null,
+              null
+            ],
+            [
+              "TENSILE TEST",
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              "Test",
+              "Yield Tensile",
+              "% Total",
+              null,
+              null,
+              null
+            ],
+            [
+              "Direction",
+              "Strength Strength",
+              "Elong.",
+              null,
+              null,
+              null
+            ],
+            [
+              "T 417 MPa",
+              "594 MPa",
+              "27",
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              "standard unless otherwise noted.",
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              "This is not a NAFTA or any other FTA certificate of origin",
+              "This is not a NAFTA or any other FTA certificate of origin",
+              "This is not a NAFTA or any other FTA certificate of origin",
+              "This is not a NAFTA or any other FTA certificate of origin",
+              "This is not a NAFTA or any other FTA certificate of origin",
+              null
+            ],
+            [
+              "ArcelorMittal Calvert LLC certifies that the material herein described has been manufactured, sampled, tested, and",
+              "ArcelorMittal Calvert LLC certifies that the material herein described has been manufactured, sampled, tested, and",
+              "ArcelorMittal Calvert LLC certifies that the material herein described has been manufactured, sampled, tested, and",
+              "ArcelorMittal Calvert LLC certifies that the material herein described has been manufactured, sampled, tested, and",
+              "ArcelorMittal Calvert LLC certifies that the material herein described has been manufactured, sampled, tested, and",
+              "ArcelorMittal Calvert LLC certifies that the material herein described has been manufactured, sampled, tested, and"
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            [
+              "inspected in accordance with the contract requirements and is fully in compliance. Test certificates are prepared in",
+              "inspected in accordance with the contract requirements and is fully in compliance. Test certificates are prepared in",
+              "inspected in accordance with the contract requirements and is fully in compliance. Test certificates are prepared in",
+              "inspected in accordance with the contract requirements and is fully in compliance. Test certificates are prepared in",
+              "inspected in accordance with the contract requirements and is fully in compliance. Test certificates are prepared in",
+              null
+            ],
+            [
+              "accordance with procedures outlined in DIN EN 10204:2005 Type 3.1. All tests performed to the current version of the",
+              "accordance with procedures outlined in DIN EN 10204:2005 Type 3.1. All tests performed to the current version of the",
+              "accordance with procedures outlined in DIN EN 10204:2005 Type 3.1. All tests performed to the current version of the",
+              "accordance with procedures outlined in DIN EN 10204:2005 Type 3.1. All tests performed to the current version of the",
+              "accordance with procedures outlined in DIN EN 10204:2005 Type 3.1. All tests performed to the current version of the",
+              null
+            ]
+          ]
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "ocr": {
+      "enabled": true,
+      "installed": true,
+      "healthy": true,
+      "compatibility": "supported",
+      "selected_device": "cpu",
+      "paddle_version": "3.2.2",
+      "paddleocr_version": "3.7.0",
+      "hardware": {
+        "architecture": "amd64",
+        "operating_system": "Windows-11-10.0.26200-SP0",
+        "total_memory_mb": 32182,
+        "available_memory_mb": 7271,
+        "gpus": [
+          {
+            "vendor": "NVIDIA",
+            "name": "NVIDIA GeForce RTX 5070 Laptop GPU",
+            "memory_mb": 8151,
+            "driver_version": "616.56",
+            "compute_capability": "12.0"
+          }
+        ],
+        "compatibility": "supported",
+        "reasons": [
+          "CPU x64 y memoria compatibles",
+          "GPU NVIDIA detectada; aceleración sujeta a validación del runtime"
+        ]
+      },
+      "message": "Runtime OCR disponible",
+      "models": {
+        "name": "PP-StructureV3",
+        "version": "3.0.0",
+        "status": "not_installed",
+        "installed_files": 0,
+        "total_files": 10,
+        "installed_bytes": 0,
+        "total_bytes": 62920000,
+        "backend": "cpu",
+        "message": "Paquete de modelos no descargado"
+      }
+    },
+    "ocr_skipped_pages": [
+      {
+        "page_number": 1,
+        "reason": "arcelormittal_cover"
+      },
+      {
+        "page_number": 4,
+        "reason": "arcelormittal_cover"
+      }
+    ],
+    "ocr_page_rotations": {
+      "1": 0,
+      "2": 0,
+      "3": 0,
+      "4": 0,
+      "5": 0,
+      "6": 0
+    }
+  }
+}

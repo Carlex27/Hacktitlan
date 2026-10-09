@@ -1,5 +1,5 @@
 import type { ComponentType, ReactNode } from "react";
-import { ArrowLeft, FileCheck } from "lucide-react";
+import { FileCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 import { es } from "@/lib/i18n";
@@ -32,12 +32,10 @@ export function AppShell({
   breadcrumbs,
   children,
 }: AppShellProps) {
-  const canGoBack = breadcrumbs.length > 1;
-
   return (
     <div className="fixed inset-0 flex flex-col h-dvh w-full overflow-clip bg-app-canvas font-sans text-slate-800 text-[13px] antialiased">
-      <header className="shrink-0 border-b border-sidebar-border bg-sidebar text-sidebar-foreground px-4 py-3 sm:px-6">
-        <div className="flex min-w-0 flex-wrap items-center gap-3 sm:gap-x-8">
+      <header className="shrink-0 overflow-y-auto [scrollbar-gutter:stable] border-b border-sidebar-border bg-sidebar text-sidebar-foreground px-4 py-3 sm:px-8">
+        <div className="mx-auto flex w-full max-w-6xl min-w-0 flex-wrap items-center gap-3 sm:gap-x-8">
           <div
             className="flex min-h-10 shrink-0 items-center gap-3"
             title={es.app.title}
@@ -76,19 +74,6 @@ export function AppShell({
             })}
           </nav>
           {breadcrumbs.length > 0 && <nav aria-label="Migas de pan" className="flex min-w-0 basis-full items-center gap-2 text-sm text-muted-foreground xl:ml-auto xl:basis-auto xl:flex-1 xl:justify-end">
-            {canGoBack && (
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={breadcrumbs[0]?.onClick}
-                className="size-11 shrink-0"
-                title={es.header.back}
-                aria-label={es.header.back}
-              >
-                <ArrowLeft aria-hidden="true" className="w-4 h-4" />
-              </Button>
-            )}
-
             {breadcrumbs.map((crumb, idx) => {
               const isLast = idx === breadcrumbs.length - 1;
               return (

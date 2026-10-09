@@ -124,7 +124,7 @@ def get_session(request: Request):
             raise
 
 
-DbSession = Annotated[Session, Depends(get_session)]
+DbSession = Annotated[Session, Depends(get_session, scope="function")]
 
 
 def serialize_certificate(certificate: MillCertificate, manufacturer: Manufacturer | None) -> dict[str, Any]:
@@ -190,7 +190,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
-        allow_methods=["GET", "POST", "DELETE"],
+        allow_methods=["GET", "POST", "PATCH", "DELETE"],
         allow_headers=["Content-Type", "X-Request-ID"],
         expose_headers=["X-Request-ID", "Content-Disposition"],
     )
@@ -294,18 +294,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         session: DbSession,
         limit: int = Query(50, ge=1, le=200),
         cursor: str | None = None,
-        certificate_no: str | None = None,
-        manufacturer: str | None = None,
+        certificate_no: str | None = Query(None, description="Búsqueda parcial por número de acta o nombre original del archivo; también admite el ID o Acta #ID. Ignora espacios exteriores y trata % y _ como texto."),
+        manufacturer: str | None = Query(None, description="Búsqueda parcial por fabricante, sin distinguir mayúsculas y con espacios exteriores ignorados."),
         approval_status: ApprovalStatus | None = None,
         processing_status: ProcessingStatus | None = None,
-        heat_no: str | None = None,
-        product_identifier: str | None = None,
-        fraction: str | None = None,
-        nico: str | None = None,
+        heat_no: str | None = Query(None, description="Colada parcial; se combina con serie, fracción y NICO del mismo rollo."),
+        product_identifier: str | None = Query(None, description="Serie parcial del rollo; se combina con colada y clasificación del mismo rollo."),
+        fraction: str | None = Query(None, description="Prefijo de fracción de la última ejecución del acta; admite puntos y guiones."),
+        nico: str | None = Query(None, description="NICO exacto de la última ejecución, en el mismo rollo que los demás filtros de producto."),
         period: Literal["day", "today", "week", "month"] | None = None,
         date_from: date | None = None,
         date_to: date | None = None,
-        date_basis: Literal["certificate", "uploaded"] = "certificate",
+        date_basis: Literal["certificate", "uploaded"] = Query("certificate", description="Fecha utilizada en el intervalo inclusivo. certificate excluye actas sin fecha; uploaded utiliza la fecha de carga."),
     ):
         rows, next_cursor = DocumentService(settings, storage).list_certificates(
             session,
@@ -737,13 +737,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.post("/api/v1/jobs/{job_id}/cancel")
     def cancel_job(job_id: int, payload: ActorReason, session: DbSession):
-        job = session.get(Job, job_id)
+        job = session.scalar(select(Job).where(Job.id == job_id).with_for_update())
         if job is None:
             raise NotFoundError("Trabajo", job_id)
-        if job.status != "queued":
+        format_job = job.kind in {"prepare_layout", "test_certificate_format"}
+        if job.status != "queued" and not (format_job and job.status == "running"):
             raise ApplicationError(
                 "job_not_cancellable",
-                "Sólo se puede cancelar un trabajo que todavía está en cola",
+                "Sólo se cancelan trabajos en cola o preparación/pruebas de formatos en ejecución",
                 status_code=409,
             )
         job.status = "cancelled"
@@ -1032,6 +1033,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             session,
             certificate_id=certificate_id,
             from_stage=payload.from_stage,  # type: ignore[arg-type]
+            format_version_id=payload.format_version_id,
             person_name=payload.person_name,
             reason=payload.reason,
         )
@@ -1201,4 +1203,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             } for result in results],
         })
 
+    from backend.app.api.format_routes import format_router
+    app.include_router(format_router(storage, get_session))
     return app

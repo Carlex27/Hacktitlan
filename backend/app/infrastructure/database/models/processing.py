@@ -41,7 +41,8 @@ class Job(TimestampMixin, Base):
         CheckConstraint("progress >= 0 AND progress <= 100", name="progress_range"),
         CheckConstraint("attempts >= 0 AND max_attempts >= 1", name="attempts_valid"),
         CheckConstraint(
-            "kind IN ('extract_document','normalize_document','reclassify','export_xlsx','backup')",
+            "kind IN ('extract_document','normalize_document','reclassify','export_xlsx','backup',"
+            "'prepare_layout','test_certificate_format')",
             name="valid_kind",
         ),
         CheckConstraint(

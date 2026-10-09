@@ -271,7 +271,8 @@ def test_visual_crop_uses_the_same_orientation_as_ocr(monkeypatch, rotation, siz
     from PIL import Image
     original = Image.new("RGB", (20, 10), "black")
     original.paste("red", (10, 0, 20, 10))
-    page = SimpleNamespace(width=20, height=10, to_image=lambda **kwargs: SimpleNamespace(original=original))
+    page = SimpleNamespace(width=20, height=10, bbox=(0, 0, 20, 10),
+                           to_image=lambda **kwargs: SimpleNamespace(original=original))
     pdf = MagicMock()
     pdf.__enter__.return_value.pages = [page]
     monkeypatch.setattr(pdfplumber, "open", lambda path: pdf)

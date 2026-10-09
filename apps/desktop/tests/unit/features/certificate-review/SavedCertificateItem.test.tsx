@@ -10,7 +10,7 @@ describe("SavedCertificateItem", () => {
     render(<ul><SavedCertificateItem number="ACTA-42" manufacturer={null} date={null} status={status} onReview={onReview} /></ul>);
     expect(screen.getByText(es.workspace.status[status])).toBeInTheDocument();
     expect(screen.getAllByText(es.workspace.unknown, { exact: true })).toHaveLength(2);
-    expect(screen.getByText(`${es.workspace.date}:`)).toHaveTextContent(`${es.workspace.date}: ${es.workspace.unknown}`);
+    expect(screen.getByText(`${es.workspace.date}:`).closest("p")).toHaveTextContent(`${es.workspace.date}: ${es.workspace.unknown}`);
     await userEvent.setup().click(screen.getByRole("button", { name: "Abrir acta" }));
     expect(onReview).toHaveBeenCalledOnce();
   });

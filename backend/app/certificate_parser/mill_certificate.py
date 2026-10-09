@@ -210,8 +210,8 @@ def normalize_certificate(raw: dict[str, Any]) -> dict[str, Any]:
                 "composition_pct": chemistry,
                 "form": "flat_rolled",
                 "coiled": coiled,
-                "rolling": raw.get("rolling"),
-                "condition": raw.get("condition"),
+                "rolling": row.get("rolling", raw.get("rolling")),
+                "condition": row.get("condition", raw.get("condition")),
                 "width_mm": width_mm,
                 "thickness_mm": thickness_mm,
                 "length_m": length_m,
@@ -242,7 +242,7 @@ def normalize_certificate(raw: dict[str, Any]) -> dict[str, Any]:
                 "bend_test": row.get("bend_test"),
                 "chemistry_analysis_type": row.get("chemistry_analysis_type")
                 or raw.get("chemistry_analysis_type"),
-                "standard": raw.get("standard"),
+                "standard": row.get("standard", raw.get("standard")),
                 "grade": raw.get("grade") or (match[1] if (match := re.fullmatch(r"SAE\s+(\d{4})", str(raw.get("standard") or ""), re.I)) else None),
                 "edge_condition": raw.get("edge_condition"),
                 "observations": {

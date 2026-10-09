@@ -19,9 +19,9 @@ export function SavedCertificates({ refreshKey, onReview }: SavedCertificatesPro
   return <section className="space-y-6">
       <CertificateFiltersForm onApply={applyFilters} />
       <section aria-labelledby="saved-certificates-title" className="space-y-2">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
         <h3 id="saved-certificates-title" className="text-lg leading-7 font-semibold">{text.title}</h3>
-        <Button className="min-h-10" variant="outline" onClick={reload} disabled={loading}>
+        <Button className="min-h-11" variant="ghost" onClick={reload} disabled={loading}>
           <RefreshCw aria-hidden="true" />{text.refresh}
         </Button>
       </div>

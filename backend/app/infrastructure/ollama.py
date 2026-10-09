@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections.abc import Callable
 import base64
-from io import BytesIO
 import json
 import math
 from pathlib import Path
@@ -19,6 +18,7 @@ from backend.app.certificate_parser.mill_certificate import normalize_certificat
 from backend.app.certificate_parser.vocabulary import detect_scale_exponent, match_column_semantic
 from backend.app.config import Settings
 from backend.app.domain.document import DocumentLayout
+from backend.app.document_ingestion.page_image import render_page_image
 from backend.app.infrastructure.ocr import OcrCancellationRequested
 
 
@@ -71,33 +71,8 @@ class OllamaExtractor:
     @staticmethod
     def page_image(path: str | Path, page_number: int, bbox: dict | None = None, *,
                    rotation: int = 0, expected_size: tuple[float, float] | None = None) -> str:
-        import pdfplumber
-
-        with pdfplumber.open(path) as pdf:
-            page = pdf.pages[page_number - 1]
-            if rotation not in {0, 90, 180, 270}:
-                raise ValueError("Orientación OCR no comprobable")
-            width, height = (page.height, page.width) if rotation in {90, 270} else (page.width, page.height)
-            if expected_size is not None and (abs(width - expected_size[0]) > 1 or abs(height - expected_size[1]) > 1):
-                raise ValueError("Coordenadas OCR y PDF incompatibles")
-            if bbox is not None and not rotation:
-                page = page.crop((bbox["x0"], bbox["top"], bbox["x1"], bbox["bottom"]))
-            resolution = 240 if bbox is not None else 120
-            pixels = page.width * page.height * (resolution / 72) ** 2
-            if pixels > 8_000_000:
-                raise ValueError("Página demasiado grande para verificación visual")
-            output = BytesIO()
-            rendered = page.to_image(resolution=resolution).original
-            if rotation:
-                rendered = rendered.rotate(rotation, expand=True)
-                if bbox is not None:
-                    sx, sy = rendered.width / width, rendered.height / height
-                    if not (0 <= bbox["x0"] < bbox["x1"] <= width and 0 <= bbox["top"] < bbox["bottom"] <= height):
-                        raise ValueError("Recorte fuera de la página orientada")
-                    rendered = rendered.crop((round(bbox["x0"] * sx), round(bbox["top"] * sy),
-                                              round(bbox["x1"] * sx), round(bbox["bottom"] * sy)))
-            rendered.save(output, format="PNG")
-        return base64.b64encode(output.getvalue()).decode("ascii")
+        return base64.b64encode(render_page_image(path, page_number, bbox, rotation=rotation,
+                                                  expected_size=expected_size)).decode("ascii")
 
     def extract(self, document: DocumentLayout, *, cancel_check: Callable[[], bool] | None = None,
                 product_ids: list[str] | None = None) -> dict:

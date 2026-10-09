@@ -14,11 +14,12 @@ const VARIANTS: Record<ProcessingStatus, BadgeVariant> = {
 
 export interface ProcessingStatusBadgeProps {
   status: ProcessingStatus;
+  className?: string;
 }
 
-export function ProcessingStatusBadge({ status }: ProcessingStatusBadgeProps) {
+export function ProcessingStatusBadge({ status, className }: ProcessingStatusBadgeProps) {
   return (
-    <Badge variant={VARIANTS[status]} data-status={status}>
+    <Badge variant={VARIANTS[status]} data-status={status} className={className}>
       {es.processingStatus[status]}
     </Badge>
   );

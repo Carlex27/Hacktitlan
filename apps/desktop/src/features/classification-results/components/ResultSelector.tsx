@@ -25,12 +25,12 @@ export function ResultSelector({ products = [], results, activeResultId, onSelec
   return (
     <section
       aria-labelledby="result-selector-heading"
-      className="flex flex-col gap-2 rounded-xl border border-border bg-background p-5"
+      className="@container flex flex-col gap-4 border-b border-border pb-6"
     >
       <h4 id="result-selector-heading" className="text-lg leading-7 font-semibold text-foreground">
         {es.classification.productsTitle} ({results.length})
       </h4>
-      <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <ul className="grid grid-cols-1 gap-3 @sm:grid-cols-2 @2xl:grid-cols-3 @4xl:grid-cols-5">
         {results.slice(start, start + 10).map((result, index) => {
           const isActive = result.id === activeResultId;
           return (
@@ -40,7 +40,7 @@ export function ResultSelector({ products = [], results, activeResultId, onSelec
                 aria-pressed={isActive}
                 onClick={() => onSelect(result.id)}
                 className={cn(
-                  "flex min-h-20 w-full flex-col items-start gap-2 rounded-lg border px-4 py-3 text-left text-sm transition-colors",
+                  "flex min-h-28 w-full flex-col items-start gap-2 rounded-lg border px-4 py-3 text-left text-sm transition-colors",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                   isActive
                     ? "border-primary bg-accent ring-1 ring-primary"
@@ -56,7 +56,7 @@ export function ResultSelector({ products = [], results, activeResultId, onSelec
                   </span>
                   {result.current_selection && result.outcome === "classified" ?
                     <Badge>{es.classification.confirmed}</Badge> :
-                    <ProcessingStatusBadge status={outcomeToProcessingStatus(result.outcome)} />}
+                    <ProcessingStatusBadge status={outcomeToProcessingStatus(result.outcome)} className={result.outcome === "needs_review" ? "border-warning-border bg-warning-background text-warning-foreground" : ""} />}
                 </span>
               </button>
             </li>

@@ -29,7 +29,7 @@ export interface CertificateFilters {
 export function listCertificates(api: ApiClient, cursor: string | null, options?: RequestOptions, filters: CertificateFilters = {}) {
   const query = new URLSearchParams();
   if (cursor !== null) query.set("cursor", cursor);
-  for (const [key, value] of Object.entries(filters)) if (value) query.set(key, value);
+  for (const [key, value] of Object.entries(filters)) if (value?.trim()) query.set(key, value.trim());
   const suffix = query.size ? `?${query}` : "";
   return api.get<readonly CertificateSummaryDto[]>(`/api/v1/certificates${suffix}`, options);
 }

@@ -128,7 +128,8 @@ describe("Referencia del NICO en la LIGIE", () => {
     expect(candidates).toBeVisible();
     const viewer = screen.getByRole("complementary", { name: "Visor de documento" });
     expect(within(viewer).queryByRole("tablist")).not.toBeInTheDocument();
-    await user.click(within(viewer).getByRole("button", { name: "Cerrar visor" }));
+    expect(within(viewer).queryByRole("button", { name: "Cerrar visor" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Cerrar visor" }));
     expect(screen.queryByRole("complementary", { name: "Visor de documento" })).not.toBeInTheDocument();
     expect(candidates).toBeVisible();
   });
@@ -144,23 +145,27 @@ describe("Referencia del NICO en la LIGIE", () => {
   it("una evidencia de regla abre la fuente en su página", async () => {
     const run = runWithSource(24);
     const result = run.results[0];
-    const step = result?.steps[0];
-    if (!result || !step) throw new Error("Run de prueba incompleto");
+    if (!result) throw new Error("Run de prueba incompleto");
     const withRuleStep: ClassificationRunDto = {
       ...run,
-      results: [{ ...result, steps: [{ ...step, evidence_links: [ruleSourceLink(951, 31)] }] }],
+      results: [{ ...result, candidates: result.candidates.map((candidate) => ({
+        ...candidate,
+        factors: candidate.factors.map((factor) => ({ ...factor, evidence_links: [ruleSourceLink(951, 31)] })),
+      })) }],
     };
     const { user } = await openValidationTab(withRuleStep, {
       "GET /api/v1/evidence/951": () =>
         envelope({
           id: 951,
-          decision_step_id: 501,
-          candidate_factor_id: null,
+          decision_step_id: null,
+          candidate_factor_id: 900,
           source_type: "rule_source",
           reference: ruleSourceLink(951, 31).reference,
         }),
     });
 
+    await user.click(screen.getByRole("radio", { name: /7208.52.01/ }));
+    await user.click(screen.getByText(/Coincide con el NICO/));
     const [evidenceButton] = screen.getAllByRole("button", { name: /ver evidencia/i });
     await user.click(evidenceButton as HTMLElement);
     await user.click(await screen.findByRole("button", { name: "Ver en la fuente (p. 31)" }));

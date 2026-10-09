@@ -118,7 +118,7 @@ describe("Flujo de revisión y validación de acta", () => {
     expect(screen.getByText("EN 10025-2")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Extraído" }));
-    await user.click(screen.getByRole("button", { name: "Colada: C-9876" }));
+    await user.click(screen.getByRole("button", { name: "Batch: C-9876" }));
     await user.click(screen.getByRole("button", { name: "Ver detalle: PL-001" }));
 
     // Composición química real

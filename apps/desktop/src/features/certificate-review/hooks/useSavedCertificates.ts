@@ -32,7 +32,7 @@ export function useSavedCertificates(refreshKey: string) {
 
   return {
     state,
-    hasFilters: Object.values(filters).some(Boolean),
+    hasFilters: Object.values(filters).some((value) => Boolean(value?.trim())),
     applyFilters: (next: CertificateFilters) => { setFilters(next); setCursor(null); setVersion((value) => value + 1); },
     loading: state === null || state.version !== version || state.cursor !== cursor || state.refreshKey !== refreshKey,
     reload: () => { setCursor(null); setVersion((value) => value + 1); },

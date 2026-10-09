@@ -10,7 +10,7 @@ export function ProductDetails({ product, heat }: { product: CertificateProductD
     [text.coiled, product.coiled === null ? null : product.coiled ? text.inCoils : text.notCoiled],
     [text.grade, heat?.grade], [text.standard, heat?.standard],
   ];
-  return <dl className="grid gap-4 rounded-xl border border-border bg-background p-4 sm:grid-cols-2 lg:grid-cols-4">
+  return <dl className="grid gap-x-8 gap-y-5 border-b border-border pb-6 sm:grid-cols-2 xl:grid-cols-4">
     {fields.map(([label, value]) => <div key={label}><dt className="text-sm text-muted-foreground">{label}</dt>
       <dd className="mt-1 break-words text-sm font-medium">{value ?? text.unknown}</dd></div>)}
   </dl>;

@@ -20,7 +20,7 @@ export function MechanicalPropertiesGrid({
   const titleId = useId();
   if (isLoading) {
     return (
-      <div className="bg-background p-5 rounded-xl border border-border space-y-2">
+      <div className="border-b border-border pb-6 space-y-2">
         <Skeleton className="h-4 w-48" />
         <div className="grid grid-cols-2 gap-2">
           <Skeleton className="h-10 w-full" />
@@ -35,7 +35,7 @@ export function MechanicalPropertiesGrid({
   if (items.length === 0) {
     return (
       <section
-        className="bg-background p-5 rounded-xl border border-border"
+        className="border-b border-border pb-6"
         aria-labelledby={titleId}
       >
         <h4 id={titleId} className="font-semibold text-foreground text-lg leading-7 mb-2">
@@ -58,10 +58,10 @@ export function MechanicalPropertiesGrid({
 
   return (
     <section
-      className="bg-background p-5 rounded-xl border border-border"
+      className="border-b border-border pb-6"
       aria-labelledby={titleId}
     >
-      <div className="flex items-center justify-between mb-2.5">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
         <h4 id={titleId} className="font-semibold text-foreground text-lg leading-7">
           {es.certificateReview.mechanics.title}
         </h4>
@@ -72,11 +72,11 @@ export function MechanicalPropertiesGrid({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left">
         {items.map((item) => (
-          <div key={item.id} className="bg-muted/40 border border-border rounded-lg p-3">
+          <div key={item.id} className="bg-background rounded-lg p-4">
             <span className="text-sm text-muted-foreground block mb-0.5 break-words" title={item.label}>
               {item.label}
             </span>
-            <span className="text-sm font-medium text-foreground block break-words" title={item.value}>
+            <span className="text-lg leading-7 font-semibold tabular-nums text-foreground block break-words" title={item.value}>
               {item.value}
             </span>
           </div>

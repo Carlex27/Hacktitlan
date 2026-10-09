@@ -11,26 +11,28 @@ import { useDocumentReviews } from "../hooks/useDocumentReviews";
 import { DocumentReviewItem } from "./DocumentReviewItem";
 
 export interface DocumentReviewQueueProps {
+  refreshKey?: string;
   onReview?: (certificateId: number, documentId: number) => void;
 }
 
 /** Cola de actas con incidencias de calidad. */
-export function DocumentReviewQueue({ onReview }: DocumentReviewQueueProps) {
-  const reviews = useDocumentReviews();
+export function DocumentReviewQueue({ onReview, refreshKey = "" }: DocumentReviewQueueProps) {
+  const reviews = useDocumentReviews(refreshKey);
   const { state } = reviews;
 
   return (
     <Card className="rounded-xl border-border shadow-none">
-      <CardHeader>
+      <CardHeader className="gap-2 border-b has-data-[slot=card-action]:grid-cols-1 sm:has-data-[slot=card-action]:grid-cols-[1fr_auto]">
         <CardTitle>
           <h3 className="text-lg leading-7 font-semibold">{es.documentReview.title}</h3>
         </CardTitle>
         <CardDescription>{es.documentReview.description}</CardDescription>
-        <CardAction>
+        <CardAction className="col-start-1 row-start-3 row-span-1 justify-self-start sm:col-start-2 sm:row-start-1 sm:row-span-2 sm:justify-self-end">
           <Button
             type="button"
             variant="ghost"
             size="sm"
+            className="min-h-11"
             onClick={reviews.reload}
             disabled={state.status === "loading"}
           >
@@ -64,7 +66,7 @@ export function DocumentReviewQueue({ onReview }: DocumentReviewQueueProps) {
         )}
 
         {state.status === "ready" && state.items.length > 0 && (
-          <ul aria-label={es.documentReview.title} className="flex flex-col divide-y">
+          <ul aria-label={es.documentReview.title} className="-my-4 flex min-w-0 flex-col divide-y divide-border">
             {state.items.map((item) => (
               <DocumentReviewItem
                 key={item.certificate_id}

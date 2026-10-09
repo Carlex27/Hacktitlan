@@ -71,21 +71,21 @@ export function ApprovalBar({ run, certificate, isLoading = false, loadError = n
   const isRejected = run.approval_status === "rejected";
 
   return (
-    <footer className="bg-background rounded-lg border border-border p-4 sm:p-6 flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h3 className="text-base leading-6 font-semibold">{es.approval.barTitle}</h3>
+    <footer className="bg-background rounded-xl border border-border p-4 sm:p-6 flex flex-col gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
+        <h3 className="text-lg leading-7 font-semibold">{es.approval.barTitle}</h3>
         <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           {run.results.length > 1 && <span>{es.approval.appliesToAllProducts(run.results.length)}</span>}
           <span>{es.approval.statusBadge}</span>
-          <Badge variant={isApproved ? "default" : isRejected ? "destructive" : "outline"}>{es.workspace.status[run.approval_status]}</Badge>
+          <Badge className={`h-auto min-h-7 whitespace-normal px-3 py-1 ${isApproved ? "bg-success-background text-success-foreground" : !isRejected && run.approval_status === "needs_review" ? "border-warning-border bg-warning-background text-warning-foreground" : ""}`} variant={isRejected ? "destructive" : "secondary"}>{es.workspace.status[run.approval_status]}</Badge>
         </div>
       </div>
-      {!isApproved && <div id={coverageId} role="status" className="text-sm text-foreground">
+      {!isApproved && <div id={coverageId} role="status" className="rounded-lg bg-muted/40 p-4 text-sm leading-6 text-foreground">
         {isLoading ? es.approval.coverageLoading : loadError || !coverage ? es.approval.coverageUnavailable
           : coverage.complete ? es.approval.coverageReady : es.approval.coveragePending}
         {!isLoading && !loadError && coverage && !coverage.complete && <details className="mt-2">
-          <summary className="min-h-10 cursor-pointer py-2 font-medium focus-visible:outline-2 focus-visible:outline-primary">{es.approval.pendingProducts}</summary>
-          <div className="max-h-24 overflow-y-auto break-words rounded-sm focus-visible:outline-2 focus-visible:outline-ring" tabIndex={0} aria-label={es.approval.pendingProducts}>
+          <summary className="min-h-11 cursor-pointer py-2 font-medium focus-visible:outline-2 focus-visible:outline-primary">{es.approval.pendingProducts}</summary>
+          <div className="max-h-64 overflow-y-auto break-words rounded-sm focus-visible:outline-2 focus-visible:outline-ring" tabIndex={0} aria-label={es.approval.pendingProducts}>
           {coverage.pendingHeats.length > 0 && <p>{es.approval.pendingHeats}: {coverage.pendingHeats.map((heat) => heat.heat_no ?? `#${heat.id}`).join(", ")}</p>}
           {coverage.pendingProducts.length > 0 && <p>{es.approval.pendingProducts}: {coverage.pendingProducts.map((product) => product.product_identifier ?? `#${product.id}`).join(", ")}</p>}
           {coverage.pendingConditions.map(({ product, hasConflicts, factors }) => <div key={product.id} className="mt-3">
@@ -104,11 +104,11 @@ export function ApprovalBar({ run, certificate, isLoading = false, loadError = n
         </Alert>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-end gap-3 border-t border-border pt-4">
         {/* Status Badge & Actions */}
         <div className="flex flex-wrap items-center gap-2 self-end">
 
-          <Button className="min-h-10" type="button" variant="outline" onClick={handleDraft} disabled={isSubmitting || isApproved}>{es.workspace.draft}</Button>
+          <Button className="min-h-11" type="button" variant="outline" onClick={handleDraft} disabled={isSubmitting || isApproved}>{es.workspace.draft}</Button>
           {/* Reject Button */}
           <Button
             type="button"
@@ -116,7 +116,7 @@ export function ApprovalBar({ run, certificate, isLoading = false, loadError = n
             size="sm"
             onClick={handleReject}
             disabled={isSubmitting}
-            className="min-h-10 text-sm"
+            className="min-h-11 text-sm"
           >
             {isSubmitting ? (
               <Spinner className="w-3.5 h-3.5 mr-1" />
@@ -133,7 +133,7 @@ export function ApprovalBar({ run, certificate, isLoading = false, loadError = n
             onClick={handleApprove}
             disabled={isSubmitting || !canApprove}
             aria-describedby={!isApproved ? coverageId : undefined}
-            className="min-h-10 text-sm"
+            className="min-h-11 text-sm"
           >
             {isSubmitting ? (
               <Spinner className="w-3.5 h-3.5 mr-1" />

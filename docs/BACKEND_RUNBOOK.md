@@ -42,6 +42,23 @@ Aplicar la regla como administrador con
 
 ## Validación
 
+### Filtros del historial
+
+`GET /api/v1/certificates` combina los filtros declarados en OpenAPI. La búsqueda
+de acta admite número parcial, nombre original del archivo, ID o `Acta #ID`.
+Las búsquedas textuales ignoran espacios exteriores y mayúsculas; `%` y `_`
+se tratan literalmente. Colada y serie se buscan parcialmente; fracción admite
+un prefijo con puntos o guiones y NICO es exacto. Los filtros de producto juntos
+deben coincidir en el mismo rollo y la clasificación pertenece a la última
+ejecución del acta, evitando coincidencias en decisiones anteriores.
+
+Desde/Hasta incluyen ambos extremos y usan la fecha del acta: un acta sin fecha
+queda fuera del intervalo. `date_basis=uploaded` permite consultar por fecha de
+carga. La ordenación conserva la fecha de carga como respaldo para actas sin
+fecha cuando no hay intervalo. Limpiar filtros vuelve al listado completo;
+paginación y actualización conservan los filtros aplicados. Consultar el contrato
+generado en `/openapi.json` o `/docs`.
+
 ### Eliminar un acta completa durante pruebas
 
 Aplicar `uv run alembic upgrade head` con la cuenta migradora y reiniciar la API.
@@ -564,3 +581,97 @@ El detalle de acta expone el nombre original del archivo en OpenAPI; la navegaci
 El listado de actas publica también el nombre original del archivo mediante su esquema OpenAPI para presentar los XLSX por nombre en el historial.
 
 La cola de revisión documental incluye el nombre original del archivo en su esquema OpenAPI para mostrar los XLSX por nombre.
+
+## Omitir portadas ArcelorMittal en OCR
+
+El lector escaneado consulta sólo el encabezado a 120 dpi con el OCR compartido,
+sin análisis de tablas. Omite el procesamiento completo únicamente cuando reconoce
+ArcelorMittal y el título `Inspection Document Cover Sheet`. Si la lectura falla,
+es incierta o la página está girada, conserva el OCR completo. No usa posiciones
+fijas: admite varias portadas y coladas dentro del mismo PDF.
+
+Las páginas de química, dimensiones, recubrimiento, ensayos y especificaciones
+siguen procesándose. El PDF original y la numeración de evidencia se conservan;
+`document.ingestion.ocr_skipped_pages` registra página y motivo. Una portada
+omitida no se interpreta como una página pendiente de OCR. Reiniciar el worker
+para cargar este cambio. El ahorro depende de las portadas reconocidas y del
+coste de la lectura ligera; no supone omitir todas las páginas de un fabricante.
+
+## Biblioteca de formatos: borradores y pruebas
+
+Aplicar `uv run alembic upgrade head` con la cuenta migradora (hasta 0011_format_activation)
+y reiniciar API y worker después de terminar trabajos activos. La migración añade
+tablas de biblioteca, layouts preparados y pruebas; no convierte borradores en
+plantillas activas ni reprocesa actas. Validada en hacktitlan_test; la aplicación a
+otras instancias forma parte del despliegue. Un downgrade elimina los nuevos
+artefactos y sus jobs; no ejecutarlo para una reversión que deba conservarlos.
+
+Consultar solicitudes y respuestas en `/openapi.json` o `/docs`, sección
+Certificate format drafts. El flujo es crear formato, editar su borrador,
+preparar el documento mediante layout-jobs, consultar progreso con el endpoint
+de jobs existente y solicitar una prueba sobre el layout preparado. Un layout
+se consulta tanto por documento (último) como por id (exacto usado por la prueba).
+Las imágenes por página se generan con el tamaño/orientación del layout.
+
+Las ediciones exigen la revisión esperada; un conflicto devuelve 409 y requiere
+recargar el borrador. La prueba conserva configuración, revisión y hash del
+extractor aunque el borrador se edite después. current_revision indica si todavía
+corresponde al borrador actual. Las versiones activas y retiradas son inmutables;
+para cambiarlas se crea una versión nueva.
+
+La preparación usa el lector digital/OCR configurado. Si falta lectura, conserva
+needs_ocr; no presenta una página ilegible como vacía. Las tareas nuevas admiten
+cancelación en cola y en ejecución mediante el endpoint existente; OCR se
+interrumpe en los puntos de comprobación del lector. Errores de infraestructura
+usan failed y los reintentos existentes, no needs_review.
+
+La vista previa requiere unidades y escalas explícitas, tablas detectadas
+completas y encabezados configurados. No reconstruye automáticamente tablas
+complejas ni une filas sin clave. success significa que terminó la extracción
+configurada, no aprobación documental ni validación arancelaria. Páginas no
+cubiertas con datos, claves duplicadas y lecturas ambiguas requieren revisión.
+Estas pruebas no llaman a persistencia de actas ni al clasificador. Borrar un
+acta en desarrollo elimina sus layouts y pruebas, conservando sus formatos.
+
+### Editor web y activación
+
+Entrar en Biblioteca de formatos o Configurar formato desde un acta PDF. Capturar
+un nombre de formato, crear/abrir un borrador, elegir documento y preparar páginas.
+Por decisión del usuario, el frontend envía Administrador y un motivo fijo sin
+campos visibles de persona/motivo.
+Seleccionar una zona arrastrando, eligiendo texto/tabla con teclado o ajustando
+porcentajes. Asignar campos o encabezados de columnas y guardar/probar. La prueba
+compara originales, normalizados, evidencia y diagnósticos sin modificar el acta.
+Ver PDF de esta prueba recupera su layout exacto antes de confirmar valores.
+
+La activación exige dos textos estables distintos en regiones orientadas y tres
+PDFs con hashes distintos, pruebas success confirmadas por una persona y hash,
+revisión y extractor actuales. No se aceptan pruebas obsoletas ni resultados con
+incidencias. Es una validación inicial, no una garantía de generalización. La
+confirmación no aprueba actas ni decisiones arancelarias. Los contratos de
+confirmación, activate, retire y format_version_id están en OpenAPI.
+
+Como máximo una versión activa por formato; activar una nueva retira la anterior
+atómicamente. Los cambios registran persona, motivo, fecha y pruebas/hash de
+validación. Retirar evita la selección futura y conserva trabajos ya encolados.
+Los jobs nuevos fijan candidatos/configuración/hash antes de encolarse. Un
+adaptador calibrado tiene prioridad en modo automático; varias plantillas
+coincidentes generan revisión. Sin coincidencia se conserva el flujo genérico.
+La selección explícita al reprocesar exige compatibilidad y crea otra revisión.
+Todas las extracciones de usuario quedan needs_review; nunca aprueban el acta.
+
+Si cambian los archivos del extractor, una prueba/trabajo con su hash anterior
+se rechaza y debe volver a encolarse. Los trabajos encolados antes de esta entrega
+mantienen su comportamiento original. Una plantilla validada con un extractor
+anterior deja de ser candidata automática; crear/probar/activar una versión
+nueva antes de volver a usarla explícitamente. current_revision considera también
+el hash del extractor vigente. La biblioteca usa el modelo de confianza
+local existente: atribución de persona/motivo no es autenticación. Mantener API
+en loopback; un despliegue compartido/remoto necesita autorización real antes de
+exponer edición/activación.
+
+No ejecutar migraciones a ciegas cuando alembic_version esté vacío y existan
+tablas: verificar primero el esquema y recuperar su revisión de origen. No usar
+stamp head para omitir migraciones. 0011 sólo se validó en hacktitlan_test; la
+base de desarrollo no se modificó. Su downgrade rechaza versiones activadas o
+retiradas para no borrar historia silenciosamente.

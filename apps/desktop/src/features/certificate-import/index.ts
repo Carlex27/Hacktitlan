@@ -8,5 +8,6 @@ export type { ImportQueueItemProps } from "./components/ImportQueueItem";
 export { useCertificateImport, JOB_POLL_INTERVAL_MS } from "./hooks/useCertificateImport";
 export type { CertificateImport, UseCertificateImportOptions } from "./hooks/useCertificateImport";
 export type { ImportItem, ImportPhase } from "./model/importItem";
+export { completedImportKey } from "./model/importItem";
 
 export { ProcessingNotice } from "./components/ProcessingNotice";

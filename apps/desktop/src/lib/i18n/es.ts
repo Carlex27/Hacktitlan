@@ -1,6 +1,10 @@
+import { classificationGuideTexts } from "./classificationGuide";
+import { formatTexts } from "./formats";
 /** Textos visibles de la interfaz (es-MX). */
 const productTypeLabels: Readonly<Record<string, string>> = { flat_rolled: "Producto laminado plano" };
 export const es = {
+  classificationGuide: classificationGuideTexts,
+  formats: formatTexts,
   certificateDeletion: {
     button: "Borrar", deleting: "Borrando…", error: "No se pudo borrar el acta",
     hint: "Borra definitivamente esta acta y sus datos asociados para pruebas.",
@@ -16,6 +20,7 @@ export const es = {
     location: (page: number) => `Página ${page}`,
   },
   workspace: {
+    batch: "Batch",
     registeredHeats: "Coladas registradas",
     closeViewer: "Cerrar visor",
     reviewSections: "Secciones de validaci\u00f3n",
@@ -32,7 +37,7 @@ export const es = {
     factorTerms: { cold: "Laminado en frío", hot: "Laminado en caliente", other: "Los demás" },
     activeJobs: (count: number) => `${count} documento(s) en procesamiento`,
     back: "Volver a los documentos", original: "Ver documento original", downloadOriginal: "Descargar documento original", spreadsheetNotice: "Este documento es un libro Excel. Sus datos extraídos están disponibles en la revisión; descarga el original para consultar el libro.", closeOriginal: "Cerrar documento original",
-    selectRoll: "Selecciona la fila de un rollo para consultar sus datos extraídos.",
+    selectRoll: "Selecciona la fila de un producto para consultar sus datos extraídos.",
     heatsTitle: "Coladas del acta", selectHeat: "Selecciona una colada para consultar sus rollos y datos técnicos.",
     noHeats: "Sin coladas registradas.", heatInformation: "Información de la colada",
     reviewTitle: "Coladas", detail: "Ver detalle", closeDetail: "Cerrar detalle",
@@ -49,10 +54,10 @@ export const es = {
     classifyReason: "Generar clasificación para los rollos extraídos del acta.",
     classifySubmitting: "Solicitando clasificación…", classifyQueued: "Clasificación en espera", classifyRunning: "Clasificando los rollos…", classifyProgress: "Progreso de clasificación",
     classifyPending: "Clasificación en proceso. Puedes salir de esta sección y consultar el resultado después.", classifyComplete: "Clasificación terminada",
-    fraction: "Fracción", nico: "NICO y alternativas", nicoFilter: "NICO", serial: "Serie del rollo", description: "Descripción",
+    fraction: "Fracción", nico: "NICO", nicoFilter: "NICO", serial: "Número de serie", description: "Descripción",
     dimensions: "Espesor × ancho (mm)", state: "Estado", unknown: "Sin dato", unknownHeat: "Colada sin identificar",
     suggested: "Sugerido", selected: "Selección registrada", needsReview: "Requiere revisión", noCandidates: "Sin candidatos",
-    alternatives: "Consulta los rollos de la colada. Autoriza una sugerencia o captura una clasificación en Validación.",
+    alternatives: "Consulta los productos de acero de la colada. Autoriza una sugerencia o captura una clasificación en Validación.",
     extracted: "Datos extraídos principales", field: "Campo", raw: "Valor original", normalized: "Valor normalizado",
     noPrimaryObservations: "No hay datos principales extraídos disponibles.",
     observationFields: {
@@ -73,9 +78,17 @@ export const es = {
     pending: "Los datos recibidos permanecen pendientes hasta su confirmación.",
     historyDescription: "Busca un acta o encuentra el documento que contiene una colada o rollo.",
     filters: "Filtros de actas", apply: "Aplicar filtros", clear: "Limpiar filtros", manufacturer: "Fabricante",
+    filtersHint: "Completa sólo los campos que necesites. Puedes combinar varios filtros y aplicar la búsqueda con Enter.",
+    certificateSearchHint: "Número, Acta #ID o nombre del archivo",
+    dateFilterHint: "El intervalo usa la fecha del acta. Las actas sin fecha no aparecen al filtrar por fechas.",
+    documentFilters: "Documento", productFilters: "Rollo y clasificación", dateStatusFilters: "Fecha del acta y revisión",
     certificate: "Número de acta", heat: "Colada", roll: "Serie del rollo", from: "Desde", to: "Hasta",
     date: "Fecha del acta", approval: "Estado de revisión", all: "Todos", noMatches: "No hay actas que coincidan con los filtros.",
     status: { draft: "Borrador", needs_review: "Pendiente de revisión", approved: "Confirmado", rejected: "Rechazado" },
+  },
+  datePicker: {
+    placeholder: "Seleccionar fecha", calendar: "Calendario", previous: "Mes anterior", next: "Mes siguiente",
+    clear: "Quitar fecha", today: "Hoy", weekdays: ["Lu", "Ma", "Mi", "Ju", "Vi", "Sá", "Do"],
   },
   savedCertificates: {
     title: "Actas guardadas",

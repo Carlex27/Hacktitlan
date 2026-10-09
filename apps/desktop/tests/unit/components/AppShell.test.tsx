@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { AppShell } from "@/components/layout";
 
 describe("AppShell navigation", () => {
-  it("integrates document breadcrumbs into the header and preserves both return actions", async () => {
+  it("shows document breadcrumbs without a back arrow and preserves the section return action", async () => {
     const onBack = vi.fn();
     render(<AppShell items={[]} activeId="import" onNavigate={vi.fn()} breadcrumbs={[
       { label: "Carga y revisión", onClick: onBack },
@@ -14,9 +14,10 @@ describe("AppShell navigation", () => {
     const header = within(screen.getByRole("banner"));
     const breadcrumbs = within(header.getByRole("navigation", { name: "Migas de pan" }));
     expect(breadcrumbs.getByText("Acta de Molino #17")).toHaveAttribute("aria-current", "page");
+    expect(breadcrumbs.getAllByRole("button")).toHaveLength(1);
     const user = userEvent.setup();
     await user.click(breadcrumbs.getByRole("button", { name: "Carga y revisión" }));
-    await user.tab({ shift: true });
+    expect(breadcrumbs.getByRole("button", { name: "Carga y revisión" })).toHaveFocus();
     await user.keyboard("{Enter}");
     expect(onBack).toHaveBeenCalledTimes(2);
   });

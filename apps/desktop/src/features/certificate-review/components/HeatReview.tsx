@@ -33,7 +33,7 @@ export function HeatReview({ certificate, isLoading, error, onRetry, selectedHea
   const activeHeatId = selectedHeatId === undefined ? certificate?.heats[0]?.id : selectedHeatId;
   const scoped = certificate && activeHeatId !== undefined ? scopeCertificateToHeat(certificate, activeHeatId) : null;
   const information = scoped && !isLoading && <section aria-label={es.workspace.heatInformation}>
-    <ProductsList products={scoped.products} heats={scoped.heats} classificationResults={classificationResults}
+    <ProductsList products={scoped.products} classificationResults={classificationResults}
       classificationLoading={classificationLoading} classificationError={classificationError} onRetryClassification={onRetryClassification}
       activeProductId={detailed ? selectedProductId : null}
       enableCandidateSelection={false}
@@ -51,7 +51,7 @@ export function HeatReview({ certificate, isLoading, error, onRetry, selectedHea
         </>;
       } : undefined} />
   </section>;
-  const heats = certificate?.heats.map((heat) => ({ id: heat.id as number | null, label: `${es.workspace.heat}: ${heat.heat_no ?? `#${heat.id}`}` })) ?? [];
+  const heats = certificate?.heats.map((heat) => ({ id: heat.id as number | null, label: `${es.workspace.batch}: ${heat.heat_no ?? `#${heat.id}`}` })) ?? [];
   if (certificate && (certificate.products.some((product) => product.heat_id === null)
     || certificate.observations.some((value) => value.heat_id === null && value.product_id === null)
     || certificate.chemical_compositions.some((value) => value.heat_id === null && value.product_id === null))) {

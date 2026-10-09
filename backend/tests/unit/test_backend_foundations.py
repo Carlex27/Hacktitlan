@@ -229,7 +229,7 @@ def test_export_can_target_a_historical_classification_run():
 
 
 def test_all_primary_keys_use_bigint_identity():
-    assert len(Base.metadata.tables) == 22
+    assert len(Base.metadata.tables) == 26
     for table in Base.metadata.tables.values():
         primary_key = list(table.primary_key.columns)
         assert len(primary_key) == 1
@@ -316,4 +316,3 @@ def test_ocr_api_endpoints_return_structured_responses(tmp_path, monkeypatch):
 
     assert smoke_res.status_code == 200
     assert smoke_res.json()["data"]["success"] is False  # not installed in test env
-

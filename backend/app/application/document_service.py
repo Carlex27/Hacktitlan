@@ -8,10 +8,11 @@ import base64
 import json
 from typing import BinaryIO
 
-from sqlalchemy import Date, cast, func, select, tuple_
+from sqlalchemy import Date, String, cast, func, or_, select, tuple_
 from sqlalchemy.orm import Session, joinedload
 
 from backend.app.config import Settings
+from backend.app.application.format_activation import template_snapshots
 from backend.app.domain.enums import JobKind, ProcessingStatus
 from backend.app.domain.errors import ApplicationError, NotFoundError
 from backend.app.infrastructure.database.models import (
@@ -92,7 +93,7 @@ class DocumentService:
                     )
                 job = session.scalar(
                     select(Job)
-                    .where(Job.document_id == document.id)
+                    .where(Job.document_id == document.id, Job.kind == JobKind.EXTRACT_DOCUMENT.value)
                     .order_by(Job.id.desc())
                     .limit(1)
                 )
@@ -127,7 +128,7 @@ class DocumentService:
             document_id=document.id,
             kind=JobKind.EXTRACT_DOCUMENT.value,
             status=ProcessingStatus.QUEUED.value,
-            payload_json={},
+            payload_json={"template_candidates": template_snapshots(session)} if artifact.media_type == "application/pdf" else {},
         )
         session.add(job)
         session.flush()
@@ -152,6 +153,12 @@ class DocumentService:
         date_to: date | None = None,
         date_basis: str = "certificate",
     ) -> tuple[list[tuple[MillCertificate, Manufacturer | None]], str | None]:
+        certificate_no = certificate_no.strip() if certificate_no else None
+        manufacturer = manufacturer.strip() if manufacturer else None
+        heat_no = heat_no.strip() if heat_no else None
+        product_identifier = product_identifier.strip() if product_identifier else None
+        fraction = fraction.strip().replace(".", "").replace("-", "") if fraction else None
+        nico = nico.strip() if nico else None
         if period:
             p_from, p_to = resolve_period_dates(period)
             if p_from is not None:
@@ -172,45 +179,48 @@ class DocumentService:
             .options(joinedload(MillCertificate.document).joinedload(Document.stored_file))
             .outerjoin(Manufacturer, Manufacturer.id == MillCertificate.manufacturer_id)
             .join(Document, Document.id == MillCertificate.document_id)
+            .join(StoredFile, StoredFile.id == Document.stored_file_id)
             .where(Document.archived.is_(False))
         )
         if certificate_no:
-            statement = statement.where(MillCertificate.certificate_no.ilike(f"%{certificate_no}%"))
+            statement = statement.where(or_(
+                MillCertificate.certificate_no.icontains(certificate_no, autoescape=True),
+                StoredFile.original_name.icontains(certificate_no, autoescape=True),
+                func.lower(func.concat("Acta #", cast(MillCertificate.id, String))) == certificate_no.lower(),
+                cast(MillCertificate.id, String) == certificate_no,
+            ))
         if manufacturer:
-            statement = statement.where(Manufacturer.name.ilike(f"%{manufacturer}%"))
+            statement = statement.where(Manufacturer.name.icontains(manufacturer, autoescape=True))
         if approval_status:
             statement = statement.where(MillCertificate.approval_status == approval_status)
         if processing_status:
             statement = statement.where(Document.processing_status == processing_status)
-        if heat_no:
-            statement = statement.where(
-                MillCertificate.id.in_(
-                    select(Heat.certificate_id).where(Heat.heat_no.ilike(f"%{heat_no}%"))
-                )
-            )
-        if product_identifier:
-            statement = statement.where(
-                MillCertificate.id.in_(
-                    select(Product.certificate_id).where(Product.product_identifier.ilike(f"%{product_identifier}%"))
-                )
-            )
-        if fraction or nico:
-            classifications = (
-                select(ClassificationRun.certificate_id)
-                .join(ClassificationResult, ClassificationResult.classification_run_id == ClassificationRun.id)
-            )
+        if heat_no and not (product_identifier or fraction or nico):
+            statement = statement.where(MillCertificate.id.in_(
+                select(Heat.certificate_id).where(Heat.heat_no.icontains(heat_no, autoescape=True))))
+        if product_identifier or fraction or nico:
+            products = select(Product.certificate_id).outerjoin(Heat, Heat.id == Product.heat_id)
+            if heat_no:
+                products = products.where(Heat.heat_no.icontains(heat_no, autoescape=True))
+            if product_identifier:
+                products = products.where(Product.product_identifier.icontains(product_identifier, autoescape=True))
+            if fraction or nico:
+                latest_run = (select(ClassificationRun.id)
+                    .where(ClassificationRun.certificate_id == Product.certificate_id)
+                    .order_by(ClassificationRun.created_at.desc(), ClassificationRun.id.desc())
+                    .limit(1).correlate(Product).scalar_subquery())
+                products = products.join(ClassificationResult, ClassificationResult.product_id == Product.id)
+                products = products.where(ClassificationResult.classification_run_id == latest_run)
             if fraction:
-                clean_frac = fraction.replace(".", "").replace("-", "")
-                classifications = classifications.where(ClassificationResult.fraction.ilike(f"{clean_frac}%"))
+                products = products.where(ClassificationResult.fraction.istartswith(fraction, autoescape=True))
             if nico:
-                classifications = classifications.where(ClassificationResult.nico == nico.strip())
-            statement = statement.where(
-                MillCertificate.id.in_(classifications)
-            )
+                products = products.where(ClassificationResult.nico == nico)
+            statement = statement.where(MillCertificate.id.in_(products))
+        filter_date = uploaded_date if date_basis == "uploaded" else MillCertificate.certificate_date
         if date_from:
-            statement = statement.where(sort_date >= date_from)
+            statement = statement.where(filter_date >= date_from)
         if date_to:
-            statement = statement.where(sort_date <= date_to)
+            statement = statement.where(filter_date <= date_to)
         if cursor:
             cursor_date, cursor_id = decode_cursor(cursor)
             statement = statement.where(tuple_(sort_date, MillCertificate.id) < (cursor_date, cursor_id))

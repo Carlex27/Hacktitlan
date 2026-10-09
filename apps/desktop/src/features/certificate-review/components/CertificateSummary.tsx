@@ -60,12 +60,12 @@ export function CertificateSummary({ certificate, isLoading = false }: Certifica
         <h3 id="cert-summary-title" className="font-semibold text-foreground text-lg leading-7">
           {es.certificateReview.summaryTitle}
         </h3>
-        <Badge variant={certificate.approval_status === "approved" ? "default" : "outline"}>
+        <Badge variant={certificate.approval_status === "rejected" ? "destructive" : "secondary"} className={`h-auto min-h-7 whitespace-normal px-3 py-1 ${certificate.approval_status === "needs_review" ? "border-warning-border bg-warning-background text-warning-foreground" : certificate.approval_status === "approved" ? "bg-success-background text-success-foreground" : ""}`}>
           {es.workspace.status[certificate.approval_status]}
         </Badge>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 text-sm leading-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-x-8 gap-y-5 text-sm leading-6">
         <div>
           <span className="block text-sm font-medium text-muted-foreground mb-1">
             {es.certificateReview.fields.manufacturer}

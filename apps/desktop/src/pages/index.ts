@@ -6,3 +6,5 @@ export { ValidationPage } from "./ValidationPage";
 export type { ValidationPageProps } from "./ValidationPage";
 
 export { HistoryPage } from "./HistoryPage";
+
+export { ClassificationGuidePage } from "./ClassificationGuidePage";

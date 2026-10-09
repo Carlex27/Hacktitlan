@@ -50,7 +50,7 @@ def refine_cells(page: PageLayout, image, recognizer, min_confidence: float) -> 
     page = replace(page, blocks=tuple(split_headers(page.blocks)))
     rows, scales = recover_rows(page)
     anchors = [next(e for e in row['evidence'] if e['field_path'] == 'product_id')['bbox'] for row in rows]
-    if len(anchors) < 2:
+    if not anchors:
         return page
     ys = [(box['top'] + box['bottom']) / 2 for box in anchors]
     first_y = min(box['top'] for box in anchors)
@@ -58,6 +58,8 @@ def refine_cells(page: PageLayout, image, recognizer, min_confidence: float) -> 
                          if b.text.strip() in {'C', 'Mn', 'Si', 'P'}
                          and first_y - page.height * .12 < center(b)[1] < first_y)
     chemical_y = chemical_ys[len(chemical_ys) // 2] if chemical_ys else None
+    if len(anchors) == 1 and chemical_y is None:
+        return page
     columns = {}
     for block in page.blocks:
         category, key, _ = match_column_semantic(block.text)
@@ -74,10 +76,10 @@ def refine_cells(page: PageLayout, image, recognizer, min_confidence: float) -> 
     xs = sorted({center(b)[0] for b in columns.values()})
     product_columns = [b for key, b in columns.items() if key.startswith('product_id:')]
     heat_column = columns.get('heat_no')
-    if heat_column and any(abs(center(b)[0] - center(heat_column)[0]) < page.width * .02 for b in product_columns):
+    if len(anchors) > 1 and heat_column and any(abs(center(b)[0] - center(heat_column)[0]) < page.width * .02 for b in product_columns):
         return page
     merged = [b for b in page.blocks if b.bbox.top >= first_y and sum(b.bbox.x0 < x < b.bbox.x1 for x in xs) >= 2]
-    if not merged:
+    if not merged and len(anchors) > 1:
         return page
     crops, boxes, dittos = [], [], []
     image_h, image_w = image.shape[:2]
@@ -97,7 +99,8 @@ def refine_cells(page: PageLayout, image, recognizer, min_confidence: float) -> 
     for key, block in columns.items():
         if match_column_semantic(block.text)[0] != 'chemistry' or key in scales:
             continue
-        top, bottom = block.bbox.bottom, first_y
+        top = block.bbox.bottom
+        bottom = min(first_y, top + page.height * .035)
         y0, y1 = int(top * image_h / page.height), int(bottom * image_h / page.height)
         band = ink[y0:y1]
         if band.size == 0:
@@ -112,6 +115,7 @@ def refine_cells(page: PageLayout, image, recognizer, min_confidence: float) -> 
         crop = image[y0:y1, int(left * image_w / page.width):int(right * image_w / page.width)]
         if not crop.size:
             continue
+        crop = _without_cell_rules(crop)
         result = next(iter(recognizer([cv2.resize(crop, None, fx=4, fy=4)])))
         text = str(result.get('rec_text', '')).strip()
         if not re.search(r'10\s*[-−^]?[1-6]', text):
@@ -134,6 +138,8 @@ def refine_cells(page: PageLayout, image, recognizer, min_confidence: float) -> 
             header_additions.append(TextBlock(page.page_number, text, BoundingBox(left, top, right, bottom),
                                               float(result['rec_score']), PageSource.OCR))
     for x_index, x in enumerate(xs):
+        if len(anchors) == 1 and not any(center(block)[0] == x and match_column_semantic(block.text)[0] == 'chemistry' for block in columns.values()):
+            continue
         left = (xs[x_index - 1] + x) / 2 if x_index else min(b.bbox.x0 for b in columns.values() if center(b)[0] == x)
         right = (x + xs[x_index + 1]) / 2 if x_index + 1 < len(xs) else max(b.bbox.x1 for b in columns.values() if center(b)[0] == x) + 2
         left_rulers = [ruler for ruler in rulers if ruler < x]
@@ -143,7 +149,7 @@ def refine_cells(page: PageLayout, image, recognizer, min_confidence: float) -> 
             if ruled_right - ruled_left < (right - left) * 1.8:
                 left, right = ruled_left + .1, ruled_right - .1
         for index, y in enumerate(ys):
-            step = ys[1] - ys[0] if index == 0 else y - ys[index - 1]
+            step = page.height * .035 if len(ys) == 1 else ys[1] - ys[0] if index == 0 else y - ys[index - 1]
             top = (ys[index - 1] + y) / 2 if index else y - step / 2
             bottom = (y + ys[index + 1]) / 2 if index + 1 < len(ys) else y + step / 2
             x0, x1 = int(left * image_w / page.width), int(right * image_w / page.width)
@@ -169,3 +175,15 @@ def refine_cells(page: PageLayout, image, recognizer, min_confidence: float) -> 
             additions.append(TextBlock(page.page_number, text, box, score, PageSource.OCR))
     # Keep originals as audit evidence; cell readings precede merged lines for selection.
     return replace(page, blocks=tuple(header_additions) + tuple(additions) + page.blocks)
+
+
+def _without_cell_rules(crop):
+    """Remove full cell borders that interfere with small digits and superscripts."""
+    import cv2
+
+    ink = cv2.threshold(cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY), 180, 255, cv2.THRESH_BINARY_INV)[1]
+    horizontal = cv2.morphologyEx(ink, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_RECT, (crop.shape[1], 1)))
+    lines = cv2.bitwise_or(horizontal, cv2.morphologyEx(ink, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_RECT, (1, crop.shape[0]))))
+    cleaned = crop.copy()
+    cleaned[lines > 0] = 255
+    return cv2.copyMakeBorder(cleaned, 4, 4, 4, 4, cv2.BORDER_CONSTANT, value=(255, 255, 255))

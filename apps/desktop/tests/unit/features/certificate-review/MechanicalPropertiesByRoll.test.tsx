@@ -13,9 +13,9 @@ it("separa ensayos por rollo y conserva los datos sin asociaciÃ³n", () => {
     observations: [observation, { ...observation, id: 30, product_id: 2, normalized_value: "999" },
       { ...observation, id: 31, product_id: null, normalized_value: "777" }],
   }} />);
-  const first = within(screen.getByRole("region", { name: `Serie del rollo: ${product.product_identifier}` }));
+  const first = within(screen.getByRole("region", { name: `Número de serie: ${product.product_identifier}` }));
   expect(first.getByText("310 MPa")).toBeInTheDocument();
   expect(first.queryByText("999 MPa")).not.toBeInTheDocument();
-  expect(within(screen.getByRole("region", { name: "Serie del rollo: R-002" })).getByText("999 MPa")).toBeInTheDocument();
+  expect(within(screen.getByRole("region", { name: "Número de serie: R-002" })).getByText("999 MPa")).toBeInTheDocument();
   expect(within(screen.getByRole("region", { name: "Ensayos sin rollo asociado" })).getByText("777 MPa")).toBeInTheDocument();
 });

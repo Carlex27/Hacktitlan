@@ -14,11 +14,11 @@ it("activa la primera colada al cargar y respeta otra selección explícita", ()
     classificationResults: [], classificationLoading: false, classificationError: null, onRetryClassification: vi.fn() };
   const { rerender } = render(<HeatReview {...props} certificate={null} isLoading selectedHeatId={undefined} />);
   rerender(<HeatReview {...props} selectedHeatId={undefined} />);
-  expect(screen.getByRole("button", { name: `Colada: ${heat.heat_no}` })).toHaveAttribute("aria-pressed", "true");
+  expect(screen.getByRole("button", { name: `Batch: ${heat.heat_no}` })).toHaveAttribute("aria-pressed", "true");
   expect(screen.getByRole("row", { name: /PL-001/ })).toBeInTheDocument();
   expect(screen.queryByRole("row", { name: /ROLLO-OTRO/ })).not.toBeInTheDocument();
   rerender(<HeatReview {...props} selectedHeatId={99} />);
-  expect(screen.getByRole("button", { name: "Colada: OTRA" })).toHaveAttribute("aria-pressed", "true");
+  expect(screen.getByRole("button", { name: "Batch: OTRA" })).toHaveAttribute("aria-pressed", "true");
   expect(screen.getByRole("row", { name: /ROLLO-OTRO/ })).toBeInTheDocument();
   expect(screen.queryByRole("row", { name: /PL-001/ })).not.toBeInTheDocument();
 });

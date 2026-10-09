@@ -20,6 +20,7 @@ export interface ApiClient {
   get<T>(path: string, options?: RequestOptions): Promise<ApiEnvelope<T>>;
   delete<T>(path: string, options?: RequestOptions): Promise<ApiEnvelope<T>>;
   post<T>(path: string, body: unknown, options?: RequestOptions): Promise<ApiEnvelope<T>>;
+  patch<T>(path: string, body: unknown, options?: RequestOptions): Promise<ApiEnvelope<T>>;
   postForm<T>(path: string, form: FormData, options?: RequestOptions): Promise<ApiEnvelope<T>>;
   /** Descarga un archivo (p. ej. un PDF). Los errores llegan como `ApiError`. */
   getBlob(path: string, options?: RequestOptions): Promise<Blob>;
@@ -105,6 +106,8 @@ export function createApiClient({
       }),
     postForm: (path, form, options) =>
       request(path, { method: "POST", body: form, signal: options?.signal ?? null }),
+    patch: (path, body, options) => request(path, { method: "PATCH", body: JSON.stringify(body),
+      headers: { "Content-Type": "application/json" }, signal: options?.signal ?? null }),
     getBlob,
   };
 }

@@ -17,6 +17,8 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from backend.app.application.certificate_extraction import CertificateExtractionService
+from backend.app.application.certificate_extraction import DocumentReader
+from backend.app.application.format_jobs import execute_format_job
 from backend.app.application.persistence import CertificatePersistenceService
 from backend.app.application.classification_service import ClassificationService
 from backend.app.config import Settings, get_settings
@@ -52,6 +54,7 @@ class Worker:
         sessions: sessionmaker[Session],
         storage: FileStorage,
         extractor: DocumentExtractor | None = None,
+        layout_reader: DocumentReader | None = None,
     ) -> None:
         self.settings = settings
         self.sessions = sessions
@@ -63,6 +66,7 @@ class Worker:
             ollama_extractor=OllamaExtractor(settings) if settings.ollama_enabled else None,
         )
         self.persistence = CertificatePersistenceService(settings)
+        self.layout_reader = layout_reader
 
     def run_once(self) -> bool:
         with self.sessions.begin() as session:
@@ -85,6 +89,8 @@ class Worker:
             logger.exception("job_failed", extra={"job_id": job_id})
             with self.sessions.begin() as session:
                 job = session.get(Job, job_id)
+                if job is not None and job.status == ProcessingStatus.CANCELLED.value:
+                    return True
                 if job is not None:
                     job.status = (
                         ProcessingStatus.QUEUED.value
@@ -125,6 +131,10 @@ class Worker:
             self._execute_export(job_id)
         elif kind == JobKind.RECLASSIFY.value:
             self._execute_reclassification(job_id)
+        elif kind in {JobKind.PREPARE_LAYOUT.value, JobKind.TEST_CERTIFICATE_FORMAT.value}:
+            with self._heartbeat(job_id):
+                execute_format_job(job_id, self.sessions, self.storage,
+                                   self.layout_reader or build_document_reader(self.settings), self.settings)
         else:
             raise ValueError("Tipo de trabajo no soportado por este worker")
 
@@ -139,6 +149,8 @@ class Worker:
                 raise ValueError("El documento o archivo del trabajo no existe")
             path = self.storage.resolve(stored_file.relative_path)
             document_id = document.id
+            template_candidates = job.payload_json.get("template_candidates") or []
+            explicit_template = bool(job.payload_json.get("explicit_template"))
 
         def page_progress(current_page: int, total_pages: int) -> None:
             if total_pages <= 0:
@@ -159,9 +171,10 @@ class Worker:
             try:
                 analyze = getattr(self.extractor, "analyze_document", self.extractor.analyze_pdf)
                 try:
-                    result = analyze(
-                        path, page_callback=page_progress, cancel_check=is_cancelled
-                    )
+                    options = {"page_callback": page_progress, "cancel_check": is_cancelled}
+                    if isinstance(self.extractor, CertificateExtractionService):
+                        options.update(template_candidates=template_candidates, explicit_template=explicit_template)
+                    result = analyze(path, **options)
                 except TypeError:
                     result = analyze(path)
             except Exception as exc:
@@ -225,6 +238,7 @@ class Worker:
                 "ingestion": result["document"].get("ingestion") or {},
                 "extraction_reasons": result.get("reasons") or [],
                 "llm_assistance": result.get("llm_assistance"),
+                "template": result.get("template"),
             }
             job.status = final_status.value
             job.progress = 100
@@ -235,6 +249,7 @@ class Worker:
                 "status": result["status"],
                 "adapter": result.get("adapter"),
                 "detection": result.get("detection"),
+                "template": result.get("template"),
             }
             session.add(
                 ExtractionRun(
@@ -248,6 +263,9 @@ class Worker:
                         "table_candidates": result.get("table_candidates") or [],
                         "unmapped_blocks": result.get("unmapped_blocks") or [],
                         "llm_assistance": result.get("llm_assistance"),
+                        "template": result.get("template"),
+                        "template_evidence": result.get("template_evidence"),
+                        "template_candidates": result.get("template_candidates"),
                     },
                     normalized_json=result.get("certificate"),
                     warnings_json=result.get("reasons") or [],

@@ -10,16 +10,57 @@ async function openHistory(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe("Carga, revisión e historial", () => {
+  it("envía todos los filtros, incluidas las fechas del calendario, y los conserva al actualizar", async () => {
+    const backend = createFakeBackend({ ...healthyRoutes });
+    render(<App apiClient={backend.client} />);
+    const user = userEvent.setup();
+    await openHistory(user);
+    const form = screen.getByRole("form", { name: "Filtros de actas" });
+    await user.type(within(form).getByLabelText("Número de acta"), " MOLINOS GENERAL.xlsx ");
+    await user.type(within(form).getByLabelText("Fabricante"), " Maker ");
+    await user.type(within(form).getByLabelText("Colada"), " C-123 ");
+    await user.type(within(form).getByLabelText("Serie del rollo"), " R/2 ");
+    await user.type(within(form).getByLabelText("Fracción"), "7210.49.99");
+    await user.type(within(form).getByLabelText("NICO"), "02");
+    for (const label of ["Desde", "Hasta"]) {
+      await user.click(within(form).getByRole("button", { name: `${label}: Seleccionar fecha` }));
+      await user.click(screen.getByRole("button", { name: "Hoy" }));
+    }
+    within(form).getByRole("combobox", { name: "Estado de revisión" }).focus();
+    await user.keyboard("{Enter}");
+    await user.click(screen.getByRole("option", { name: "Confirmado" }));
+    await user.click(within(form).getByRole("button", { name: "Aplicar filtros" }));
+    const request = backend.calls.find((call) => call.includes("certificate_no="));
+    expect(request).toBeDefined();
+    const params = new URLSearchParams(request?.split("?")[1]);
+    expect(Object.fromEntries(params)).toMatchObject({ certificate_no: "MOLINOS GENERAL.xlsx", manufacturer: "Maker",
+      heat_no: "C-123", product_identifier: "R/2", fraction: "7210.49.99", nico: "02", approval_status: "approved" });
+    expect(params.get("date_from")).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(params.get("date_to")).toBe(params.get("date_from"));
+    await user.click(screen.getByRole("button", { name: "Actualizar actas" }));
+    await waitFor(() => expect(backend.calls.filter((call) => call === request)).toHaveLength(2));
+    await user.click(within(form).getByRole("button", { name: "Limpiar filtros" }));
+    expect(within(form).getByLabelText("Número de acta")).toHaveValue("");
+    expect(within(form).getByRole("button", { name: "Desde: Seleccionar fecha" })).toBeVisible();
+    expect(within(form).getByRole("combobox", { name: "Estado de revisión" })).toHaveTextContent("Todos");
+  });
+
   it("aplica filtros en el servidor y reinicia la paginación al limpiar", async () => {
     const backend = createFakeBackend({ ...healthyRoutes });
     render(<App apiClient={backend.client} />);
     const user = userEvent.setup();
     await openHistory(user);
     const form = screen.getByRole("form", { name: "Filtros de actas" });
-    await user.type(within(form).getByLabelText("Colada"), "C-123");
+    expect(within(form).getByRole("group", { name: "Documento" })).toBeVisible();
+    expect(within(form).getByRole("group", { name: "Rollo y clasificación" })).toBeVisible();
+    expect(within(form).getByRole("group", { name: "Fecha del acta y revisión" })).toBeVisible();
+    await user.type(within(form).getByLabelText("Colada"), " C-123 ");
     await user.type(within(form).getByLabelText("Serie del rollo"), "R/2");
-    await user.selectOptions(within(form).getByLabelText("Estado de revisión"), "draft");
-    await user.click(within(form).getByRole("button", { name: "Aplicar filtros" }));
+    within(form).getByRole("combobox", { name: "Estado de revisión" }).focus();
+    await user.keyboard("{Enter}");
+    await user.click(screen.getByRole("option", { name: "Borrador" }));
+    await user.click(within(form).getByLabelText("Serie del rollo"));
+    await user.keyboard("{Enter}");
     await waitFor(() => expect(backend.calls).toContain("GET /api/v1/certificates?heat_no=C-123&product_identifier=R%2F2&approval_status=draft"));
     await user.click(within(form).getByRole("button", { name: "Limpiar filtros" }));
     await waitFor(() => expect(backend.calls.filter((call) => call === "GET /api/v1/certificates")).toHaveLength(2));

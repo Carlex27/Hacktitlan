@@ -27,6 +27,8 @@ class ApprovalStatus(StrEnum):
 
 
 class JobKind(StrEnum):
+    PREPARE_LAYOUT = "prepare_layout"
+    TEST_CERTIFICATE_FORMAT = "test_certificate_format"
     EXTRACT_DOCUMENT = "extract_document"
     NORMALIZE_DOCUMENT = "normalize_document"
     RECLASSIFY = "reclassify"

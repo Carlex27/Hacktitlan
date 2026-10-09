@@ -1,88 +1,96 @@
-# Clasificador local LIGIE - Capítulo 72
+# Hacktitlan — Clasificador de acero LIGIE, capítulo 72
 
-Proyecto para extraer certificados de materiales y determinar de forma
-explicable una fracción arancelaria mexicana y su NICO dentro del capítulo 72.
+Hacktitlan es un proyecto realizado por el **Equipo ZankaTec del Instituto
+Tecnológico de la Costa Grande**. Ayuda a revisar certificados de materiales y
+proponer una clasificación arancelaria mexicana para productos de acero,
+con datos técnicos y evidencia que permitan entender cada resultado.
 
-## Estado actual
+El programa reúne en una interfaz web la carga de actas de molino, la consulta
+de sus coladas y rollos, la revisión de información extraída y la selección de
+una fracción arancelaria y su NICO (Número de Identificación Comercial).
+La clasificación se apoya en reglas del capítulo 72 de la LIGIE (Ley de los
+Impuestos Generales de Importación y de Exportación), con un motor enfocado
+actualmente en productos laminados planos.
 
-La fase de descubrimiento y normalización inicial está en curso. Ya existe una
-extracción reproducible del PDF proporcionado en
-`data/ligie/chapter-72/source-provided/` y una propuesta de arquitectura en
-`docs/`.
+## ¿Qué hace el programa?
 
-El documento fuente está marcado `SIN VIGENCIA`; los datos extraídos no deben
-usarse en operaciones aduaneras hasta ser contrastados con fuentes oficiales.
+- **Importa documentos:** recibe certificados en PDF y archivos XLSX, conserva
+  los originales y muestra el progreso de procesamiento.
+- **Extrae información técnica:** identifica, según el formato y la legibilidad
+  del documento, coladas, rollos, composición química, dimensiones, pesos,
+  recubrimientos y propiedades mecánicas. Puede utilizar OCR para PDFs escaneados.
+- **Organiza y valida los datos:** presenta los productos por colada, conserva
+  valores originales y normalizados, y señala datos faltantes, lecturas dudosas
+  o contradicciones para revisión.
+- **Propone fracciones y NICO:** evalúa los datos disponibles mediante reglas
+  deterministas y presenta candidatos con sus factores, fundamentos y evidencia.
+- **Permite la revisión humana:** ofrece consulta de evidencia, correcciones
+  auditadas, selección de sugerencias y captura manual de clasificación con
+  justificación, antes de aprobar el acta.
+- **Conserva un historial:** permite buscar actas y filtrar por fecha, colada,
+  rollo y clasificación, manteniendo las revisiones y decisiones registradas.
+- **Exporta información a Excel:** genera reportes XLSX con datos técnicos,
+  clasificación y trazabilidad, distinguiendo resultados preliminares y aprobados.
 
-## Certificados de molino
+## Flujo de uso
 
-La primera especificación ejecutable de extracción y normalización está en
-[`docs/CERTIFICATE_EXTRACTION_RULES.md`](docs/CERTIFICATE_EXTRACTION_RULES.md).
-Incluye casos dorados de `MOLINO 1` a `MOLINO 4`, normalización química exacta,
-conteo dinámico de rollos, valores ditto, recubrimientos y validación contra
-subtotales, piezas y pesos totales.
+1. Cargar el certificado y esperar su procesamiento.
+2. Consultar las coladas y rollos identificados y revisar los datos extraídos.
+3. Examinar las sugerencias de clasificación y la evidencia que las respalda.
+4. Corregir los datos que lo requieran y confirmar la fracción y el NICO de cada rollo.
+5. Aprobar la revisión del acta y consultar o exportar los resultados desde el historial.
 
-También existe una primera canalización determinista para formatos nuevos:
-extrae texto digital, coordenadas y tablas, detecta semánticamente posibles
-actas de molino, descubre encabezados mediante sinónimos y devuelve estados
-explícitos de revisión u OCR. Existe un adaptador opcional para
-PaddleOCR/PP-Structure, pero su descarga de modelos, calibración geométrica y
-validación con el corpus real todavía están pendientes. No incorpora IA
-generativa ni sustituye los normalizadores de los cuatro ejemplos conocidos.
+Una sugerencia del motor no equivale a una aprobación humana. Si el documento
+no aporta información suficiente, el sistema conserva la incertidumbre y
+solicita revisión; un dato ausente no se convierte en cero.
+
+## Estado y alcance
+
+El proyecto está en desarrollo. Utiliza una interfaz React en entorno web,
+un servicio backend en Python/FastAPI y almacenamiento en PostgreSQL. La
+interfaz consume la API del servicio; no accede directamente a la base de datos.
+
+La extracción depende del formato y la calidad de cada certificado. El OCR y la
+asistencia local de extracción con Ollama son componentes opcionales; sus
+resultados requieren revisión y no sustituyen las reglas de clasificación.
+
+El catálogo fuente proporcionado está marcado **`SIN VIGENCIA`**. Los resultados
+deben contrastarse con fuentes oficiales vigentes antes de utilizarse en
+operaciones aduaneras. El programa es una herramienta de apoyo a la revisión,
+no una verificación automática de vigencia normativa.
+
+El avance verificable y las limitaciones de implementación se mantienen en
+[Estado del backend](docs/BACKEND_IMPLEMENTATION_STATUS.md).
+
+## Documentación del proyecto
+
+- [Producto y flujo de trabajo](PRODUCT.md).
+- [Reglas de extracción de certificados](docs/CERTIFICATE_EXTRACTION_RULES.md).
+- [Reglas del motor de clasificación](docs/CLASSIFICATION_ENGINE_RULES.md).
+- [Instalación, ejecución y operación del backend](docs/BACKEND_RUNBOOK.md).
+- [Plan de desarrollo](docs/BACKEND_DEVELOPMENT_PLAN.md) y
+  [plan de finalización del backend](docs/BACKEND_COMPLETION_PLAN.md).
+- [Requisitos de exportación a Excel](docs/EXCEL_EXPORT_REQUIREMENTS.md).
+- [Requisitos de modelos locales](docs/LOCAL_MODELS_REQUIREMENTS.md).
+- [Decisiones operativas](docs/PRODUCT_DECISIONS.md).
+- [Convenciones de desarrollo](AGENTS.md).
+
+Los contratos de la API se consultan en `/openapi.json`, `/docs` o `/redoc` con
+el backend en ejecución.
+
+## Herramientas de desarrollo
+
+Para ejecutar las pruebas unitarias del backend:
 
 ```powershell
 python -m unittest discover -s backend/tests -v
 ```
 
-## Estructura de desarrollo
-
-El repositorio ya contiene el esqueleto del backend, el frontend React/Tauri,
-las pruebas, las reglas versionadas y el empaquetado. Las convenciones
-obligatorias de arquitectura por componentes y calidad están en `AGENTS.md`.
-
-La arquitectura objetivo utiliza PostgreSQL centralizado. Durante la
-demostración, este equipo funcionará como servidor de base de datos y ambiente
-principal de desarrollo; el segundo equipo consumirá la API backend mediante la
-red privada de Tailscale. El frontend no accederá directamente a PostgreSQL.
-Esta decisión es por ahora una especificación: la instalación y la configuración
-se realizarán en una etapa posterior.
-
-El alcance incluye un historial navegable por fecha, acta de molino, colada y
-producto, además de la generación de documentos PDF/XLSX con la información
-técnica, tipo de producto, fracción, NICO, evidencia y versión de reglas.
-La exportación a Excel será opcional desde las vistas del historial y producirá
-un libro profesional, autocontenido y relacionado internamente; los detalles se
-encuentran en
-[`docs/EXCEL_EXPORT_REQUIREMENTS.md`](docs/EXCEL_EXPORT_REQUIREMENTS.md).
-
-La aplicación base no tiene un presupuesto fijo de RAM y puede operar sin GPU
-dedicada. Los paquetes de OCR e IA local serán descargas opcionales ofrecidas
-durante la instalación o posteriormente, siempre después de comprobar la
-compatibilidad del equipo. La especificación está en
-[`docs/LOCAL_MODELS_REQUIREMENTS.md`](docs/LOCAL_MODELS_REQUIREMENTS.md).
-Cuando exista una GPU dedicada compatible, OCR e inferencia la utilizarán de
-forma preferente, con selección automática del backend y respaldo por CPU.
-
-Las decisiones operativas iniciales —sin usuarios, aprobación manual, archivos
-centralizados, bloqueo sin servidor, volumen estimado, respaldos diarios,
-reportes genéricos, fuente de reglas y Windows 11 x64— están consolidadas en
-[`docs/PRODUCT_DECISIONS.md`](docs/PRODUCT_DECISIONS.md).
-
-El plan ejecutable del backend y PostgreSQL está en
-[`docs/BACKEND_DEVELOPMENT_PLAN.md`](docs/BACKEND_DEVELOPMENT_PLAN.md).
-La secuencia detallada desde el estado actual hasta finalizar el backend está en
-[`docs/BACKEND_COMPLETION_PLAN.md`](docs/BACKEND_COMPLETION_PLAN.md).
-La instalación del servidor, migraciones, ejecución y respaldo se describen en
-[`docs/BACKEND_RUNBOOK.md`](docs/BACKEND_RUNBOOK.md).
-El avance verificable y lo pendiente por diseño están en
-[`docs/BACKEND_IMPLEMENTATION_STATUS.md`](docs/BACKEND_IMPLEMENTATION_STATUS.md).
-Las reglas, límites y comportamiento conservador del segundo hito están en
-[`docs/CLASSIFICATION_ENGINE_RULES.md`](docs/CLASSIFICATION_ENGINE_RULES.md).
-
-## Regenerar la extracción
+Para regenerar la extracción del catálogo fuente del capítulo 72:
 
 ```powershell
 python tools/extract_chapter72.py
 ```
 
-El script conserva filas crudas, catálogo normalizado, notas y un reporte de
-calidad para permitir auditoría.
+La extracción conserva filas crudas, catálogo normalizado, notas y un reporte
+de calidad para permitir auditoría.

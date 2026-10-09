@@ -10,11 +10,11 @@ export function CandidateFactors({ candidate, onViewEvidence, renderTariffAction
 }) {
   if (!candidate) return null;
   const text = es.workspace;
-  return <section aria-label={text.conditions} className="space-y-3">
+  return <section aria-label={text.conditions} className="space-y-4">
     <h4 className="text-sm font-semibold">{text.conditions}: {candidate.fraction} · NICO {candidate.nico}</h4>
     {candidate.factors.length === 0 ? <p className="text-sm text-muted-foreground">{text.noFactors}</p> :
-      candidate.factors.map((factor) => <details key={factor.id} className="rounded-xl border border-border bg-background p-3">
-        <summary className="min-h-10 cursor-pointer py-2 text-sm leading-6 font-medium focus-visible:outline-2 focus-visible:outline-primary">
+      candidate.factors.map((factor) => <details key={factor.id} className="border-b border-border py-3">
+        <summary className="min-h-11 cursor-pointer py-2 text-sm leading-6 font-medium focus-visible:outline-2 focus-visible:outline-primary">
           {factor.explanation || factor.rule_code} · {text.factorStatus[factor.outcome]}
         </summary>
         <dl className="mt-3 grid gap-4 text-sm leading-6 sm:grid-cols-2"><div><dt className="font-medium text-muted-foreground">{text.expected}</dt><dd className="break-words">{formatFactorValue(factor.expected, factor.unit).map((line, index) => <p key={index}>{line}</p>)}</dd></div>

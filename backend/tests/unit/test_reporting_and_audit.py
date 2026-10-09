@@ -262,6 +262,66 @@ def test_document_service_list_certificates_filters(db_session, tmp_path):
     assert not any(c.id == cert2.id for c, _ in items_appr)
 
 
+def test_history_filters_match_visible_documents_and_current_rolls(db_session, tmp_path):
+    session, db_url = db_session
+    settings = Settings(database_url=db_url, storage_root=tmp_path / "storage", backup_root=tmp_path / "backups")
+    doc, cert, maker = _seed_test_document_and_cert(session, "FILTER-CURRENT", date(2026, 6, 12), "needs_review")
+    _, unknown, _ = _seed_test_document_and_cert(session, "FILTER-UNKNOWN", None)
+    doc.stored_file.original_name = "MOLINOS GENERAL.xlsx"
+    heat = Heat(certificate_id=cert.id, heat_no="HEAT-ONE")
+    other_heat = Heat(certificate_id=cert.id, heat_no="HEAT-TWO")
+    session.add_all([heat, other_heat])
+    session.flush()
+    roll = Product(certificate_id=cert.id, heat_id=heat.id, product_identifier="ROLL_ONE")
+    other_roll = Product(certificate_id=cert.id, heat_id=other_heat.id, product_identifier="ROLL-TWO")
+    session.add_all([roll, other_roll])
+    session.flush()
+    rule_set = session.scalar(select(RuleSet).order_by(RuleSet.id).limit(1))
+    old_run = ClassificationRun(certificate_id=cert.id, rule_set_id=rule_set.id,
+        input_snapshot_json={}, demo_notice="Test", created_at=datetime(2026, 1, 1, tzinfo=timezone.utc))
+    new_run = ClassificationRun(certificate_id=cert.id, rule_set_id=rule_set.id,
+        input_snapshot_json={}, demo_notice="Test", created_at=datetime(2026, 1, 2, tzinfo=timezone.utc))
+    session.add_all([old_run, new_run])
+    session.flush()
+    session.add_all([
+        ClassificationResult(classification_run_id=old_run.id, product_id=roll.id,
+            outcome="classified", fraction="72091504", nico="01"),
+        ClassificationResult(classification_run_id=new_run.id, product_id=roll.id,
+            outcome="classified", fraction="72104999", nico="02"),
+        ClassificationResult(classification_run_id=new_run.id, product_id=other_roll.id,
+            outcome="classified", fraction="72091504", nico="03"),
+    ])
+    session.flush()
+    app = create_app(settings)
+    def get_test_session():
+        yield session
+    app.dependency_overrides[get_session] = get_test_session
+    with TestClient(app) as client:
+        def ids(**params):
+            response = client.get("/api/v1/certificates", params=params)
+            assert response.status_code == 200, response.text
+            return [item["id"] for item in response.json()["data"]]
+
+        for search in (" filter-current ", " molinos general ", str(cert.id), f"Acta #{cert.id}"):
+            assert cert.id in ids(certificate_no=search)
+        assert cert.id in ids(manufacturer=f" {maker.name.lower()} ")
+        assert cert.id in ids(heat_no=" heat-one ", product_identifier=" roll_one ", fraction="7210.49.99", nico=" 02 ", approval_status="needs_review")
+        assert cert.id not in ids(heat_no="HEAT-TWO", product_identifier="ROLL_ONE")
+        assert cert.id not in ids(product_identifier="ROLL_ONE", fraction="72091504")
+        assert cert.id not in ids(fraction="72104999", nico="03")
+        assert cert.id not in ids(product_identifier="ROLL%ONE")
+        assert cert.id not in ids(certificate_no="%")
+        assert cert.id in ids(certificate_no="FILTER-CURRENT", date_from="2026-06-12", date_to="2026-06-12")
+        assert cert.id not in ids(certificate_no="FILTER-CURRENT", date_from="2026-06-13")
+        assert cert.id not in ids(certificate_no="FILTER-CURRENT", approval_status="approved")
+        assert unknown.id not in ids(certificate_no="FILTER-UNKNOWN", date_from="2000-01-01")
+        assert unknown.id in ids(certificate_no="FILTER-UNKNOWN", date_from="2000-01-01", date_basis="uploaded")
+        assert cert.id in ids(manufacturer="   ")
+        assert client.get("/api/v1/certificates", params={"date_from": "2026-06-13", "date_to": "2026-06-12"}).status_code == 400
+        parameters = client.get("/openapi.json").json()["paths"]["/api/v1/certificates"]["get"]["parameters"]
+        assert "nombre original" in next(p for p in parameters if p["name"] == "certificate_no")["description"]
+
+
 @pytest.mark.parametrize("insert_day", [10, 1])
 def test_cursor_pagination_stability_under_concurrent_insertions(db_session, tmp_path, insert_day):
     session, db_url = db_session

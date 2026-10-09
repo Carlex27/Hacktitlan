@@ -6,6 +6,8 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.exc import DBAPIError
+from alembic.config import Config
+from alembic.script import ScriptDirectory
 
 from backend.app.api.app import create_app
 from backend.app.config import Settings
@@ -48,7 +50,7 @@ def test_migrated_postgresql_contract(test_database_url: str):
     finally:
         engine.dispose()
 
-    assert migration == "0006_rule_set_immutability"
+    assert migration == ScriptDirectory.from_config(Config("alembic.ini")).get_current_head()
     assert {
         "manufacturers", "stored_files", "documents", "mill_certificates",
         "heats", "products", "observations", "chemical_compositions", "jobs",
@@ -57,6 +59,7 @@ def test_migrated_postgresql_contract(test_database_url: str):
         "classification_candidates", "classification_selections", "candidate_factors",
         "evidence_links",
         "approval_events", "exports", "backup_runs",
+        "certificate_formats", "certificate_format_versions", "prepared_document_layouts", "certificate_format_tests",
     } <= tables
 
 

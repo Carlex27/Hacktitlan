@@ -22,6 +22,12 @@ PDF y XLSX están documentados en el backend. El procesamiento continúa al nave
 
 ## Principios
 
+La biblioteca de formatos permite configurar extracción PDF mediante regiones,
+campos y columnas sin cambiar reglas jurídicas. Las pruebas preservan actas;
+activar requiere ejemplos revisados y sólo habilita futuros trabajos. Reprocesar
+es una acción explícita que crea otra revisión. La biblioteca pertenece a la
+instancia local y registra persona/motivo; no existe autenticación multiusuario.
+
 Generar clasificación muestra sólo el botón y envía Administrador y un motivo fijo, sin campos de captura, por decisión del usuario.
 
 - Revisar sin cambiar de sección.
@@ -34,3 +40,6 @@ El detalle del acta tiene cuatro secciones: Coladas (vista rápida tras seleccio
 La selección de una sugerencia de fracción/NICO se confirma con Elegir fracción y envía Administrador y un motivo fijo a la API, sin campos de persona ni motivo, por petición del usuario.
 
 Por decisión del usuario, la selección auditada de fracción y NICO confirma la verificación humana de cada rollo. La aprobación del acta cierra la revisión completa; los datos faltantes y factores desconocidos del motor se preservan sin bloquear el cierre. Se mantienen bloqueos de contradicciones y cobertura incompleta.
+
+
+La sección Cómo se clasifica explica el recorrido del motor, respaldo de sugerencias, incertidumbre y confirmación humana. Es informativa y accesible sin conexión al backend; no modifica reglas ni clasificaciones.

@@ -46,8 +46,8 @@ export function CandidateList({
     return (
       <Empty className="py-4">
         <EmptyHeader>
-          <EmptyTitle className="text-sm">{es.classification.noCandidatesTitle}</EmptyTitle>
-          <EmptyDescription className="text-sm">
+          <EmptyTitle className="h-auto min-h-6 whitespace-normal text-xs">{es.classification.noCandidatesTitle}</EmptyTitle>
+          <EmptyDescription className="h-auto min-h-6 whitespace-normal text-xs">
             El clasificador no determinó candidatos para este resultado.
           </EmptyDescription>
         </EmptyHeader>
@@ -97,9 +97,9 @@ export function CandidateList({
               <label
                 key={cand.id}
                 className={cn(
-                  "flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition-colors",
+                  "flex items-start gap-3 p-4 rounded-lg border cursor-pointer transition-colors",
                   isChosen
-                    ? "bg-accent border-primary ring-1 ring-primary"
+                    ? "bg-muted/50 border-primary"
                     : "bg-background border-border hover:bg-muted/40",
                 )}
               >
@@ -115,16 +115,16 @@ export function CandidateList({
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                     <span className="tabular-nums font-semibold text-foreground text-base leading-6 break-all">{code}</span>
-                    <Badge variant={cand.support_level === "fully_supported" ? "default" : "outline"} className="text-sm">
+                    <Badge variant={cand.support_level === "fully_supported" ? "default" : "outline"} className="h-auto min-h-6 whitespace-normal text-xs">
                       {es.classification.supportLevel[cand.support_level] ?? cand.support_level}
                     </Badge>
-                    <span className="text-sm text-muted-foreground font-mono">
+                    <span className="text-xs text-muted-foreground tabular-nums">
                       {es.classification.rank(cand.rank)}
                     </span>
                     {renderTariffAction?.(findCandidateSourceReference(cand), code)}
                   </div>
                   {cand.description && (
-                    <p className="text-sm text-muted-foreground mt-0.5 ">
+                    <p className="text-sm leading-6 text-muted-foreground mt-2 ">
                       {cand.description}
                     </p>
                   )}
@@ -137,14 +137,14 @@ export function CandidateList({
         <CandidateFactors candidate={candidates.find((candidate) => candidate.id === activeCandidateId)}
           onViewEvidence={onViewEvidence} renderTariffAction={renderTariffAction} />
         <div className="border-t border-border pt-5 text-sm">
-          <div className="pt-1 flex justify-end gap-2">
-            {selectedCandidateId !== null && <Button type="button" variant="outline" className="min-h-10"
+          <div className="pt-1 flex flex-wrap justify-end gap-2">
+            {selectedCandidateId !== null && <Button type="button" variant="outline" className="min-h-11"
               disabled={disabled || isSubmitting} onClick={handleDeselect}>{es.classification.deselectCandidateBtn}</Button>}
             <Button
               type="submit"
               size="sm"
               disabled={disabled || isSubmitting || activeCandidateId === null}
-              className="min-h-10"
+              className="min-h-11"
             >
               {isSubmitting ? <Spinner className="w-3.5 h-3.5 mr-1" /> : <Check className="w-3.5 h-3.5 mr-1" />}
               {es.classification.selectCandidateBtn}

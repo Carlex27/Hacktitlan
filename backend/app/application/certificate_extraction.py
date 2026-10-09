@@ -18,6 +18,7 @@ from backend.app.certificate_parser.semantics import (
     discover_table_candidates,
 )
 from backend.app.domain.document import DocumentLayout
+from backend.app.certificate_parser.template_recognition import TemplateSnapshot, extract_template, matches_template, validate_snapshot
 from backend.app.infrastructure.ollama import OllamaExtractor
 from backend.app.infrastructure.ollama_verification import verify_fields, reconcile_ocr_readings
 from backend.app.infrastructure.partial_recovery import recover_missing_fields
@@ -59,10 +60,13 @@ class CertificateExtractionService:
         *,
         page_callback: Callable[[int, int], None] | None = None,
         cancel_check: Callable[[], bool] | None = None,
+        template_candidates: list[dict] | None = None,
+        explicit_template: bool = False,
     ) -> dict[str, Any]:
         if Path(path).suffix.lower() == ".xlsx":
             return extract_excel(Path(path), page_callback=page_callback, cancel_check=cancel_check)
-        return self.analyze_pdf(path, page_callback=page_callback, cancel_check=cancel_check)
+        return self.analyze_pdf(path, page_callback=page_callback, cancel_check=cancel_check,
+                                template_candidates=template_candidates, explicit_template=explicit_template)
 
     def analyze_pdf(
         self,
@@ -70,6 +74,8 @@ class CertificateExtractionService:
         *,
         page_callback: Callable[[int, int], None] | None = None,
         cancel_check: Callable[[], bool] | None = None,
+        template_candidates: list[dict] | None = None,
+        explicit_template: bool = False,
     ) -> dict[str, Any]:
         try:
             document = self.reader.read(path, page_callback=page_callback, cancel_check=cancel_check)
@@ -97,6 +103,20 @@ class CertificateExtractionService:
         if document.requires_ocr:
             return {**base, "status": ExtractionStatus.NEEDS_OCR.value}
 
+        snapshots = [TemplateSnapshot.model_validate(candidate) for candidate in (template_candidates or [])]
+        for snapshot in snapshots:
+            validate_snapshot(snapshot)
+        matches = [snapshot for snapshot in snapshots if matches_template(document, snapshot.configuration)]
+        if explicit_template:
+            if len(matches) != 1:
+                return {**base, "status": "needs_review", "reasons": ["El documento no es compatible con la plantilla elegida"]}
+            return {**base, **extract_template(document, matches[0])}
+        if len(matches) > 1:
+            generic = self.generic_extractor.extract(document)
+            return {**base, "status": "needs_review", "certificate": generic.certificate,
+                    "adapter": "ambiguous_user_templates", "template_candidates": [m.version_id for m in matches],
+                    "reasons": ["Coinciden varias plantillas activas; selecciona el formato y reprocesa"]}
+
         # Step 1: Strict evaluation of known format profiles (threshold >= 0.85)
         profile_name, profile_score, profile_signals = evaluate_format_profiles(
             document, min_confidence=0.85
@@ -120,6 +140,9 @@ class CertificateExtractionService:
                     }, document, cancel_check, pdf_path=path)
             base["profile"] = {"name": profile_name, "confidence": profile_score, "signals": list(profile_signals)}
             base["reasons"] = [f"El formato conocido {profile_name} no tiene un adaptador utilizable; se intentó extracción genérica"]
+
+        if matches:
+            return {**base, **extract_template(document, matches[0])}
 
         # Step 2: Generic deterministic extraction for unknown formats
         generic_result = self.generic_extractor.extract(document)

@@ -50,7 +50,7 @@ export function CertificateReviewTab({
         />
         <MechanicalPropertiesByRoll certificate={certificate} isLoading={loading} />
       </div>
-      <ProductsList products={certificate?.products ?? []} heats={certificate?.heats ?? []} isLoading={loading}
+      <ProductsList products={certificate?.products ?? []} isLoading={loading}
         classificationResults={classificationResults} classificationLoading={classificationLoading}
         classificationError={classificationError} {...(onRetryClassification ? { onRetryClassification } : {})} />
     </>

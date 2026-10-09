@@ -11,7 +11,7 @@ export function ReclassificationForm({ certificateId, onComplete, children }: { 
   const state = useReclassification(certificateId, onComplete);
   return <section className="min-w-0 max-w-full space-y-3">
     <div className="flex flex-wrap items-center justify-end gap-3">
-    <Button type="button" className="min-h-10" disabled={state.processing || state.submitting}
+    <Button type="button" className="min-h-11" disabled={state.processing || state.submitting}
       onClick={() => void state.start(es.approval.defaultPerson, es.workspace.classifyReason)}>
       {state.submitting ? <Spinner aria-hidden="true" /> : <RotateCwIcon aria-hidden="true" />}
       {es.workspace.classify}

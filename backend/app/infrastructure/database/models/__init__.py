@@ -22,12 +22,19 @@ from backend.app.infrastructure.database.models.core import (
 )
 from backend.app.infrastructure.database.models.operations import BackupRun, Export
 from backend.app.infrastructure.database.models.processing import ExtractionRun, Job
+from backend.app.infrastructure.database.models.formats import (
+    CertificateFormat, CertificateFormatVersion, CertificateFormatTest, PreparedDocumentLayout,
+)
 
 __all__ = [
     "ApprovalEvent",
     "BackupRun",
     "CandidateFactor",
     "ChemicalComposition",
+    "CertificateFormat",
+    "CertificateFormatVersion",
+    "CertificateFormatTest",
+    "PreparedDocumentLayout",
     "ClassificationCandidate",
     "ClassificationResult",
     "ClassificationRun",

@@ -1,0 +1,41 @@
+/** Guía del motor implementado; no contiene reglas ejecutables ni umbrales jurídicos. */
+export const classificationGuideTexts = {
+  title: "Cómo se clasifica",
+  introduction: "De los datos del acta a las sugerencias de fracción y NICO: conoce qué evalúa el motor y qué confirma la persona que revisa.",
+  scope: "Esta guía describe el motor implementado para productos laminados planos del capítulo 72 y el catálogo versionado que utiliza. El fundamento y las condiciones concretas de cada rollo se consultan en Validación.",
+  contents: "En esta guía",
+  scopeTitle: "Alcance del motor",
+  flowHint: "Explora los seis pasos. Abre cada uno para consultar su explicación completa.",
+  sectionLinks: [
+    { id: "classification-flow", label: "Recorrido de la sugerencia" },
+    { id: "classification-reading", label: "Interpretar los resultados" },
+    { id: "classification-example", label: "Ejemplo de un dato faltante" },
+    { id: "classification-review", label: "Selección y dictamen" },
+    { id: "classification-trace", label: "Consultar la evidencia" },
+  ],
+  flowTitle: "El recorrido de una sugerencia",
+  steps: [
+    { title: "Reunir los datos y su evidencia", preview: "Valores originales, datos normalizados y evidencia del acta.", body: "La extracción conserva valores originales y normalizados. El motor recibe dimensiones, presentación en rollo, laminación, recubrimiento, composición química y, cuando corresponden, propiedades mecánicas. La química compartida proviene de la colada; los ensayos deben corresponder al producto. Los códigos escritos en el archivo son datos de origen, no resultados confirmados." },
+    { title: "Comprobar el alcance y los datos necesarios", preview: "Alcance, dimensiones y propiedades necesarias para continuar.", body: "Se comprueba que el producto sea laminado plano y que sus dimensiones y presentación sean compatibles con esa definición. Faltantes o contradicciones pueden impedir resolver la clasificación. Si sólo falta la laminación, se evalúan las ramas en frío y en caliente; sólo se presentan alternativas cuando cumplen las condiciones previstas por el motor." },
+    { title: "Determinar la familia del acero", preview: "Composición química para distinguir la familia del acero.", body: "La composición química se compara con las definiciones y límites de las reglas implementadas para distinguir acero sin alear, inoxidable y los demás aceros aleados. El grado o nombre comercial no sustituye esa comprobación. Un elemento sin dato nunca se considera cero: puede dejar la familia pendiente." },
+    { title: "Elegir la rama y la fracción", preview: "Propiedades del producto que conducen a la rama arancelaria.", body: "La familia, el ancho, la laminación, la presentación y el recubrimiento conducen a la partida. Dentro de esa rama se evalúan espesor y condiciones específicas, como relieve, decapado o tipo de revestimiento. La ausencia de un metal de recubrimiento no demuestra que el producto esté sin revestir." },
+    { title: "Evaluar los NICO de esa fracción", preview: "Condiciones específicas para resolver el NICO de la fracción.", body: "El NICO se resuelve con las condiciones específicas de la fracción: según la rama pueden intervenir dimensiones, química, serie inoxidable, recubrimiento, uso o límite elástico. Cumplir una fracción no implica cumplir todos sus NICO. Las categorías residuales con reglas de exclusión requieren descartar las opciones específicas; un dato desconocido no acredita esa exclusión." },
+    { title: "Filtrar y ordenar las alternativas", preview: "Compatibilidad, catálogo y prioridades de los candidatos.", body: "El motor elimina combinaciones que contradicen datos conocidos o que no existen de forma única en el catálogo, y evita duplicados. En el ordenamiento general prioriza el resultado resuelto y después aplica el orden de ramas y las prioridades de compatibilidad, incluidos tratamientos de opciones residuales y condiciones desconocidas. Conserva hasta tres candidatos; registra las opciones descartadas y su motivo. El orden no es un porcentaje de probabilidad." },
+  ],
+  readingTitle: "Cómo interpretar lo que ves",
+  meanings: [
+    { title: "Sugerencia y respaldo", body: "Un candidato con respaldo completo satisface las comprobaciones que reporta el motor. Uno condicional conserva requisitos por confirmar. Estar primero en la lista no constituye una selección humana ni un dictamen aprobado." },
+    { title: "Cumple, no cumple y desconocido", body: "Cada condición compara el dato observado con lo esperado y conserva su evidencia. Cumple indica coincidencia; no cumple o contradicción señala incompatibilidad. Faltante, ambiguo o desconocido mantiene la incertidumbre visible, sin convertirla en cero o en un resultado negativo." },
+    { title: "Requiere revisión o sin candidatos", body: "Puede haber una fracción con NICO pendiente, alternativas condicionadas o ningún candidato. Revisa los datos faltantes, la evidencia y el alcance cubierto antes de decidir. No se inventa un código para completar el resultado." },
+  ],
+  reviewTitle: "De sugerencia a selección y dictamen",
+  review: [
+    "En Validación, revisa la serie del rollo, las condiciones del candidato, sus datos observados y las referencias disponibles. Elegir una alternativa permite inspeccionarla; Elegir fracción registra la selección y la verificación humana del rollo.",
+    "La captura manual permite indicar fracción, NICO y una justificación. Comprueba el formato de los códigos; no constituye una validación normativa automática. Conserva la trazabilidad y las sugerencias previas.",
+    "Mientras el acta está abierta puedes sustituir o quitar una selección. Confirmar acta cierra la revisión completa: exige cobertura de rollos y coladas y conserva bloqueos por contradicciones o condiciones obligatorias no cumplidas. Los datos desconocidos permanecen como evidencia tras la verificación humana.",
+  ],
+  exampleTitle: "Ejemplo de un dato faltante",
+  example: "Si el ancho, el espesor y la laminación están disponibles, pero falta química necesaria para distinguir la familia, el motor no rellena esa química con ceros. Puede conservar ramas posibles y marcar Requiere revisión. La decisión depende de revisar o completar la evidencia, no de aceptar automáticamente el primer candidato.",
+  traceTitle: "Dónde consultar el razonamiento de un rollo",
+  trace: "Abre el acta y entra en Validación. Las condiciones del candidato muestran lo esperado, lo observado, su estado y la evidencia disponible. Las referencias permiten consultar el fundamento aportado por el backend. Esta guía explica el proceso general; esos datos documentan la decisión concreta y la versión de reglas utilizada.",
+} as const;

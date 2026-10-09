@@ -11,6 +11,7 @@ from backend.app.certificate_parser.measurement_units import dimension_value
 from backend.app.domain.document import DocumentLayout, PageLayout, TextBlock
 
 ELEMENTS = {"C", "Si", "Mn", "P", "S", "Al", "Cr", "Cu", "Mo", "N", "Ni", "Nb", "Ti", "B", "V", "Ca", "Sn"}
+ELEMENT_OCR_ALIASES = {"SI": "Si", "AI": "Al"}
 
 def _below(page: PageLayout, header: TextBlock, pattern: str, bottom: float) -> list[TextBlock]:
     return sorted((block for block in page.blocks
@@ -36,17 +37,21 @@ class CalvertAdapter:
                  and any(block.text.strip() == "Certificate Number" for block in page.blocks)]
         certificate_numbers, dates, descriptions, suppliers = set(), set(), [], set()
         rows = []
+        rows_by_certificate = {}
         for page in pages:
+            page_numbers = set()
+            page_rows = []
             for block in page.blocks:
                 if block.text.strip() == "Certificate Number":
                     values = _below(page, block, r"\d+", block.bbox.bottom + page.height * .035)
                     certificate_numbers.update(value.text.strip() for value in values)
+                    page_numbers.update(value.text.strip() for value in values)
                 if block.text.strip() == "Date":
                     values = _below(page, block, r"\d{2}/\d{2}/\d{4}", block.bbox.bottom + page.height * .035)
                     dates.update(value.text.strip() for value in values)
                 if re.fullmatch(r"ArcelorMittal Calvert LLC", block.text.strip(), re.I):
                     suppliers.add(block.text.strip())
-                if re.search(r"Hot Roll.*Coil.*\bmm\b", block.text, re.I):
+                if re.search(r"\bCoil\b.*\bmm\b", block.text, re.I):
                     descriptions.append(block)
             chemical_title = next((block for block in page.blocks
                                    if "CHEMICAL COMPOSITION OF THE COIL" in block.text), None)
@@ -73,63 +78,92 @@ class CalvertAdapter:
                         values = _below(page, header, r"[\d,.]+", chemical_title.bbox.top)
                         value = min(values, key=lambda block: abs(block.bbox.top - coil.bbox.top), default=None)
                         if value and abs(value.bbox.top - coil.bbox.top) < page.height * .015:
-                            row[key] = _parse_numeric(value.text)
                             row["evidence"].append(_evidence(value, key))
-                            if key == "net_weight_kg":
+                            # Calvert prints kg with three decimal places; malformed separators remain evidence.
+                            if not re.fullmatch(r"(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d{3})?", value.text.strip()):
+                                continue
+                            if value.text.count(",") > 1 and "." not in value.text:
+                                continue
+                            row[key] = _parse_numeric(value.text)
+                            if key == "net_weight_kg" or "weight_kg" not in row:
                                 row["weight_kg"] = row[key]
-                                row["weight_kind"] = "net"
+                                row["weight_kind"] = "net" if key == "net_weight_kg" else "gross"
                                 row["evidence"].append(_evidence(value, "weight_kg"))
                 rows.append(row)
+                page_rows.append(row)
+            if len(page_numbers) != 1:
+                raise ValueError("Calvert: número de certificado ambiguo")
+            if page_rows:
+                rows_by_certificate.setdefault(next(iter(page_numbers)), []).extend(page_rows)
+                number_block = next(block for block in page.blocks if block.text.strip() == next(iter(page_numbers)))
+                for row in page_rows:
+                    row["evidence"].append(_evidence(number_block, "certificate_no"))
             chemistry_heats = [block for block in page.blocks if block.bbox.top > chemical_title.bbox.bottom
                                and block.text.strip() in {row["heat_no"] for row in rows}]
             for header in page.blocks:
-                if header.bbox.top <= chemical_title.bbox.bottom or header.text.strip() not in ELEMENTS:
+                element = ELEMENT_OCR_ALIASES.get(header.text.strip(), header.text.strip())
+                if header.bbox.top <= chemical_title.bbox.bottom or element not in ELEMENTS:
                     continue
                 for value in _below(page, header, r"\d+(?:\.\d+)?", header.bbox.bottom + page.height * .03):
                     above = [block for block in chemistry_heats if block.bbox.top <= value.bbox.top + 2]
                     heat = max(above, key=lambda block: block.bbox.top, default=None)
                     if heat:
-                        for row in rows:
+                        for row in page_rows:
                             if row["heat_no"] == heat.text.strip():
-                                element = header.text.strip()
                                 if element in row["chemistry"] and row["chemistry"][element] != value.text.strip():
                                     raise ValueError("Calvert: lecturas químicas contradictorias")
                                 row["chemistry"][element] = value.text.strip()
                                 row["evidence"].append(_evidence(value, f"composition_pct.{element}"))
-        if len(certificate_numbers) != 1 or not rows:
+            page_descriptions = [block for block in descriptions if block.page_number == page.page_number]
+            if len(page_descriptions) == 1:
+                detail = page_descriptions[0]
+                spec = re.search(r"\bCoil\s+(.+?)\s*/\s*([\d.,]+)\s*mm\s*[Xx×]\s*([\d.,]+)\s*mm", detail.text)
+                for row in page_rows:
+                    if spec:
+                        row["standard"] = spec[1].strip()
+                        row["thickness_mm"] = dimension_value(spec[2], "mm")
+                        row["width_mm"] = dimension_value(spec[3].replace(",", ""), "mm")
+                        row["evidence"].extend(_evidence(detail, key) for key in ("standard", "thickness_mm", "width_mm"))
+                    row["rolling"] = "hot" if re.search(r"Hot Roll", detail.text, re.I) else (
+                        "cold" if re.search(r"Cold Roll Base", page.text, re.I) else None)
+                    if "Pickled & Oiled" in detail.text:
+                        row["condition"] = ["pickled", "oiled"]
+                    if re.search(r"\bAluminize Coil\b", detail.text, re.I):
+                        row["coating_metal"] = "Al"
+        if certificate_numbers != set(rows_by_certificate) or not rows:
             raise ValueError("Calvert: certificado ambiguo o sin rollos")
         description = descriptions[0] if len({block.text for block in descriptions}) == 1 else None
-        standard = None
-        if description:
-            spec = re.search(r"\bCoil\s+(.+?)\s*/\s*([\d.,]+)\s*mm\s*[Xx×]\s*([\d.,]+)\s*mm", description.text)
-            if spec:
-                standard = spec[1].strip()
-                for row in rows:
-                    row["thickness_mm"] = dimension_value(spec[2], "mm")
-                    row["width_mm"] = dimension_value(spec[3].replace(",", ""), "mm")
-                    row["evidence"].extend(_evidence(description, key) for key in ("standard", "thickness_mm", "width_mm"))
+        product_name = description.text if description else (
+            "Aluminize Coil" if descriptions and all(re.match(r"Aluminize Coil\b", block.text, re.I)
+                                                     for block in descriptions) else None)
+        standards = {row.get("standard") for row in rows}
+        standard = next(iter(standards)) if len(standards) == 1 else None
         for page in pages:
             if "TENSILE TEST" not in page.text:
                 continue
+            numbers = {value.text.strip() for header in page.blocks if header.text.strip() == "Certificate Number"
+                       for value in _below(page, header, r"\d+", header.bbox.bottom + page.height * .035)}
+            test_rows = rows_by_certificate.get(next(iter(numbers)), []) if len(numbers) == 1 else []
             # shortcut: unlabelled tests attach only to a single coil; require explicit IDs for multi-coil tests.
             for label, key, pattern in (("Yield", "yield_strength_mpa", r"[\d.]+\s*MPa"),
                                         ("Tensile", "tensile_strength_mpa", r"[\d.]+\s*MPa"),
-                                        ("% Total", "elongation_pct", r"[\d.]+")):
-                header = next((block for block in page.blocks if block.text.strip() == label), None)
+                                        (r"% To[tl]al", "elongation_pct", r"[\d.]+"),
+                                        ("Top Side", "coating_superior_g_m2", r"[\d.]+"),
+                                        ("Bottom Side", "coating_inferior_g_m2", r"[\d.]+")):
+                header = next((block for block in page.blocks if re.fullmatch(label, block.text.strip())), None)
                 if header:
                     values = _below(page, header, pattern, header.bbox.bottom + page.height * .05)
-                    if len(values) == 1 and len(rows) == 1:
-                        rows[0][key] = _parse_numeric(values[0].text.replace("MPa", "").strip())
-                        rows[0]["evidence"].append(_evidence(values[0], key))
+                    if len(values) == 1 and len(test_rows) == 1:
+                        test_rows[0][key] = _parse_numeric(values[0].text.replace("MPa", "").strip())
+                        test_rows[0]["evidence"].append(_evidence(values[0], key))
         supplemental = [block for page in document.pages if page not in pages for block in page.blocks
                         if "Identification according to international standard" in block.text]
         for row in rows:
             row["evidence"].extend(_evidence(block, "supplemental_standard") for block in supplemental)
         date = next(iter(dates)) if len(dates) == 1 else None
-        return {"document": {"source_name": document.file_name, "certificate_no": next(iter(certificate_numbers)),
+        return {"document": {"source_name": document.file_name, "certificate_no": next(iter(certificate_numbers)) if len(certificate_numbers) == 1 else None,
                              "supplier": next(iter(suppliers)) if len(suppliers) == 1 else None,
                              "issue_date_raw": datetime.strptime(date, "%m/%d/%Y").date().isoformat() if date else None,
-                             "product_name": description.text if description else None},
-                "standard": standard, "rolling": "hot" if description else None,
-                "condition": ["pickled", "oiled"] if description and "Pickled & Oiled" in description.text else None,
+                             "product_name": product_name},
+                "standard": standard,
                 "chemistry_scales": {element: 0 for element in ELEMENTS}, "rows": rows}

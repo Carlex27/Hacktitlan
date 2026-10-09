@@ -26,10 +26,10 @@ describe("Sugerencias junto a los rollos", () => {
     const user = userEvent.setup();
     await user.click(await screen.findByRole("button", { name: "Historial de actas" }));
     await user.click(await screen.findByRole("button", { name: "Abrir acta" }));
-    await user.click(await screen.findByRole("button", { name: "Colada: C-9876" }));
+    await user.click(await screen.findByRole("button", { name: "Batch: C-9876" }));
     const first = await screen.findByRole("row", { name: /PL-001/ });
     const second = await screen.findByRole("row", { name: /ROLLO-002/ });
-    expect(screen.getByRole("button", { name: "Colada: C-9876" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Batch: C-9876" })).toHaveAttribute("aria-pressed", "true");
     expect(second).toHaveTextContent("72255091");
     expect(second).toHaveTextContent("NICO 08");
     expect(second).toHaveTextContent("Requiere revisión");

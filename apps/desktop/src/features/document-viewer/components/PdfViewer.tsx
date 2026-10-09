@@ -25,14 +25,14 @@ export function PdfViewer({ filePath, page = 1, fileName, className }: PdfViewer
     return (
       <div
         className={cn(
-          "w-full h-full flex items-center justify-center bg-viewer-canvas p-6",
+          "w-full h-full flex items-center justify-center bg-muted p-6",
           className,
         )}
       >
-        <Empty className="bg-white/90 border border-slate-300 rounded-lg p-6 max-w-sm">
+        <Empty className="bg-background border border-border rounded-lg p-6 max-w-sm">
           <EmptyHeader>
             <EmptyMedia variant="icon">
-              <FileText aria-hidden="true" className="w-8 h-8 text-slate-400" />
+              <FileText aria-hidden="true" className="w-8 h-8 text-muted-foreground" />
             </EmptyMedia>
             <EmptyTitle>{es.viewer.emptyTitle}</EmptyTitle>
             <EmptyDescription>{es.viewer.emptyDescription}</EmptyDescription>
@@ -45,9 +45,9 @@ export function PdfViewer({ filePath, page = 1, fileName, className }: PdfViewer
   const title = fileName ?? es.viewer.title;
 
   return (
-    <div className={cn("flex flex-col w-full h-full bg-viewer-bg min-h-0", className)}>
+    <div className={cn("flex flex-col w-full h-full bg-muted min-h-0", className)}>
       {/* Document Area */}
-      <div className="flex-1 bg-viewer-canvas flex items-center justify-center overflow-hidden min-h-0">
+      <div className="flex-1 bg-muted flex items-center justify-center overflow-hidden min-h-0">
         {state.status === "ready" && state.isPdf && (
           <iframe
             key={`${state.objectUrl}#page=${page}`}
@@ -56,18 +56,18 @@ export function PdfViewer({ filePath, page = 1, fileName, className }: PdfViewer
             className="w-full h-full border-0 bg-white"
           />
         )}
-        {state.status === "ready" && !state.isPdf && <div className="rounded-lg bg-white p-6 text-sm space-y-4">
+        {state.status === "ready" && !state.isPdf && <div className="m-4 max-w-md rounded-xl border border-border bg-background p-6 text-sm leading-6 space-y-4">
           <p>{es.workspace.spreadsheetNotice}</p>
-          <a href={api.url(filePath ?? "")} className="underline text-blue-700 focus-visible:outline-2 focus-visible:outline-blue-600">{es.workspace.downloadOriginal}</a>
+          <a href={api.url(filePath ?? "")} className="underline text-primary underline-offset-4 focus-visible:outline-2 focus-visible:outline-ring">{es.workspace.downloadOriginal}</a>
         </div>}
         {(state.status === "loading" || state.status === "idle") && (
-          <div role="status" className="flex items-center gap-2 text-xs text-slate-200">
+          <div role="status" className="flex items-center gap-2 text-sm text-muted-foreground">
             <Spinner aria-hidden="true" />
             {es.viewer.loading}
           </div>
         )}
         {state.status === "error" && (
-          <div className="w-full max-w-md">
+          <div className="w-full max-w-md p-4">
             <LoadErrorAlert title={es.viewer.loadError} error={state.error} onRetry={reload} />
           </div>
         )}

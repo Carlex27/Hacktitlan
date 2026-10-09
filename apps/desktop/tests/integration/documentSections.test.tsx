@@ -28,7 +28,7 @@ describe("Secciones del documento", () => {
     render(<App apiClient={backend.client} />);
     await user.click(screen.getByRole("button", { name: "Historial de actas" }));
     await user.click(await screen.findByRole("button", { name: "Abrir acta" }));
-    await screen.findByRole("button", { name: "Colada: SEGUNDA" });
+    await screen.findByRole("button", { name: "Batch: SEGUNDA" });
     await user.click(screen.getByRole("button", { name: "Ver detalle: PL-001" }));
     expect(screen.getByRole("button", { name: "Extraído" })).toHaveAttribute("aria-current", "true");
     const firstPanel = screen.getByRole("region", { name: "Ver detalle: PL-001" });
@@ -48,7 +48,7 @@ describe("Secciones del documento", () => {
     expect(screen.queryByRole("heading", { name: "Composición Química (%)" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Ver detalle: PL-001" }));
     expect(screen.getByRole("region", { name: "Ver detalle: PL-001" })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Colada: SEGUNDA" }));
+    await user.click(screen.getByRole("button", { name: "Batch: SEGUNDA" }));
     expect(screen.queryByRole("region", { name: "Ver detalle: PL-001" })).not.toBeInTheDocument();
 
   });
@@ -67,8 +67,12 @@ describe("Secciones del documento", () => {
     await user.click(await screen.findByRole("button", { name: "Abrir acta" }));
     expect(await screen.findByRole("heading", { name: "Información General" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Composición Química (%)" })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Colada: C-9876" })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByRole("table", { name: "Coladas" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Batch: C-9876" })).toHaveAttribute("aria-pressed", "true");
+    const productsTable = screen.getByRole("table", { name: "Coladas" });
+    expect(productsTable).toBeInTheDocument();
+    expect(within(productsTable).getByRole("columnheader", { name: "NICO" })).toBeInTheDocument();
+    expect(within(productsTable).getByRole("columnheader", { name: "Número de serie" })).toBeInTheDocument();
+    expect(within(productsTable).queryByText("Batch: C-9876")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Extraído" }));
     expect(screen.queryByRole("heading", { name: "Composición Química (%)" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("row", { name: /PL-001/ }));

@@ -432,6 +432,7 @@ class DocumentReviewQueueItem(BaseModel):
 
 class ReprocessRequest(ActorReason):
     from_stage: str = Field(pattern="^(extraction|normalization|classification)$")
+    format_version_id: int | None = Field(default=None, ge=1, strict=True)
 
 
 class DocumentQualityReportEnvelope(BaseModel):

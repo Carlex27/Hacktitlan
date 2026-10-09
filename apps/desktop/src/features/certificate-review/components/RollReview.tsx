@@ -29,7 +29,7 @@ export function RollReview({ certificate, certificateLoading, certificateError, 
   const result = classification.run?.results.find((value) => value.product_id === product?.id);
   return <>
     <CertificateSummary certificate={certificate} isLoading={certificateLoading} />
-    <ProductsList products={certificate?.products ?? []} heats={certificate?.heats ?? []}
+    <ProductsList products={certificate?.products ?? []}
       isLoading={certificateLoading} classificationResults={classification.run?.results ?? []}
       classificationLoading={Boolean(classification.isLoading)} classificationError={classification.error}
       onRetryClassification={classification.onReloadRun} activeProductId={selection?.productId ?? null}

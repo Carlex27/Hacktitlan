@@ -28,7 +28,7 @@ export function ManualClassificationForm({ result, disabled, onSaved }: { result
       onSaved();
     } catch { /* El hook conserva el error para mostrarlo. */ }
   }
-  return <form aria-label={text.title} onSubmit={submit} className="space-y-4 rounded-xl border border-border bg-background p-5">
+  return <form aria-label={text.title} onSubmit={submit} className="space-y-4 rounded-xl border border-border bg-background p-5 sm:p-6">
     <h3 className="text-lg font-semibold">{text.title}</h3>
     <p className="text-sm text-muted-foreground">{text.description}</p>
     {result.current_selection && <p className="text-sm">{text.current}: {result.fraction} · NICO {result.nico}</p>}

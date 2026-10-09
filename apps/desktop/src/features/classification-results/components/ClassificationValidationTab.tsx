@@ -71,7 +71,7 @@ export function ClassificationValidationTab({
       {!isLoading && activeResult && (
         <section
           aria-labelledby="candidates-heading"
-          className="bg-background p-5 rounded-xl border border-border flex flex-col gap-2"
+          className="bg-background p-5 sm:p-6 rounded-xl border border-border flex flex-col gap-4"
         >
           <h4 id="candidates-heading" className="font-semibold text-foreground text-lg leading-7">
             {es.classification.candidatesTitle}

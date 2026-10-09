@@ -42,6 +42,10 @@ export function visibleImportItems(items: readonly ImportItem[]): readonly Impor
   return items.filter((item) => item.phase !== "succeeded" && item.phase !== "needs_review");
 }
 
+export function completedImportKey(items: readonly ImportItem[]): string {
+  return items.filter((item) => item.phase === "succeeded" || item.phase === "needs_review").map((item) => item.id).join(",");
+}
+
 export function phaseToStatus(phase: ImportPhase): ProcessingStatus {
   switch (phase) {
     case "uploading":

@@ -31,6 +31,11 @@ from backend.app.infrastructure.ocr.table_refinement import refine_cells
 logger = logging.getLogger(__name__)
 
 
+def is_arcelormittal_cover(text: str) -> bool:
+    words = " ".join(text.casefold().split())
+    return "arcelormittal" in words and "inspection document cover sheet" in words
+
+
 class OcrCancellationRequested(Exception):
     """Raised when an ongoing OCR job is cancelled by the user between pages."""
 
@@ -157,7 +162,10 @@ class PaddleStructureReader:
             original.sha256,
             pages,
             {**original.metadata, "ocr": runtime.as_dict(),
-             "ocr_page_rotations": {str(index + 1): (result.get("doc_preprocessor_res") or {}).get("angle", 0)
+             "ocr_skipped_pages": [{"page_number": result["page_index"] + 1,
+                                    "reason": "arcelormittal_cover"}
+                                   for result in results if hasattr(result, "get") and result.get("skip_cover")],
+             "ocr_page_rotations": {str(result.get("page_index", index) + 1): (result.get("doc_preprocessor_res") or {}).get("angle", 0)
                                     for index, result in enumerate(results) if hasattr(result, "get")}},
         )
 
@@ -203,7 +211,36 @@ class PaddleStructureReader:
                 from paddlex.inference.pipelines.components import rotate_image
 
                 pdf = stack.enter_context(pdfplumber.open(input_path))
-            predictions = iter(pipeline.predict(
+            shared_ocr = getattr(getattr(pipeline, "paddlex_pipeline", None), "general_ocr_pipeline", None)
+            def selected_predictions():
+                for index, page in enumerate(pdf.pages):
+                    if cancel_check and cancel_check():
+                        raise OcrCancellationRequested("Procesamiento OCR cancelado entre páginas")
+                    try:
+                        header = page.crop((0, 0, page.width, page.height * 0.24))
+                        header_image = np.array(header.to_image(resolution=120).original.convert("RGB"))[:, :, ::-1]
+                        # shortcut: probe upright headers; rotated/uncertain pages keep full OCR.
+                        readings = shared_ocr.predict(header_image, use_doc_orientation_classify=False,
+                                                      use_doc_unwarping=False, use_textline_orientation=False)
+                        text = " ".join(str(word) for reading in readings
+                                        for word in reading.get("rec_texts", []))
+                    except Exception as exc:
+                        if isinstance(exc, OcrCancellationRequested):
+                            raise
+                        logger.warning("cover_probe_failed", extra={"page_number": index + 1,
+                                                                    "error_type": type(exc).__name__})
+                        text = ""
+                    if is_arcelormittal_cover(text):
+                        yield {"page_index": index, "skip_cover": True}
+                        continue
+                    # Match Paddle's native PDF rendering (scale 2, smoothing enabled).
+                    image = np.array(page.to_image(resolution=144, antialias=True).original.convert("RGB"))[:, :, ::-1]
+                    for result in pipeline.predict(input=image, use_doc_orientation_classify=True,
+                                                   use_textline_orientation=False, use_doc_unwarping=False,
+                                                   use_table_recognition=True):
+                        result["page_index"] = index
+                        yield result
+            predictions = iter(selected_predictions() if pdf is not None and shared_ocr is not None else pipeline.predict(
                 input=str(input_path), use_doc_orientation_classify=True,
                 use_textline_orientation=False, use_doc_unwarping=False,
                 use_table_recognition=True,
@@ -218,8 +255,9 @@ class PaddleStructureReader:
                     result = next(predictions)
                 except StopIteration:
                     break
-                page_index = len(results)
-                if pdf is not None:
+                page_index = result.get("page_index", len(results)) if hasattr(result, "get") else len(results)
+                skipped = hasattr(result, "get") and result.get("skip_cover")
+                if pdf is not None and not skipped:
                     page = pdf.pages[page_index]
                     resolution = 300
                     cell_image = np.array(page.to_image(resolution=resolution).original.convert("RGB"))[:, :, ::-1]
@@ -259,6 +297,9 @@ class PaddleStructureReader:
                 continue
 
             original = original_pages[page_number - 1]
+            if core.get("skip_cover"):
+                converted[page_number] = replace(original, source=PageSource.OCR, blocks=(), tables=())
+                continue
             page_w = original.width
             page_h = original.height
             page_rot = original.rotation
