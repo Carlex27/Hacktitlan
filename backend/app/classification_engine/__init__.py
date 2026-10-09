@@ -20,6 +20,7 @@ from backend.app.classification_engine.versioning import (
     compare_rule_sets,
     validate_rule_set_immutability,
 )
+from backend.app.classification_engine.source_evidence import source_reference, verified_source_pdf
 
 __all__ = [
     "BranchStatus",
@@ -38,4 +39,6 @@ __all__ = [
     "compare_rule_sets",
     "get_coverage_matrix",
     "validate_rule_set_immutability",
+    "source_reference",
+    "verified_source_pdf",
 ]

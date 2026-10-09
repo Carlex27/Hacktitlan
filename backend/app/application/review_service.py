@@ -34,6 +34,7 @@ class ReviewService:
         "coating.inferior_g_m2", "pickled", "pattern_in_relief",
         "porcelain_exposed_parts", "pipeline_steel",
         "high_speed_steel", "tool_steel",
+        "stainless_series",
     }
 
     def __init__(self, settings: Settings) -> None:
@@ -238,6 +239,18 @@ class ReviewService:
                                 "classification_incomplete",
                                 "No se puede aprobar una opción con datos obligatorios faltantes o contradicciones",
                             )
+                        unverified_factor = session.scalar(
+                            select(CandidateFactor.id).where(
+                                CandidateFactor.candidate_id == candidate.id,
+                                CandidateFactor.required_for_selection.is_(True),
+                                CandidateFactor.outcome != "matched",
+                            ).limit(1)
+                        )
+                        if unverified_factor is not None:
+                            raise ConflictError(
+                                "classification_incomplete",
+                                "No se puede aprobar una opción con condiciones normativas sin verificar",
+                            )
         allowed = {
             ApprovalStatus.DRAFT: {ApprovalStatus.NEEDS_REVIEW, ApprovalStatus.APPROVED, ApprovalStatus.REJECTED},
             ApprovalStatus.NEEDS_REVIEW: {ApprovalStatus.APPROVED, ApprovalStatus.REJECTED},
@@ -380,6 +393,12 @@ class ReviewService:
                     "invalid_observation_value", "rolling debe ser hot o cold"
                 )
             return
+        if field_path == "stainless_series":
+            if not isinstance(value, str) or value not in {"200", "300", "400", "other"}:
+                raise ApplicationError(
+                    "invalid_observation_value", "stainless_series debe ser 200, 300, 400 u other"
+                )
+            return
         numeric = (
             field_path in {
                 "width_mm", "thickness_mm",
@@ -473,4 +492,3 @@ class ReviewService:
                         inherited=False,
                     )
                 )
-

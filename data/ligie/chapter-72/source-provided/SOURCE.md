@@ -13,6 +13,11 @@ contrastarlas con el Decreto LIGIE, los acuerdos NICO y sus modificaciones del D
 
 ## Archivos generados
 
+- `LIGIE-UNIFICADA-ACERO.pdf`: copia íntegra del original, incluida en el proyecto
+  y verificada contra el SHA-256 anterior al servirla por API.
+- `alloy-evidence.json`: página, texto y coordenadas de los 16 umbrales de la
+  Nota 1(f); coordenadas PDF en puntos, origen superior izquierdo.
+
 - `catalog.csv`: catálogo tabular para revisión humana y carga inicial.
 - `catalog.json`: el mismo catálogo con estructura jerárquica.
 - `classification-notes.json`: reglas explícitas de las notas del capítulo.

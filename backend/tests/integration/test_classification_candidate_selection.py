@@ -34,7 +34,8 @@ def database_url() -> str:
     return value
 
 
-def test_selection_is_audited_and_required_before_approval(database_url: str):
+@pytest.mark.parametrize("factor_outcome", ["matched", "unknown"])
+def test_selection_is_audited_and_required_before_approval(database_url: str, factor_outcome: str):
     engine = create_engine(database_url)
     connection = engine.connect()
     transaction = connection.begin()
@@ -145,6 +146,24 @@ def test_selection_is_audited_and_required_before_approval(database_url: str):
         assert session.scalar(
             select(ClassificationSelection).where(ClassificationSelection.id == first.id)
         ) is first
+
+        session.add(CandidateFactor(
+            candidate_id=candidates[2].id,
+            sequence=1,
+            rule_code="test.normative_condition",
+            outcome=factor_outcome,
+            explanation="Condición normativa revisada",
+            required_for_selection=True,
+        ))
+        session.flush()
+        if factor_outcome == "unknown":
+            with pytest.raises(ConflictError) as unverified:
+                service.transition_classification(
+                    session, run_id=run.id, target=ApprovalStatus.APPROVED,
+                    person_name="Aprobador autorizado", reason="Condición aún pendiente",
+                )
+            assert unverified.value.code == "classification_incomplete"
+            return
 
         service.transition_classification(
             session,
@@ -404,4 +423,3 @@ def test_approval_blocked_if_selected_candidate_has_missing_data_or_conflicts(da
         transaction.rollback()
         connection.close()
         engine.dispose()
-

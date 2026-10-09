@@ -52,3 +52,9 @@ class AdapterRegistry:
         if adapter is None or adapter.match(document).confidence < minimum_confidence:
             return None
         return adapter
+
+
+def default_adapter_registry() -> AdapterRegistry:
+    from backend.app.certificate_parser.molino_1_adapter import Molino1Adapter
+
+    return AdapterRegistry((Molino1Adapter(),))

@@ -2,15 +2,28 @@
 
 ## En proceso
 
+- Hito 7: respaldo y restauración verificados; volumen de 18,250 actas y 273,750
+  coladas medido en desarrollo. Consultas p95 entre 5.53 y 151.297 ms; XLSX de 300
+  actas/4,500 rollos en 3.058 s; respaldo en 3.218 s y restauración en 19.479 s.
+  Pendientes: objetivos acordados, servidor de demostración, OCR real y arranque
+  tras omitir las 02:00. Evidencia en
+  [`audit/HITO_7_RESPALDO_VOLUMEN_RENDIMIENTO.md`](audit/HITO_7_RESPALDO_VOLUMEN_RENDIMIENTO.md).
+
+- Revisión de clasificación contra la fuente proporcionada (8 de octubre de
+  2026): umbrales químicos y reglas NICO corregidas, PDF incluido con navegación
+  normativa por página/región y bloqueo de factores desconocidos. Continúan
+  pendientes vigencia oficial, calificadores industriales y visor frontend.
+  Detalle en [`audit/CLASSIFICATION_SOURCE_REVIEW.md`](audit/CLASSIFICATION_SOURCE_REVIEW.md).
+
 - Hito 3 permanece parcial: la extracción genérica falla de forma segura y
   conserva datos no mapeados, pero faltan los cuatro adaptadores específicos de
-  formatos conocidos. Después continúa el Hito 7.
+  formatos conocidos. El Hito 7 ya tiene implementación y mediciones de desarrollo.
 
 ## Implementado
 
 - Hito 6: Consultas, reportes y auditoría final implementado y verificado (auditoría en `docs/audit/HITO_6_CONSULTAS_REPORTES_AUDITORIA.md`).
   - Consultas avanzadas y filtros multidimensionales en `DocumentService.list_certificates` y `GET /api/v1/certificates`: presets de período (`today`/`day`, `week`, `month`) con helper puro `resolve_period_dates`, rango explícito (`date_from`, `date_to`), número de certificado, fabricante, colada (`heat_no`), producto (`product_identifier`), fracción arancelaria (`fraction`), NICO (`nico`), estado documental (`approval_status`) y estado de procesamiento (`processing_status`).
-  - Paginación determinista estable mediante cursor keyset `(sort_date, id)` que garantiza cero duplicados y cero omisiones bajo inserciones concurrentes (validado en `test_cursor_pagination_stability_under_concurrent_insertions`).
+  - Paginación keyset `(sort_date, id)` sin desplazamiento por inserciones. No crea una instantánea ni garantiza estabilidad ante cambios de la fecha de ordenación; se prueban inserciones anteriores y posteriores al cursor.
   - Detalle histórico de ejecuciones en `GET /api/v1/classification-runs/{run_id}` exponiendo tanto `current_selection` (la selección activa vigente) como `selections` (la línea de tiempo cronológica completa de selecciones históricas y reemplazos).
   - Libro Excel auditable de 8 hojas (`ExcelExportService`) generado íntegramente por el backend (`Resumen`, `Actas`, `Coladas`, `Rollos`, `Composición`, `Clasificación`, `Evidencia`, `Auditoría`):
     - Hoja `Clasificación`: candidato elegido (`fraccion-nico`), alternativas 2 y 3, persona que seleccionó, motivo, fecha, factores clave y enlace interno clicable (`#'Evidencia'!A{row}`).
@@ -20,7 +33,7 @@
   - Compuerta estricta para reportes oficiales: `POST /api/v1/exports` y `ExcelExportService` exigen aprobación al 100% de todos los certificados y ejecuciones involucrados; si alguno está en `draft`, `needs_review` o `rejected`, la API rechaza con código HTTP 409 (`official_export_requires_approval`).
   - Marcado visual obligatorio de reportes preliminares en la celda A1 (`PRELIMINAR — PENDIENTE DE APROBACIÓN — DEMOSTRACIÓN — SIN VALIDEZ ADUANERA`).
   - Trazabilidad y auditoría completa de exportaciones en base de datos (`filters_json`, `scope_json`, `person_name`, `workstation_name`, hash criptográfico `sha256`, `stored_file_id`) y endpoint `GET /api/v1/exports/{export_id}`.
-  - Suite de 9 pruebas dedicadas en `backend/tests/unit/test_reporting_and_audit.py` y 177 pruebas pasando en toda la suite.
+  - Suite dedicada ampliada a 27 casos. La revisión corrigió aprobación oficial incompleta, alcance por coladas, alternativas, evidencia, vigencia histórica, fórmulas externas y validación de filtros. La ejecución final sobre el repositorio compartido terminó con 248 pruebas aprobadas y 2 advertencias; ver auditoría para los límites de verificación.
 
 - Hito 5: Cobertura completa de reglas aprobadas implementado y verificado (auditoría en `docs/audit/HITO_5_COBERTURA_REGLAS_AUDIT.md`).
   - Matriz de cobertura exhaustiva para las 29 partidas del Capítulo 72 y los 614 registros del catálogo oficial (`Chapter72CoverageMatrix`).

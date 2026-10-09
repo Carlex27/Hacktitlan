@@ -83,6 +83,24 @@ El contrato completo está en
 
 ## Expansión posterior
 
+La revisión contra la fuente del 8 de octubre de 2026 corrigió condiciones
+NICO de galvanizado, series AISI, dimensiones del inoxidable y varias rutas
+que devolvían códigos inexistentes. Las series AISI deben constar expresamente;
+la fuente no establece umbrales numéricos de Ni/Mn para inferirlas.
+7210.49.99.01 requiere espesor < 3 mm y límite de deformación >= 275 MPa;
+7210.49.99.02 corresponde a alta resistencia (>= 355 MPa).
+Las condiciones desconocidas permanecen `unknown` y bloquean aprobación.
+La clasificación sin enrollar comprueba también las proporciones de la Nota 1(k).
+
+La navegación normativa distingue Nota 1(f), página 7, de tablas de fracción y
+NICO. El PDF íntegro está incluido y el backend entrega región para los umbrales
+químicos. El visor y la pantalla de candidatos siguen pendientes.
+
+La auditoría, correcciones y brechas restantes están en
+[`audit/CLASSIFICATION_SOURCE_REVIEW.md`](audit/CLASSIFICATION_SOURCE_REVIEW.md).
+La matriz de cobertura describe rutas ejecutables; no certifica que cada NICO
+de una ruta tenga todos sus calificadores verificados.
+
 Faltan las ramas deterministas completas del resto del capítulo 72 y varios
 NICO que requieren uso previsto, temple, acabado o propiedades no presentes en
 las actas. Se añadirán sólo con reglas de frontera y evidencia de la misma

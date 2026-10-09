@@ -193,6 +193,7 @@ class Worker:
                 "detection": result.get("detection"),
                 "adapter": result.get("adapter"),
                 "ingestion": result["document"].get("ingestion") or {},
+                "extraction_reasons": result.get("reasons") or [],
             }
             job.status = final_status.value
             job.progress = 100
@@ -213,9 +214,10 @@ class Worker:
                         "detection": result.get("detection") or {},
                         "field_candidates": result.get("field_candidates") or [],
                         "table_candidates": result.get("table_candidates") or [],
+                        "unmapped_blocks": result.get("unmapped_blocks") or [],
                     },
                     normalized_json=result.get("certificate"),
-                    warnings_json=[],
+                    warnings_json=result.get("reasons") or [],
                 )
             )
 
@@ -245,7 +247,7 @@ class Worker:
                         session,
                         certificate_ids=certificate_ids,
                         heat_ids=heat_ids or None,
-                        classification_run_ids=classification_run_ids or None,
+                        classification_run_ids=classification_run_ids if "classification_run_ids" in export.scope_json else None,
                         destination=Path(temporary_path),
                         official=official,
                     )
