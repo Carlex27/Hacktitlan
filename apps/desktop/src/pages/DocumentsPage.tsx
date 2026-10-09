@@ -30,8 +30,10 @@ export function DocumentsPage({
         <PdfViewer filePath={filePath} />
       </section>
 
-      {/* Right Column: Ingestion & Import Queue */}
-      <main className="flex-1 bg-white flex flex-col min-w-0 overflow-y-auto p-6 gap-6">
+      {/* Right Column: Ingestion & Import Queue.
+          `*:shrink-0`: las tarjetas (overflow-hidden) no deben comprimirse para caber;
+          la columna crece y se recorre con scroll. */}
+      <main className="flex-1 bg-white flex flex-col min-w-0 min-h-0 overflow-y-auto p-6 gap-6 *:shrink-0">
         <header className="flex flex-col gap-1">
           <h2 className="text-lg font-bold text-slate-900">
             {es.certificateImport.title}
